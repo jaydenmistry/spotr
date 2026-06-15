@@ -1,0 +1,47 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id       String @id @default(cuid())
+  email    String @unique
+  password String
+}
+
+model Lead {
+  id          String   @id @default(cuid())
+  vin         String?
+  year        Int?
+  make        String?
+  model       String?
+  price       Int?
+  miles       Int?
+  city        String?
+  state       String?
+  source      String?
+  vdp_url     String?
+  photo_url   String?
+  stage       String   @default("New Leads")
+  sellerName  String?
+  sellerPhone String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  messages    Message[]
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+  role      String   // "user" or "seller"
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
