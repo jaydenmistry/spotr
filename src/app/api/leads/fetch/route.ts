@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import axios from "axios";
 
 const MARKETCHECK_API_KEY = process.env.MARKETCHECK_API_KEY;
-const ZIP_CODE = "30005";
+const ZIP_CODE = "30043";
 
 // Mock data as fallback
 const mockLeads = [

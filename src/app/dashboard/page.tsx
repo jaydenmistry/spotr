@@ -25,7 +25,28 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    fetchLocalLeads();
+    let isActive = true;
+
+    const loadLeads = async () => {
+      try {
+        const res = await axios.get("/api/leads");
+        if (isActive) {
+          setLeads(res.data);
+        }
+      } catch (error) {
+        console.error("Failed to load leads", error);
+      } finally {
+        if (isActive) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void loadLeads();
+
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   const handleFindNewLeads = async () => {
