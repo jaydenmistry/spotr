@@ -22,8 +22,12 @@ model Lead {
   year        Int?
   make        String?
   model       String?
+  listingTitle String?
   price       Int?
   miles       Int?
+  distanceMiles Float?
+  searchZip   String?
+  searchRadius Int?
   city        String?
   state       String?
   source      String?

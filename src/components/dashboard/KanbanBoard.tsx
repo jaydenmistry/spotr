@@ -4,23 +4,7 @@ import { useEffect, useState } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import LeadCard from "./LeadCard";
 import axios from "axios";
-
-interface Lead {
-  id: string;
-  year: number | null;
-  make: string | null;
-  model: string | null;
-  price: number | null;
-  miles: number | null;
-  city: string | null;
-  state: string | null;
-  photo_url: string | null;
-  stage: string;
-  vin: string | null;
-  source: string | null;
-  vdp_url: string | null;
-  sellerName: string | null;
-}
+import type { LeadRecord } from "@/lib/vehicleAnalytics";
 
 const STAGES = ["New Leads", "Contacted", "Appraisal", "Offer Made", "Acquired", "Lost"];
 
@@ -29,9 +13,9 @@ export default function KanbanBoard({
   onLeadClick,
   onLeadUpdate
 }: {
-  leads: Lead[];
-  onLeadClick: (lead: Lead) => void;
-  onLeadUpdate: (updatedLeads: Lead[]) => void;
+  leads: LeadRecord[];
+  onLeadClick: (lead: LeadRecord) => void;
+  onLeadUpdate: (updatedLeads: LeadRecord[]) => void;
 }) {
   const [mounted, setMounted] = useState(false);
 
@@ -99,7 +83,7 @@ export default function KanbanBoard({
                     ref={provided.innerRef}
                     {...provided.droppableProps}
                     className={`flex-1 overflow-y-auto transition-colors ${
-                      snapshot.isDraggingOver ? "bg-blue-50" : ""
+                      snapshot.isDraggingOver ? "bg-orange-50" : ""
                     }`}
                   >
                     {stageLeads.map((lead, index) => (

@@ -79,6 +79,23 @@ const faqs = [
   ],
 ];
 
+const previewListings = [
+  {
+    name: "2018 Toyota 4Runner",
+    price: "$31,500",
+    miles: "54k mi",
+    source: "Facebook",
+    image: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=700&q=80",
+  },
+  {
+    name: "2021 Ford F-150",
+    price: "$39,200",
+    miles: "37k mi",
+    source: "Autotrader",
+    image: "https://images.unsplash.com/photo-1609521263047-f8f205293f24?auto=format&fit=crop&w=700&q=80",
+  },
+];
+
 function SpotrLogo() {
   return (
     <Link href="/" className="flex items-center gap-3" aria-label="Spotr home">
@@ -164,12 +181,17 @@ function ProductPreview() {
 
         <div className="grid gap-6 bg-[linear-gradient(135deg,#ffffff_0%,#fff7ed_45%,#f8fafc_100%)] p-5 md:grid-cols-[1fr_1.2fr_1fr] md:p-8">
           <div className="space-y-4">
-            {[
-              ["2018 Toyota 4Runner", "$31,500", "54k mi", "Facebook"],
-              ["2021 Ford F-150", "$39,200", "37k mi", "Autotrader"],
-            ].map(([name, price, miles, source]) => (
+            {previewListings.map(({ name, price, miles, source, image }) => (
               <div key={name} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="mb-3 h-24 rounded-md bg-[linear-gradient(135deg,#d9dee7,#f8fafc)]" />
+                <div className="mb-3 overflow-hidden rounded-md bg-slate-100">
+                  <Image
+                    src={image}
+                    alt={`${name} private seller listing`}
+                    width={700}
+                    height={420}
+                    className="h-24 w-full object-cover"
+                  />
+                </div>
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-bold text-[#151827]">{name}</p>
@@ -193,11 +215,11 @@ function ProductPreview() {
             </div>
             <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
               <Image
-                src="https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=1000&q=80"
-                alt="Silver performance car listed for acquisition"
+                src="https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=1000&q=80"
+                alt="Black coupe listed by a private seller"
                 width={1000}
                 height={640}
-                className="h-64 w-full object-cover"
+                className="h-64 w-full object-cover object-center"
               />
             </div>
             <div className="mt-5 grid grid-cols-3 gap-3 text-center">
@@ -302,7 +324,7 @@ export default function Home() {
           <div className="mx-auto inline-flex items-center rounded-full border border-[#ff7a1a] bg-white px-4 py-1.5 text-sm font-extrabold text-[#151827]">
             Private seller acquisition, built for modern dealerships
           </div>
-          <h1 className="mt-6 text-5xl font-black leading-[1.02] tracking-normal text-[#151827] sm:text-6xl lg:text-7xl">
+          <h1 className="mx-auto mt-6 max-w-4xl text-5xl font-extrabold leading-[1.08] tracking-normal text-[#151827] sm:text-6xl lg:text-[4.75rem]">
             Buy better used cars from private sellers{" "}
             <span className="text-[#ff7a1a]">before the market sees them.</span>
           </h1>

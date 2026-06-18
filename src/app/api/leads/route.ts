@@ -6,6 +6,15 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const leads = await prisma.lead.findMany({
+      where: {
+        AND: [
+          { vdp_url: { not: null } },
+          { vdp_url: { not: "#" } },
+          { photo_url: { not: null } },
+          { NOT: [{ vin: { startsWith: "SPOTR-" } }, { vin: { startsWith: "LIVE-" } }] },
+          { NOT: { photo_url: { contains: "images.unsplash.com" } } },
+        ],
+      },
       orderBy: { createdAt: "desc" }
     });
     return NextResponse.json(leads);

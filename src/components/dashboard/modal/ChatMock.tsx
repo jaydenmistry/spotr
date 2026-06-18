@@ -49,7 +49,7 @@ export default function ChatMock({ leadId, sellerName }: { leadId: string, selle
             <div
               className={`max-w-[75%] rounded-lg px-4 py-2 text-sm ${
                 msg.role === "user"
-                  ? "bg-blue-600 text-white"
+                  ? "bg-orange-600 text-white"
                   : msg.role === "system"
                   ? "bg-gray-100 text-gray-500 text-xs text-center"
                   : "bg-gray-200 text-gray-900"
@@ -68,11 +68,11 @@ export default function ChatMock({ leadId, sellerName }: { leadId: string, selle
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Type a message..."
-            className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none"
           />
           <button
             type="submit"
-            className="rounded-md bg-blue-600 p-2 text-white hover:bg-blue-700"
+            className="rounded-md bg-orange-600 p-2 text-white hover:bg-orange-700"
           >
             <Send className="h-5 w-5" />
           </button>

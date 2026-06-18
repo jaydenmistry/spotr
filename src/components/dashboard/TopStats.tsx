@@ -1,10 +1,15 @@
 "use client";
 
-import { DollarSign, Car, TrendingUp } from "lucide-react";
+import { Car, DollarSign, TrendingUp } from "lucide-react";
+import { formatSignedCurrency, getVehicleAnalytics } from "@/lib/vehicleAnalytics";
 
 interface Lead {
   id: string;
+  make: string | null;
+  model: string | null;
+  year: number | null;
   price: number | null;
+  miles: number | null;
   stage: string;
   createdAt: string;
 }
@@ -15,6 +20,10 @@ export default function TopStats({ leads }: { leads: Lead[] }) {
 
   const pipelineLeads = leads.filter((l) => !["Acquired", "Lost"].includes(l.stage));
   const pipelineValue = pipelineLeads.reduce((sum, l) => sum + (l.price || 0), 0);
+  const projectedMovement = pipelineLeads.reduce(
+    (sum, lead) => sum + getVehicleAnalytics(lead).projectedChangeDollars,
+    0
+  );
 
   const oneWeekAgo = new Date();
   oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
@@ -39,18 +48,24 @@ export default function TopStats({ leads }: { leads: Lead[] }) {
       icon: Car,
       subtext: "Fresh leads imported",
     },
+    {
+      name: "Projected Movement",
+      value: formatSignedCurrency(projectedMovement),
+      icon: TrendingUp,
+      subtext: "12-month value outlook",
+    },
   ];
 
   return (
-    <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-3">
+    <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
       {stats.map((item) => (
         <div
           key={item.name}
           className="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6"
         >
           <div className="flex items-center">
-            <div className="flex-shrink-0 rounded-md bg-blue-50 p-3">
-              <item.icon className="h-6 w-6 text-blue-600" aria-hidden="true" />
+            <div className="flex-shrink-0 rounded-md bg-orange-50 p-3">
+              <item.icon className="h-6 w-6 text-orange-600" aria-hidden="true" />
             </div>
             <div className="ml-5 w-0 flex-1">
               <dt className="truncate text-sm font-medium text-gray-500">
