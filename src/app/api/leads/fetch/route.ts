@@ -76,14 +76,15 @@ function getPayloadValue(payload: unknown): FetchPayload {
 
 function normalizeMakes(makes: unknown) {
   if (!Array.isArray(makes)) {
-    return EXOTIC_MAKES;
+    return []; // Empty means all makes
   }
 
   const selected = makes
     .filter((make): make is string => typeof make === "string")
-    .filter((make) => EXOTIC_MAKES.includes(make));
+    .map(make => make.trim())
+    .filter(make => make.length > 0);
 
-  return selected.length > 0 ? selected : EXOTIC_MAKES;
+  return selected;
 }
 
 function normalizePrice(value: unknown) {
@@ -186,34 +187,37 @@ async function fetchMarketcheckLeads({
 
   const leads: Prisma.LeadCreateManyInput[] = [];
   const issues: ProviderIssue[] = [];
-  const perMakeLimit = Math.ceil(limit / makes.length);
+  const makesToFetch = makes.length > 0 ? makes : [undefined];
+  const perMakeLimit = Math.ceil(limit / makesToFetch.length);
 
-  for (const make of makes) {
+  for (const make of makesToFetch) {
     let offset = 0;
     let totalFoundForMake: number | null = null;
 
-    while (leads.filter((lead) => lead.make === make).length < perMakeLimit && leads.length < limit) {
+    while (leads.filter((lead) => make ? lead.make === make : true).length < perMakeLimit && leads.length < limit) {
       if (totalFoundForMake !== null && offset >= totalFoundForMake) {
         break;
       }
 
-      const rows = Math.min(BATCH_SIZE, perMakeLimit - leads.filter((lead) => lead.make === make).length);
+      const rows = Math.min(BATCH_SIZE, perMakeLimit - leads.filter((lead) => make ? lead.make === make : true).length);
       let response;
 
       try {
+        const params: any = {
+          api_key: MARKETCHECK_API_KEY,
+          zip: zipCode,
+          radius: radiusMiles,
+          rows,
+          start: offset,
+          price_range: `${minPrice || 0}-${maxPrice || 2000000}`,
+        };
+        if (make) {
+          params.make = make;
+        }
+
         response = await axios.get<MarketcheckResponse>(
           "https://api.marketcheck.com/v2/search/car/active",
-          {
-            params: {
-              api_key: MARKETCHECK_API_KEY,
-              zip: zipCode,
-              radius: radiusMiles,
-              rows,
-              start: offset,
-              make,
-              price_range: `${minPrice || 0}-${maxPrice || 2000000}`,
-            },
-          }
+          { params }
         );
       } catch (error) {
         if (isStartBeyondResultsError(error)) {

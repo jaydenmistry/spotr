@@ -36,7 +36,7 @@ export interface LeadRecord {
 
 interface FilterOptions {
   searchTerm: string;
-  makeFilter: string;
+  makeFilter: string[];
   minPrice: string;
   maxPrice: string;
   maxDistance: string;
@@ -297,7 +297,7 @@ export function filterLeads(leads: LeadRecord[], filters: FilterOptions) {
   const minPrice = Number(filters.minPrice) || 0;
   const maxPrice = Number(filters.maxPrice) || Number.POSITIVE_INFINITY;
   const maxDistance = Number(filters.maxDistance) || Number.POSITIVE_INFINITY;
-  const makes = getMakeFilterList(filters.makeFilter);
+  const makes = filters.makeFilter;
 
   return leads.filter((lead) => {
     const make = lead.make || "";

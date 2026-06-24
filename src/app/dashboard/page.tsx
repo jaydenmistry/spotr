@@ -27,6 +27,19 @@ interface FetchResponse {
   source: string;
 }
 
+/* ─── Shared input style ─────────────────────────────────────── */
+const inputStyle: React.CSSProperties = {
+  background: "rgba(255,255,255,0.04)",
+  border: "1px solid rgba(255,255,255,0.1)",
+  borderRadius: 8,
+  padding: "8px 12px",
+  fontSize: 13,
+  color: "#f0f4ff",
+  outline: "none",
+  width: "100%",
+  boxSizing: "border-box",
+};
+
 export default function DashboardPage() {
   const [leads, setLeads] = useState<LeadRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,7 +105,7 @@ export default function DashboardPage() {
         radiusMiles,
       });
       setFetchMessage(`${response.data.message} from ${response.data.source} near ${response.data.zipCode} within ${response.data.radiusMiles} mi.`);
-      await fetchLocalLeads(); // Refresh the board
+      await fetchLocalLeads();
     } catch (error) {
       console.error("Failed to fetch new leads from API", error);
       alert("Failed to fetch leads. Please try again.");
@@ -113,21 +126,81 @@ export default function DashboardPage() {
   }, [leads, searchTerm, makeFilter, minPrice, maxPrice, radiusMiles, movementFilter]);
 
   if (loading) {
-    return <div className="flex h-64 items-center justify-center">Loading dashboard...</div>;
+    return (
+      <div
+        style={{
+          display: "flex",
+          height: "60vh",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "#8b9ab8",
+          fontSize: 15,
+          gap: 10,
+        }}
+      >
+        <div
+          style={{
+            width: 20,
+            height: 20,
+            borderRadius: "50%",
+            border: "2px solid rgba(255,122,26,0.2)",
+            borderTopColor: "#ff7a1a",
+            animation: "spin 0.8s linear infinite",
+          }}
+        />
+        Loading dashboard…
+      </div>
+    );
   }
 
   return (
-    <div>
-      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div style={{ padding: "32px 28px" }}>
+      {/* Header row */}
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: 16,
+          marginBottom: 28,
+        }}
+      >
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Pipeline</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Manage private party acquisition leads with exotic make and value movement filters.
+          <h1
+            style={{
+              fontSize: 28,
+              fontWeight: 900,
+              letterSpacing: "-0.02em",
+              color: "#f0f4ff",
+              marginBottom: 4,
+            }}
+          >
+            Pipeline
+          </h1>
+          <p style={{ fontSize: 13, color: "#8b9ab8" }}>
+            Private party acquisition leads with AI scoring and value movement filters.
           </p>
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <label className="flex items-center gap-2 rounded-md border border-orange-200 bg-white px-3 py-2 text-sm font-medium text-gray-700">
-            <MapPin className="h-4 w-4 text-orange-600" />
+
+        {/* Fetch controls */}
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+              padding: "8px 12px",
+              borderRadius: 10,
+              background: "var(--bg-card)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              fontSize: 13,
+              fontWeight: 600,
+              color: "#8b9ab8",
+              cursor: "pointer",
+            }}
+          >
+            <MapPin style={{ width: 14, height: 14, color: "#ff7a1a", flexShrink: 0 }} />
             ZIP
             <input
               type="text"
@@ -135,11 +208,35 @@ export default function DashboardPage() {
               maxLength={5}
               value={zipCode}
               onChange={(e) => setZipCode(e.target.value.replace(/\D/g, "").slice(0, 5))}
-              className="w-20 rounded border border-gray-200 px-2 py-1 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+              style={{
+                width: 56,
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: 6,
+                padding: "4px 8px",
+                fontSize: 13,
+                color: "#f0f4ff",
+                outline: "none",
+              }}
               placeholder="30043"
             />
           </label>
-          <label className="flex items-center gap-2 rounded-md border border-orange-200 bg-white px-3 py-2 text-sm font-medium text-gray-700">
+
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+              padding: "8px 12px",
+              borderRadius: 10,
+              background: "var(--bg-card)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              fontSize: 13,
+              fontWeight: 600,
+              color: "#8b9ab8",
+              cursor: "pointer",
+            }}
+          >
             Radius
             <input
               type="number"
@@ -148,12 +245,36 @@ export default function DashboardPage() {
               step={10}
               value={radiusMiles}
               onChange={(e) => setRadiusMiles(Math.max(10, Math.min(100, Number(e.target.value) || 100)))}
-              className="w-16 rounded border border-gray-200 px-2 py-1 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+              style={{
+                width: 52,
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: 6,
+                padding: "4px 8px",
+                fontSize: 13,
+                color: "#f0f4ff",
+                outline: "none",
+              }}
             />
             mi
           </label>
-          <label className="flex items-center gap-2 rounded-md border border-orange-200 bg-white px-3 py-2 text-sm font-medium text-gray-700">
-            <Database className="h-4 w-4 text-orange-600" />
+
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+              padding: "8px 12px",
+              borderRadius: 10,
+              background: "var(--bg-card)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              fontSize: 13,
+              fontWeight: 600,
+              color: "#8b9ab8",
+              cursor: "pointer",
+            }}
+          >
+            <Database style={{ width: 14, height: 14, color: "#ff7a1a", flexShrink: 0 }} />
             Pull
             <input
               type="number"
@@ -162,90 +283,173 @@ export default function DashboardPage() {
               step={100}
               value={fetchLimit}
               onChange={(e) => setFetchLimit(Math.max(100, Math.min(1500, Number(e.target.value) || 1000)))}
-              className="w-20 rounded border border-gray-200 px-2 py-1 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+              style={{
+                width: 60,
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: 6,
+                padding: "4px 8px",
+                fontSize: 13,
+                color: "#f0f4ff",
+                outline: "none",
+              }}
             />
           </label>
+
           <button
             onClick={handleFindNewLeads}
             disabled={fetchingLeads}
-            className="flex items-center justify-center rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:opacity-50"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+              padding: "9px 18px",
+              borderRadius: 10,
+              border: "none",
+              cursor: fetchingLeads ? "not-allowed" : "pointer",
+              fontSize: 13,
+              fontWeight: 700,
+              color: "#fff",
+              background: fetchingLeads ? "rgba(255,122,26,0.4)" : "linear-gradient(135deg, #ff7a1a, #f59e0b)",
+              boxShadow: fetchingLeads ? "none" : "0 4px 16px rgba(255,122,26,0.35)",
+              transition: "opacity 0.15s",
+            }}
           >
-            {fetchingLeads ? (
-              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <RefreshCw className="mr-2 h-4 w-4" />
-            )}
-            Pull Exotic Listings
+            <RefreshCw
+              style={{
+                width: 14,
+                height: 14,
+                animation: fetchingLeads ? "spin 0.8s linear infinite" : "none",
+              }}
+            />
+            Pull Listings
           </button>
         </div>
       </div>
 
-      <div className="mb-6 rounded-lg border border-orange-100 bg-white p-4 shadow-sm">
-        <div className="mb-4 flex items-center gap-2 text-sm font-bold text-gray-900">
-          <SlidersHorizontal className="h-4 w-4 text-orange-600" />
+      {/* Filter bar */}
+      <div
+        style={{
+          background: "var(--bg-card)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: 14,
+          padding: "18px 20px",
+          marginBottom: 24,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            marginBottom: 14,
+            fontSize: 13,
+            fontWeight: 700,
+            color: "#f0f4ff",
+          }}
+        >
+          <SlidersHorizontal style={{ width: 15, height: 15, color: "#ff7a1a" }} />
           Acquisition Filters
         </div>
-        <div className="grid gap-3 lg:grid-cols-[1.4fr_1fr_0.8fr_0.8fr_0.8fr_1fr]">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+            gap: 10,
+          }}
+        >
+          {/* Search */}
+          <div style={{ position: "relative", gridColumn: "span 2" }}>
+            <Search
+              style={{
+                position: "absolute",
+                left: 12,
+                top: "50%",
+                transform: "translateY(-50%)",
+                width: 14,
+                height: 14,
+                color: "#4a5670",
+                pointerEvents: "none",
+              }}
+            />
             <input
               type="text"
-              className="block w-full rounded-md border border-gray-300 py-2 pl-9 pr-3 text-sm placeholder-gray-500 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
-              placeholder="Search Lamborghini, Lambo, Ferrari, Porsche, VIN..."
+              style={{ ...inputStyle, paddingLeft: 34 }}
+              placeholder="Search Lamborghini, Ferrari, Porsche, VIN…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+
           <select
             value={makeFilter}
             onChange={(e) => setMakeFilter(e.target.value)}
-            className="rounded-md border border-gray-300 py-2 pl-3 pr-8 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+            style={{ ...inputStyle, cursor: "pointer" }}
           >
             {MAKE_FILTER_OPTIONS.map((make) => (
-              <option key={make} value={make}>{make}</option>
+              <option key={make} value={make} style={{ background: "#0f1520" }}>
+                {make}
+              </option>
             ))}
           </select>
+
           <input
             type="number"
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+            style={inputStyle}
             placeholder="Min price"
             value={minPrice}
             onChange={(e) => setMinPrice(e.target.value)}
           />
+
           <input
             type="number"
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+            style={inputStyle}
             placeholder="Max price"
             value={maxPrice}
             onChange={(e) => setMaxPrice(e.target.value)}
           />
-          <input
-            type="number"
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
-            placeholder="Max miles"
-            value={radiusMiles}
-            min={10}
-            max={100}
-            onChange={(e) => setRadiusMiles(Math.max(10, Math.min(100, Number(e.target.value) || 100)))}
-          />
+
           <select
             value={movementFilter}
             onChange={(e) => setMovementFilter(e.target.value as MovementFilter)}
-            className="rounded-md border border-gray-300 py-2 pl-3 pr-8 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+            style={{ ...inputStyle, cursor: "pointer" }}
           >
-            <option>All</option>
-            <option>Appreciating</option>
-            <option>Depreciating</option>
+            <option style={{ background: "#0f1520" }}>All</option>
+            <option style={{ background: "#0f1520" }}>Appreciating</option>
+            <option style={{ background: "#0f1520" }}>Depreciating</option>
           </select>
         </div>
-        <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-          <span className="font-semibold text-gray-900">{filteredLeads.length}</span>
+
+        <div
+          style={{
+            marginTop: 12,
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            gap: 6,
+            fontSize: 12,
+            color: "#4a5670",
+          }}
+        >
+          <span style={{ fontWeight: 700, color: "#ff9147" }}>{filteredLeads.length}</span>
           <span>of {leads.length} listings shown</span>
-          <span className="hidden h-1 w-1 rounded-full bg-gray-300 sm:inline-block" />
-          <span>Pulling from ZIP {zipCode || "30043"} within {radiusMiles} miles. Provider max is 100 miles.</span>
+          <span style={{ color: "#1e2a3a" }}>·</span>
+          <span>ZIP {zipCode || "30043"} · {radiusMiles} mi radius</span>
         </div>
+
         {fetchMessage && (
-          <div className="mt-3 rounded-md bg-orange-50 px-3 py-2 text-sm font-medium text-orange-800">
+          <div
+            style={{
+              marginTop: 10,
+              padding: "10px 14px",
+              borderRadius: 10,
+              background: "rgba(255,122,26,0.1)",
+              border: "1px solid rgba(255,122,26,0.2)",
+              fontSize: 13,
+              fontWeight: 600,
+              color: "#ff9147",
+            }}
+          >
             {fetchMessage}
           </div>
         )}

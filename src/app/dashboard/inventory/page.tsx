@@ -4,11 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import LeadCard from "@/components/dashboard/LeadCard";
 import LeadModal from "@/components/dashboard/modal/LeadModal";
-import { ArrowUpDown, Search, SlidersHorizontal } from "lucide-react";
+import { ArrowUpDown, ChevronLeft, ChevronRight, Search, Check } from "lucide-react";
 import {
   EXOTIC_MAKES,
   filterLeads,
-  MAKE_FILTER_OPTIONS,
   SORT_OPTIONS,
   sortLeads,
   type LeadRecord,
@@ -16,17 +15,37 @@ import {
   type MovementFilter,
 } from "@/lib/vehicleAnalytics";
 
+const PAGE_SIZE = 24;
+
+const inputStyle: React.CSSProperties = {
+  background: "rgba(255,255,255,0.04)",
+  border: "1px solid rgba(255,255,255,0.1)",
+  borderRadius: 8,
+  padding: "10px 14px",
+  fontSize: 13,
+  color: "#f0f4ff",
+  outline: "none",
+  width: "100%",
+  boxSizing: "border-box",
+  transition: "border-color 0.15s",
+};
+
 export default function InventoryPage() {
   const [leads, setLeads] = useState<LeadRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedLead, setSelectedLead] = useState<LeadRecord | null>(null);
+  
+  // Filter states
   const [searchTerm, setSearchTerm] = useState("");
-  const [makeFilter, setMakeFilter] = useState("All Exotics");
-  const [minPrice, setMinPrice] = useState("75000");
+  const [selectedMakes, setSelectedMakes] = useState<string[]>([]);
+  const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [maxDistance, setMaxDistance] = useState("100");
   const [movementFilter, setMovementFilter] = useState<MovementFilter>("All");
+  
+  // Sort and pagination
   const [sortOrder, setSortOrder] = useState<LeadSortOrder>("Distance (Nearest)");
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     const fetchLeads = async () => {
@@ -43,10 +62,15 @@ export default function InventoryPage() {
     void fetchLeads();
   }, []);
 
+  // Reset to page 1 whenever any filter/sort changes
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, selectedMakes, minPrice, maxPrice, maxDistance, movementFilter, sortOrder]);
+
   const filteredAndSortedLeads = useMemo(() => {
     const filtered = filterLeads(leads, {
       searchTerm,
-      makeFilter,
+      makeFilter: selectedMakes,
       minPrice,
       maxPrice,
       maxDistance,
@@ -54,140 +78,289 @@ export default function InventoryPage() {
     });
 
     return sortLeads(filtered, sortOrder);
-  }, [leads, searchTerm, makeFilter, minPrice, maxPrice, maxDistance, movementFilter, sortOrder]);
+  }, [leads, searchTerm, selectedMakes, minPrice, maxPrice, maxDistance, movementFilter, sortOrder]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredAndSortedLeads.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageLeads = filteredAndSortedLeads.slice(
+    (safePage - 1) * PAGE_SIZE,
+    safePage * PAGE_SIZE
+  );
 
   const makeCounts = useMemo(() => {
-    return EXOTIC_MAKES.map((make) => ({
-      make,
-      count: leads.filter((lead) => lead.make === make).length,
-    }));
+    const makeMap = new Map<string, number>();
+    leads.forEach((lead) => {
+      const make = lead.make;
+      if (make) {
+        makeMap.set(make, (makeMap.get(make) || 0) + 1);
+      }
+    });
+
+    return Array.from(makeMap.entries())
+      .map(([make, count]) => ({ make, count }))
+      .sort((a, b) => b.count - a.count);
   }, [leads]);
 
+  const toggleMake = (make: string) => {
+    setSelectedMakes(prev => 
+      prev.includes(make) 
+        ? prev.filter(m => m !== make)
+        : [...prev, make]
+    );
+  };
+
   if (loading) {
-    return <div className="flex h-64 items-center justify-center">Loading inventory...</div>;
+    return (
+      <div style={{ display: "flex", height: "60vh", alignItems: "center", justifyContent: "center", color: "#8b9ab8", fontSize: 15, gap: 10 }}>
+        <div style={{ width: 20, height: 20, borderRadius: "50%", border: "2px solid rgba(255,122,26,0.2)", borderTopColor: "#ff7a1a", animation: "spin 0.8s linear infinite" }} />
+        Loading inventory…
+      </div>
+    );
   }
 
   return (
-    <div>
-      <div className="mb-8 border-b border-orange-100 pb-5">
-        <h1 className="text-3xl font-bold text-gray-900">Inventory</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Browse, filter, and sort all private party vehicles by exotic make, price, and value movement.
-        </p>
-      </div>
+    <div style={{ display: "flex", gap: 32, padding: "32px 28px", alignItems: "flex-start" }}>
+      
+      {/* ─── LEFT: MAIN CONTENT AREA ───────────────────────────── */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {/* Page header */}
+        <div style={{ marginBottom: 20 }}>
+          <h1 style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-0.02em", color: "#f0f4ff", marginBottom: 4 }}>
+            Inventory
+          </h1>
+          <p style={{ fontSize: 13, color: "#8b9ab8" }}>
+            Browse, filter, and sort all private party vehicles.
+          </p>
+        </div>
 
-      <div className="mb-6 rounded-lg border border-orange-100 bg-white p-4 shadow-sm">
-        <div className="mb-4 flex flex-wrap gap-2">
-          {makeCounts.slice(0, 8).map(({ make, count }) => (
-            <button
-              key={make}
-              type="button"
-              onClick={() => setMakeFilter(make)}
-              className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
-                makeFilter === make
-                  ? "border-orange-600 bg-orange-600 text-white"
-                  : "border-orange-200 bg-orange-50 text-orange-800 hover:border-orange-400"
-              }`}
-            >
-              {make} <span className="opacity-70">{count}</span>
-            </button>
+        {/* Action bar: Result count + Sort dropdown */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, paddingBottom: 16, borderBottom: "1px solid rgba(255,255,255,0.07)", flexWrap: "wrap", gap: 16 }}>
+          <p style={{ fontSize: 13, color: "#4a5670" }}>
+            Showing <span style={{ fontWeight: 700, color: "#ff9147" }}>{(safePage - 1) * PAGE_SIZE + (filteredAndSortedLeads.length > 0 ? 1 : 0)}–{Math.min(safePage * PAGE_SIZE, filteredAndSortedLeads.length)}</span> of <span style={{ fontWeight: 700, color: "#f0f4ff" }}>{filteredAndSortedLeads.length}</span> results
+          </p>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 12, color: "#4a5670", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Sort by:</span>
+            <div style={{ position: "relative" }}>
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as LeadSortOrder)}
+                style={{
+                  ...inputStyle,
+                  padding: "6px 32px 6px 12px",
+                  appearance: "none",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  color: "#f0f4ff",
+                  border: "none",
+                  background: "rgba(255,255,255,0.03)",
+                }}
+              >
+                {SORT_OPTIONS.map((option) => (
+                  <option key={option} value={option} style={{ background: "#0f1520" }}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+              <ArrowUpDown style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, color: "#8b9ab8", pointerEvents: "none" }} />
+            </div>
+          </div>
+        </div>
+
+        {/* Grid */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16, marginBottom: 32 }}>
+          {pageLeads.map((lead) => (
+            <LeadCard key={lead.id} lead={lead} onClick={() => setSelectedLead(lead)} />
           ))}
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr_0.75fr_0.75fr_0.75fr_1fr_1fr]">
-          <div className="relative flex-1">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-              <Search className="h-5 w-5 text-gray-400" />
-            </div>
-            <input
-              type="text"
-              className="block w-full rounded-md border border-gray-300 py-2 pl-10 pr-3 text-sm placeholder-gray-500 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
-              placeholder="Search Lambo, Ferrari, Porsche, VIN..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+        {filteredAndSortedLeads.length === 0 && (
+          <div style={{ padding: "64px 20px", textAlign: "center", color: "#4a5670", fontSize: 14, background: "rgba(255,255,255,0.01)", borderRadius: 12, border: "1px dashed rgba(255,255,255,0.05)" }}>
+            No vehicles found matching your specific filters.
+          </div>
+        )}
+
+        {/* Bottom pagination */}
+        {totalPages > 1 && (
+          <div style={{ display: "flex", justifyContent: "center", paddingBottom: 24 }}>
+            <PaginationControls
+              page={safePage}
+              totalPages={totalPages}
+              onPageChange={(p) => {
+                setPage(p);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
             />
           </div>
+        )}
+      </div>
 
-          <div className="flex items-center gap-2">
-            <SlidersHorizontal className="h-4 w-4 text-gray-500" />
+      {/* ─── RIGHT: SIDEBAR FILTERS ──────────────────────────────── */}
+      <aside style={{ width: 280, flexShrink: 0, position: "sticky", top: 32 }}>
+        <div style={{ background: "var(--bg-card)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: 20 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 800, color: "#f0f4ff", marginBottom: 20 }}>Filters</h2>
+
+          {/* Search */}
+          <div style={{ marginBottom: 24 }}>
+            <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#8b9ab8", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>Keyword Search</label>
+            <div style={{ position: "relative" }}>
+              <Search style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, color: "#4a5670", pointerEvents: "none" }} />
+              <input
+                type="text"
+                style={{ ...inputStyle, paddingLeft: 34 }}
+                placeholder="Make, model, VIN…"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Price Range */}
+          <div style={{ marginBottom: 24 }}>
+            <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#8b9ab8", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>Price Range</label>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input
+                type="number"
+                style={{ ...inputStyle, flex: 1 }}
+                placeholder="Min $0"
+                value={minPrice}
+                onChange={(e) => setMinPrice(e.target.value)}
+              />
+              <span style={{ color: "#4a5670", fontSize: 12 }}>to</span>
+              <input
+                type="number"
+                style={{ ...inputStyle, flex: 1 }}
+                placeholder="Max"
+                value={maxPrice}
+                onChange={(e) => setMaxPrice(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Distance */}
+          <div style={{ marginBottom: 24 }}>
+            <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#8b9ab8", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>Distance</label>
+            <div style={{ position: "relative" }}>
+              <input
+                type="number"
+                style={{ ...inputStyle, paddingRight: 40 }}
+                placeholder="Max radius"
+                value={maxDistance}
+                min={1}
+                max={500}
+                onChange={(e) => setMaxDistance(e.target.value)}
+              />
+              <span style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", fontSize: 12, color: "#4a5670", pointerEvents: "none" }}>mi</span>
+            </div>
+          </div>
+
+          {/* Movement Filter */}
+          <div style={{ marginBottom: 24 }}>
+            <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#8b9ab8", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>Market Trend</label>
             <select
-              value={makeFilter}
-              onChange={(e) => setMakeFilter(e.target.value)}
-              className="w-full rounded-md border border-gray-300 py-2 pl-3 pr-8 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+              value={movementFilter}
+              onChange={(e) => setMovementFilter(e.target.value as MovementFilter)}
+              style={{ ...inputStyle, cursor: "pointer" }}
             >
-              {MAKE_FILTER_OPTIONS.map((make) => (
-                <option key={make} value={make}>{make}</option>
-              ))}
+              <option value="All" style={{ background: "#0f1520" }}>All Vehicles</option>
+              <option value="Appreciating" style={{ background: "#0f1520" }}>Appreciating (Buy Watch)</option>
+              <option value="Depreciating" style={{ background: "#0f1520" }}>Depreciating (Sell Risk)</option>
             </select>
           </div>
 
-          <input
-            type="number"
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
-            placeholder="Min price"
-            value={minPrice}
-            onChange={(e) => setMinPrice(e.target.value)}
-          />
-          <input
-            type="number"
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
-            placeholder="Max price"
-            value={maxPrice}
-            onChange={(e) => setMaxPrice(e.target.value)}
-          />
-          <input
-            type="number"
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
-            placeholder="Max miles"
-            value={maxDistance}
-            min={1}
-            max={100}
-            onChange={(e) => setMaxDistance(e.target.value)}
-          />
-          <select
-            value={movementFilter}
-            onChange={(e) => setMovementFilter(e.target.value as MovementFilter)}
-            className="rounded-md border border-gray-300 py-2 pl-3 pr-8 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
-          >
-            <option>All</option>
-            <option>Appreciating</option>
-            <option>Depreciating</option>
-          </select>
-          <div className="flex items-center gap-2">
-            <ArrowUpDown className="h-4 w-4 text-gray-500" />
-            <select
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value as LeadSortOrder)}
-              className="w-full rounded-md border border-gray-300 py-2 pl-3 pr-8 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
-            >
-              {SORT_OPTIONS.map((option) => (
-                <option key={option}>{option}</option>
-              ))}
-            </select>
+          {/* Make Checkboxes */}
+          <div>
+            <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 11, fontWeight: 700, color: "#8b9ab8", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              <span>Make</span>
+              {selectedMakes.length > 0 && (
+                <button 
+                  onClick={() => setSelectedMakes([])}
+                  style={{ background: "none", border: "none", color: "#ff7a1a", fontSize: 10, fontWeight: 700, cursor: "pointer", padding: 0 }}
+                >
+                  Clear All
+                </button>
+              )}
+            </label>
+            <div style={{ maxHeight: 220, overflowY: "auto", paddingRight: 8, display: "flex", flexDirection: "column", gap: 8 }}>
+              {makeCounts.map(({ make, count }) => {
+                const isSelected = selectedMakes.includes(make);
+                return (
+                  <label key={make} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", group: "true" }}>
+                    <div style={{ 
+                      width: 16, height: 16, borderRadius: 4, 
+                      border: `1px solid ${isSelected ? "#ff7a1a" : "rgba(255,255,255,0.15)"}`,
+                      background: isSelected ? "#ff7a1a" : "rgba(255,255,255,0.02)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      transition: "all 0.15s"
+                    }}>
+                      {isSelected && <Check style={{ width: 10, height: 10, color: "#fff", strokeWidth: 4 }} />}
+                    </div>
+                    <span style={{ fontSize: 13, color: isSelected ? "#f0f4ff" : "#8b9ab8", flex: 1, fontWeight: isSelected ? 600 : 400 }}>{make}</span>
+                    <span style={{ fontSize: 11, color: "#4a5670" }}>{count}</span>
+                  </label>
+                );
+              })}
+            </div>
           </div>
+
         </div>
-      </div>
+      </aside>
 
-      <div className="mb-4 text-sm text-gray-500">
-        Showing <span className="font-semibold text-gray-900">{filteredAndSortedLeads.length}</span> of{" "}
-        <span className="font-semibold text-gray-900">{leads.length}</span> vehicles
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {filteredAndSortedLeads.map((lead) => (
-          <LeadCard key={lead.id} lead={lead} onClick={() => setSelectedLead(lead)} />
-        ))}
-      </div>
-
-      {filteredAndSortedLeads.length === 0 && (
-        <div className="mt-12 text-center text-gray-500">
-          No vehicles found matching your criteria.
-        </div>
-      )}
-
+      {/* Modal */}
       {selectedLead && (
         <LeadModal lead={selectedLead} onClose={() => setSelectedLead(null)} />
       )}
+    </div>
+  );
+}
+
+/* ─── Pagination Controls Component ──────────────────────────── */
+function PaginationControls({
+  page,
+  totalPages,
+  onPageChange,
+}: {
+  page: number;
+  totalPages: number;
+  onPageChange: (p: number) => void;
+}) {
+  const getPageNumbers = () => {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const pages: (number | "...")[] = [];
+    if (page <= 4) {
+      pages.push(1, 2, 3, 4, 5, "...", totalPages);
+    } else if (page >= totalPages - 3) {
+      pages.push(1, "...", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+    } else {
+      pages.push(1, "...", page - 1, page, page + 1, "...", totalPages);
+    }
+    return pages;
+  };
+
+  const btnBase: React.CSSProperties = {
+    display: "grid", placeItems: "center", minWidth: 34, height: 34, borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer",
+    border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", color: "#8b9ab8", transition: "all 0.15s", padding: "0 6px",
+  };
+  const activeBtnStyle: React.CSSProperties = { ...btnBase, background: "rgba(255,122,26,0.18)", border: "1px solid #ff7a1a", color: "#ff9147" };
+  const disabledBtnStyle: React.CSSProperties = { ...btnBase, opacity: 0.3, cursor: "not-allowed" };
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <button onClick={() => onPageChange(page - 1)} disabled={page === 1} style={page === 1 ? disabledBtnStyle : btnBase}>
+        <ChevronLeft style={{ width: 15, height: 15 }} />
+      </button>
+      {getPageNumbers().map((p, i) =>
+        p === "..." ? (
+          <span key={`ellipsis-${i}`} style={{ color: "#4a5670", padding: "0 4px", fontSize: 13 }}>…</span>
+        ) : (
+          <button key={p} onClick={() => onPageChange(p as number)} style={p === page ? activeBtnStyle : btnBase}>
+            {p}
+          </button>
+        )
+      )}
+      <button onClick={() => onPageChange(page + 1)} disabled={page === totalPages} style={page === totalPages ? disabledBtnStyle : btnBase}>
+        <ChevronRight style={{ width: 15, height: 15 }} />
+      </button>
     </div>
   );
 }
