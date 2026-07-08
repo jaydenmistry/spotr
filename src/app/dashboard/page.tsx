@@ -117,7 +117,7 @@ export default function DashboardPage() {
   const filteredLeads = useMemo(() => {
     return filterLeads(leads, {
       searchTerm,
-      makeFilter,
+      makeFilter: getMakeFilterList(makeFilter),
       minPrice,
       maxPrice,
       maxDistance: radiusMiles.toString(),

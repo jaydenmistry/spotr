@@ -224,7 +224,7 @@ async function fetchMarketcheckLeads({
           break;
         }
 
-        issues.push({ make, message: getProviderErrorMessage(error) });
+        issues.push({ make: make ?? "all", message: getProviderErrorMessage(error) });
         if (isRateLimitError(error)) {
           return { leads: leads.slice(0, limit), issues };
         }

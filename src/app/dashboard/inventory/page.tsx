@@ -285,7 +285,7 @@ export default function InventoryPage() {
               {makeCounts.map(({ make, count }) => {
                 const isSelected = selectedMakes.includes(make);
                 return (
-                  <label key={make} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", group: "true" }}>
+                  <label key={make} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
                     <div style={{ 
                       width: 16, height: 16, borderRadius: 4, 
                       border: `1px solid ${isSelected ? "#ff7a1a" : "rgba(255,255,255,0.15)"}`,
