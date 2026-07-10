@@ -7,7 +7,6 @@ import KanbanBoard from "@/components/dashboard/KanbanBoard";
 import LeadModal from "@/components/dashboard/modal/LeadModal";
 import { Database, MapPin, RefreshCw, Search, SlidersHorizontal } from "lucide-react";
 import {
-  EXOTIC_MAKES,
   filterLeads,
   getMakeFilterList,
   MAKE_FILTER_OPTIONS,
@@ -46,7 +45,7 @@ export default function DashboardPage() {
   const [fetchingLeads, setFetchingLeads] = useState(false);
   const [selectedLead, setSelectedLead] = useState<LeadRecord | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [makeFilter, setMakeFilter] = useState("All Exotics");
+  const [makeFilter, setMakeFilter] = useState("All");
   const [minPrice, setMinPrice] = useState("75000");
   const [maxPrice, setMaxPrice] = useState("");
   const [zipCode, setZipCode] = useState("30043");
@@ -95,7 +94,8 @@ export default function DashboardPage() {
     setFetchingLeads(true);
     setFetchMessage("");
     try {
-      const makes = getMakeFilterList(makeFilter).length > 0 ? getMakeFilterList(makeFilter) : EXOTIC_MAKES;
+      // Empty list = no make restriction; the API pulls all vehicles.
+      const makes = getMakeFilterList(makeFilter);
       const response = await axios.post<FetchResponse>("/api/leads/fetch", {
         limit: fetchLimit,
         makes,
