@@ -63,9 +63,12 @@ export default function InventoryPage() {
   }, []);
 
   // Reset to page 1 whenever any filter/sort changes
-  useEffect(() => {
+  const filterKey = JSON.stringify([searchTerm, selectedMakes, minPrice, maxPrice, maxDistance, movementFilter, sortOrder]);
+  const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
+  if (filterKey !== prevFilterKey) {
+    setPrevFilterKey(filterKey);
     setPage(1);
-  }, [searchTerm, selectedMakes, minPrice, maxPrice, maxDistance, movementFilter, sortOrder]);
+  }
 
   const filteredAndSortedLeads = useMemo(() => {
     const filtered = filterLeads(leads, {

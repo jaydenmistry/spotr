@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import axios, { AxiosError } from "axios";
 import { EXOTIC_MAKES } from "@/lib/vehicleAnalytics";
+import { authOptions } from "@/lib/auth";
+import { rateLimit, clientIp } from "@/lib/rateLimit";
 
 const MARKETCHECK_API_KEY = process.env.MARKETCHECK_API_KEY;
 const DEFAULT_ZIP_CODE = "30043";
@@ -295,6 +298,20 @@ async function saveLeads(leadsData: Prisma.LeadCreateManyInput[]) {
 }
 
 export async function POST(request: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Each call fans out into many paid Marketcheck requests; keep the ceiling low.
+  const ip = clientIp(request.headers);
+  if (!rateLimit(`leads-fetch:${ip}`, 10, 10 * 60 * 1000)) {
+    return NextResponse.json(
+      { error: "Too many lead pulls. Try again in a few minutes." },
+      { status: 429 }
+    );
+  }
+
   try {
     let parsedBody: unknown = {};
 

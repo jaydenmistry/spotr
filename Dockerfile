@@ -4,6 +4,11 @@ WORKDIR /app
 
 # ---- Build ----
 FROM base AS builder
+# Optional analytics config; NEXT_PUBLIC_ vars are inlined at build time.
+ARG NEXT_PUBLIC_ANALYTICS_SRC
+ARG NEXT_PUBLIC_ANALYTICS_WEBSITE_ID
+ENV NEXT_PUBLIC_ANALYTICS_SRC=$NEXT_PUBLIC_ANALYTICS_SRC
+ENV NEXT_PUBLIC_ANALYTICS_WEBSITE_ID=$NEXT_PUBLIC_ANALYTICS_WEBSITE_ID
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
 RUN npm ci
@@ -32,5 +37,8 @@ RUN chmod +x ./docker-entrypoint.sh && mkdir -p /app/data
 
 VOLUME ["/app/data"]
 EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:3000/api/health || exit 1
 
 ENTRYPOINT ["./docker-entrypoint.sh"]
