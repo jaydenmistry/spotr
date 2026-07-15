@@ -32,6 +32,7 @@ interface Lead {
   source: string | null;
   vdp_url: string | null;
   sellerName: string | null;
+  passedAt?: string | null;
   createdAt: string;
 }
 
@@ -133,6 +134,27 @@ export default function LeadCard({ lead, onClick }: { lead: Lead; onClick: () =>
           >
             <ShieldCheck style={{ width: 11, height: 11 }} />
             Verified
+          </div>
+        )}
+
+        {/* Passed in the Opportunity Feed — decision is visible on every surface */}
+        {lead.passedAt && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: 8,
+              left: 8,
+              background: "rgba(8,12,20,0.85)",
+              backdropFilter: "blur(8px)",
+              borderRadius: 8,
+              padding: "3px 8px",
+              fontSize: 11,
+              fontWeight: 700,
+              color: "#f87171",
+              border: "1px solid rgba(248,113,113,0.3)",
+            }}
+          >
+            Passed in feed
           </div>
         )}
       </div>

@@ -36,9 +36,16 @@ model Lead {
   stage       String   @default("New Leads")
   sellerName  String?
   sellerPhone String?
+  // Opportunity Feed actions — nullable so existing rows are unaffected.
+  watchedAt   DateTime?
+  passedAt    DateTime?
+  assignedTo  String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   messages    Message[]
+
+  // Every list endpoint filters on VIN prefixes; index it before the table grows.
+  @@index([vin])
 }
 
 model Message {

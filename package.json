@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed": "node prisma/seed.js"
+    "test": "vitest run",
+    "seed": "node prisma/seed.js",
+    "seed:fixtures": "node scripts/seed-feed-fixtures.mjs"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
@@ -31,6 +33,7 @@
     "@types/react-dom": "^19",
     "eslint-config-next": "16.2.9",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   }
 }
