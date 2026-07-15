@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import axios, { AxiosError } from "axios";
 import { EXOTIC_MAKES } from "@/lib/vehicleAnalytics";
+import { mapMarketcheckListing, type MarketcheckListing } from "@/lib/marketcheck";
 import { authOptions } from "@/lib/auth";
 import { rateLimit, clientIp } from "@/lib/rateLimit";
 
@@ -22,32 +23,6 @@ interface FetchPayload {
   maxPrice?: number;
   zipCode?: string;
   radiusMiles?: number;
-}
-
-interface MarketcheckListing {
-  vin?: string;
-  heading?: string;
-  dist?: number;
-  distance?: number;
-  price?: number;
-  miles?: number;
-  source?: string;
-  vdp_url?: string;
-  build?: {
-    year?: number;
-    make?: string;
-    model?: string;
-  };
-  dealer?: {
-    city?: string;
-    state?: string;
-    name?: string;
-    website?: string;
-    distance?: number;
-  };
-  media?: {
-    photo_links?: string[];
-  };
 }
 
 interface MarketcheckResponse {
@@ -109,11 +84,6 @@ function normalizeRadius(value: unknown) {
   return Math.max(10, Math.min(MAX_SEARCH_RADIUS_MILES, Math.round(parsed)));
 }
 
-function getListingDistance(listing: MarketcheckListing) {
-  const distance = listing.dist ?? listing.distance ?? listing.dealer?.distance;
-  return typeof distance === "number" && Number.isFinite(distance) ? Number(distance.toFixed(1)) : null;
-}
-
 function isStartBeyondResultsError(error: unknown) {
   if (!axios.isAxiosError(error)) {
     return false;
@@ -138,32 +108,6 @@ function getProviderErrorMessage(error: unknown) {
 
   const message = (error.response?.data as { message?: string } | undefined)?.message;
   return message || error.message || "Unknown provider error";
-}
-
-function mapMarketcheckListing(
-  listing: MarketcheckListing,
-  searchZip: string,
-  searchRadius: number
-): Prisma.LeadCreateManyInput {
-  return {
-    vin: listing.vin || null,
-    listingTitle: listing.heading || null,
-    year: listing.build?.year || null,
-    make: listing.build?.make || "Unknown Make",
-    model: listing.build?.model || listing.heading || "Unknown Model",
-    price: listing.price || 0,
-    miles: listing.miles || 0,
-    distanceMiles: getListingDistance(listing),
-    searchZip,
-    searchRadius,
-    city: listing.dealer?.city || null,
-    state: listing.dealer?.state || null,
-    source: listing.source || listing.dealer?.website || "Marketcheck",
-    vdp_url: listing.vdp_url || null,
-    photo_url: listing.media?.photo_links?.[0] || null,
-    sellerName: listing.dealer?.name || "Listing Seller",
-    stage: "New Leads",
-  };
 }
 
 async function fetchMarketcheckLeads({
