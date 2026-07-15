@@ -280,7 +280,8 @@ export default function LeadCard({ lead, onClick }: { lead: Lead; onClick: () =>
               color: "#4a5670",
             }}
           >
-            <span>{analytics.compCount} comps</span>
+            {/* Heuristic label, not a comp count — getVehicleAnalytics has no real comps. */}
+            <span>Spotr heuristic</span>
             <span>{formatSignedPercent(analytics.projectedChangePercent)}</span>
           </div>
 
