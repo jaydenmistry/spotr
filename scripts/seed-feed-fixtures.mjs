@@ -16,7 +16,7 @@ const FIXTURES = [
   {
     vin: "SPOTR-FEED-0001",
     listingTitle: "2019 Porsche 911 Carrera S Coupe",
-    year: 2019, make: "Porsche", model: "911 Carrera S",
+    year: 2019, make: "Porsche", model: "911 Carrera S", trim: "Carrera S",
     price: 118500, miles: 21800, distanceMiles: 12.4,
     city: "Lawrenceville", state: "GA",
     photo_url: photo("spotr-feed-0001"), vdp_url: "https://example.com/spotr-fixtures/0001",
@@ -83,7 +83,7 @@ const FIXTURES = [
   {
     vin: "SPOTR-FEED-0008",
     listingTitle: "2022 Porsche Taycan Turbo",
-    year: 2022, make: "Porsche", model: "Taycan Turbo",
+    year: 2022, make: "Porsche", model: "Taycan Turbo", trim: "Turbo",
     price: 112000, miles: 12700, distanceMiles: 15.8,
     city: "Sandy Springs", state: "GA",
     photo_url: photo("spotr-feed-0008"), vdp_url: "https://example.com/spotr-fixtures/0008",
@@ -120,11 +120,22 @@ const FIXTURES = [
   {
     vin: "SPOTR-FEED-0012",
     listingTitle: "2018 BMW M5 Competition",
-    year: 2018, make: "BMW", model: "M5",
+    year: 2018, make: "BMW", model: "M5", trim: "Competition",
     price: 54900, miles: 47600, distanceMiles: 9.4,
     city: "Lawrenceville", state: "GA",
     photo_url: photo("spotr-feed-0012"), vdp_url: "https://example.com/spotr-fixtures/0012",
     createdAt: daysAgo(7),
+  },
+  {
+    // Title-branded car: exercises buy-box excluded-keyword hard exclusion
+    // once the user adds e.g. "rebuilt title" to their exclusions.
+    vin: "SPOTR-FEED-0013",
+    listingTitle: "2020 Audi R8 V10 — rebuilt title, priced to move",
+    year: 2020, make: "Audi", model: "R8", trim: "V10",
+    price: 99500, miles: 24100, distanceMiles: 18.9,
+    city: "Norcross", state: "GA",
+    photo_url: photo("spotr-feed-0013"), vdp_url: "https://example.com/spotr-fixtures/0013",
+    createdAt: daysAgo(2),
   },
 ];
 

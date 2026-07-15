@@ -16,6 +16,7 @@ export interface LeadRecord {
   year: number | null;
   make: string | null;
   model: string | null;
+  trim?: string | null;
   listingTitle: string | null;
   price: number | null;
   miles: number | null;

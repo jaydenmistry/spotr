@@ -179,7 +179,7 @@ export default function DashboardPage() {
             Pipeline
           </h1>
           <p style={{ fontSize: 13, color: "#8b9ab8" }}>
-            Private party acquisition leads with AI scoring and value movement filters.
+            Private party acquisition leads with heuristic scoring and value movement filters.
           </p>
         </div>
 
