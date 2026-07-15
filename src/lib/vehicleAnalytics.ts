@@ -30,6 +30,9 @@ export interface LeadRecord {
   stage: string;
   sellerName: string | null;
   sellerPhone?: string | null;
+  watchedAt?: string | null;
+  passedAt?: string | null;
+  assignedTo?: string | null;
   createdAt: string;
   updatedAt?: string;
 }
@@ -173,6 +176,16 @@ export function formatSignedCurrency(value: number) {
 
 export function formatSignedPercent(value: number) {
   return percentFormatter.format(value);
+}
+
+const milesFormatter = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+
+export function formatMiles(value: number | null | undefined) {
+  if (!value) {
+    return "Mileage unknown";
+  }
+
+  return `${milesFormatter.format(value)} mi`;
 }
 
 export function formatDistance(value: number | null | undefined) {

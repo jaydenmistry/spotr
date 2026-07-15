@@ -167,6 +167,15 @@ body {
   pointer-events: none;
 }
 
+/* ── Keyboard focus visibility on dark surfaces ───────────── */
+button:focus-visible,
+a:focus-visible,
+select:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent-orange-bright);
+  outline-offset: 2px;
+}
+
 /* ── Spin animation ───────────────────────────────────────── */
 @keyframes spin {
   to { transform: rotate(360deg); }

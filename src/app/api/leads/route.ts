@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/db/prisma";
 import { authOptions } from "@/lib/auth";
+import { VERIFIED_LISTING_FILTER } from "@/lib/leadFilters";
 
 export const dynamic = "force-dynamic";
 
@@ -13,15 +14,7 @@ export async function GET() {
 
   try {
     const leads = await prisma.lead.findMany({
-      where: {
-        AND: [
-          { vdp_url: { not: null } },
-          { vdp_url: { not: "#" } },
-          { photo_url: { not: null } },
-          { NOT: [{ vin: { startsWith: "SPOTR-" } }, { vin: { startsWith: "LIVE-" } }] },
-          { NOT: { photo_url: { contains: "images.unsplash.com" } } },
-        ],
-      },
+      where: VERIFIED_LISTING_FILTER,
       orderBy: { createdAt: "desc" }
     });
     return NextResponse.json(leads);

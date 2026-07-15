@@ -24,7 +24,7 @@ ENV HOSTNAME=0.0.0.0
 # Default DB path; matches the volume mounted below for persistence across deploys.
 ENV DATABASE_URL="file:/app/data/prod.db"
 
-COPY package.json package-lock.json ./
+COPY package.json package-lock.json ./ 
 COPY prisma ./prisma
 RUN npm ci --omit=dev && npx prisma generate
 

@@ -16,7 +16,6 @@ import {
   MessageSquare,
   Search,
   ShieldCheck,
-  Sparkles,
   TrendingUp,
   Users,
   Zap,
@@ -53,10 +52,10 @@ const workflow = [
     color: "#f59e0b",
   },
   {
-    icon: Sparkles,
+    icon: Gauge,
     eyebrow: "Step 3 — Acquire",
-    title: "AI ranks the best opportunities first",
-    copy: "Our model scores every listing by fit, age, and margin potential so your buyer always knows which car to call next.",
+    title: "Transparent scoring ranks every opportunity",
+    copy: "Spotr's deterministic heuristic scores each listing on asking price vs. its estimated range, mileage, freshness, and data completeness — with the full point breakdown, source, and a confidence level on every card. No black-box AI.",
     color: "#a78bfa",
   },
 ];
@@ -72,7 +71,7 @@ const painPoints = [
   },
   {
     without: "No idea which cars are worth pursuing",
-    with: "AI fit-score tells you exactly which car to call next",
+    with: "A transparent opportunity score — breakdown included — shows which car to call next",
   },
   {
     without: "Cars vanish into spreadsheets & lost sticky notes",
@@ -84,7 +83,7 @@ const stats = [
   { value: "86+", label: "Fresh listings daily", icon: Car },
   { value: "3×", label: "Faster seller contact", icon: Zap },
   { value: "41", label: "Sellers reached today", icon: MessageSquare },
-  { value: "AI", label: "Opportunity ranking", icon: Sparkles },
+  { value: "100%", label: "Explainable scoring", icon: Gauge },
 ];
 
 const faqs = [
@@ -629,14 +628,14 @@ function HeroSection() {
                     </div>
                     <div style={{ textAlign: "right" }}>
                       <span style={{ fontSize: 13, fontWeight: 700, color: "#ff9147" }}>{price}</span>
-                      <p style={{ fontSize: 11, color: "#8b9ab8", marginTop: 2 }}>Score: {score}</p>
+                      <p style={{ fontSize: 11, color: "#8b9ab8", marginTop: 2 }}>Heuristic: {score}</p>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* Col 2: AI ranked */}
+            {/* Col 2: top-scored opportunity */}
             <div
               style={{
                 borderRadius: 12,
@@ -659,8 +658,8 @@ function HeroSection() {
                   fontWeight: 700,
                 }}
               >
-                <Sparkles style={{ width: 13, height: 13 }} />
-                AI ranked #1 opportunity
+                <Gauge style={{ width: 13, height: 13 }} />
+                Top heuristic score today
               </div>
               <div style={{ borderRadius: 10, overflow: "hidden", marginBottom: 12 }}>
                 <Image
@@ -672,7 +671,7 @@ function HeroSection() {
                 />
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-                {[["92", "Fit score"], ["6h", "Listed"], ["$2.8k", "Margin gap"]].map(([value, label]) => (
+                {[["92", "Heuristic score"], ["6h", "Found by Spotr"], ["High", "Confidence"]].map(([value, label]) => (
                   <div
                     key={label}
                     style={{

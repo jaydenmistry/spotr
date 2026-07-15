@@ -3,7 +3,7 @@
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { Car, LogOut, LayoutDashboard, Package } from "lucide-react";
+import { Car, LogOut, LayoutDashboard, Package, Radar } from "lucide-react";
 import Link from "next/link";
 
 export default function DashboardLayout({
@@ -111,6 +111,7 @@ export default function DashboardLayout({
           <div style={{ flex: 1, padding: "16px 12px", display: "flex", flexDirection: "column", gap: 4 }}>
             {[
               { href: "/dashboard", icon: LayoutDashboard, label: "Pipeline" },
+              { href: "/dashboard/feed", icon: Radar, label: "Opportunity Feed" },
               { href: "/dashboard/inventory", icon: Package, label: "Inventory" },
             ].map(({ href, icon: Icon, label }) => (
               <Link
