@@ -71,6 +71,8 @@ model Lead {
 
   // Every list endpoint filters on VIN prefixes; index it before the table grows.
   @@index([vin])
+  // Feed hot path: filters on stage/passedAt, orders by createdAt.
+  @@index([stage, passedAt, createdAt])
 }
 
 model Message {
