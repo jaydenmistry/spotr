@@ -4,6 +4,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { authOptions } from "@/lib/auth";
 import { feedListingFilter } from "@/lib/leadFilters";
+import { TERMINAL_STAGES } from "@/lib/stages";
 import { loadBuyBoxConfig } from "@/lib/buyBoxStore";
 import { getOpportunityAssessment, type OpportunityAssessment, type Recommendation } from "@/lib/opportunity";
 
@@ -14,11 +15,6 @@ const PAGE_SIZE = 15;
 // The response says so (candidateSetCapped/assessedCount) so the UI never
 // implies the ranking is exhaustive.
 const CANDIDATE_CAP = 500;
-// Stages that mean the lead's lifecycle already ended in the pipeline; they
-// are not open opportunities. Stage is free text (see CLAUDE.md gotchas), so
-// match the known kanban terminal stages exactly.
-const TERMINAL_STAGES = ["Acquired", "Lost"];
-
 const SORTS = ["score", "newest", "margin", "distance", "age"] as const;
 type FeedSort = (typeof SORTS)[number];
 
@@ -88,11 +84,25 @@ export async function GET(request: Request) {
       : [];
     const where: Prisma.LeadWhereInput = { AND: [...viewFilter, ...searchFilter] };
 
+    // The candidate set must be pre-ordered by the field the user is sorting
+    // on — capping a newest-first set and then sorting by age/distance in
+    // memory would silently hide truly old/distant listings once matching
+    // rows exceed the cap. Score/margin have no DB column, so those rank
+    // within the newest CANDIDATE_CAP rows (disclosed via candidateSetCapped).
+    const candidateOrder: Prisma.LeadOrderByWithRelationInput[] =
+      view === "passed"
+        ? [{ passedAt: "desc" }]
+        : sort === "age"
+        ? [{ createdAt: "asc" }]
+        : sort === "distance"
+        ? [{ distanceMiles: { sort: "asc", nulls: "last" } }, { createdAt: "desc" }]
+        : [{ createdAt: "desc" }];
+
     const [matchingTotal, candidates, buyBox] = await Promise.all([
       prisma.lead.count({ where }),
       prisma.lead.findMany({
         where,
-        orderBy: view === "passed" ? { passedAt: "desc" } : { createdAt: "desc" },
+        orderBy: candidateOrder,
         take: CANDIDATE_CAP,
       }),
       loadBuyBoxConfig(),

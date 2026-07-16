@@ -229,7 +229,10 @@ export function getVehicleAnalytics(lead: Pick<LeadRecord, "make" | "model" | "y
   const model = (lead.model || "").toLowerCase();
   const age = lead.year ? Math.max(new Date().getFullYear() - lead.year, 0) : 6;
   const miles = lead.miles || 0;
-  const makeBase = MAKE_TREND_BASE[make] ?? -0.045;
+  // Makes without a hardcoded segment entry (i.e. all mainstream inventory)
+  // get a NEUTRAL default — penalizing every Toyota/Ford/Honda by construction
+  // would bias recommendations toward exotics for no data-backed reason.
+  const makeBase = MAKE_TREND_BASE[make] ?? 0;
   const modelAdjustment = MODEL_TREND_ADJUSTMENTS.reduce((sum, [keyword, adjustment]) => {
     return model.includes(keyword) ? sum + adjustment : sum;
   }, 0);

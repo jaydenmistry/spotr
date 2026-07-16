@@ -25,14 +25,8 @@ import {
   getVehicleTitle,
   type LeadRecord,
 } from "@/lib/vehicleAnalytics";
-import { SOURCE_LABELS, type OpportunityAssessment, type Recommendation } from "@/lib/opportunity";
+import { isFixtureLead, SOURCE_LABELS, type OpportunityAssessment, type Recommendation } from "@/lib/opportunity";
 import type { FeedAction } from "@/lib/feedActions";
-
-const TIER_COLORS: Record<string, string> = {
-  High: "#34d399",
-  Medium: "#fbbf24",
-  Low: "#f87171",
-};
 
 export const RECOMMENDATION_COLORS: Record<Recommendation, string> = {
   BUY: "#34d399",
@@ -117,11 +111,11 @@ export default function OpportunityCard({
 }) {
   const [showBreakdown, setShowBreakdown] = useState(false);
   const breakdownId = `score-breakdown-${lead.id}`;
-  const isSample = Boolean(lead.vin?.startsWith("SPOTR-FEED-"));
+  // Shared helper — must match the dossier's fixture detection exactly.
+  const isSample = isFixtureLead(lead);
   const isWatched = Boolean(lead.watchedAt);
   const isAssigned = Boolean(lead.assignedTo);
   const locationText = [lead.city, lead.state].filter(Boolean).join(", ");
-  const tierColor = TIER_COLORS[assessment.confidenceTier];
   const recColor = RECOMMENDATION_COLORS[assessment.recommendation];
   const { maxOffer, buyBoxMatch } = assessment;
 
@@ -264,7 +258,7 @@ export default function OpportunityCard({
             <span style={{ fontSize: 20, fontWeight: 900, color: scoreColor(assessment.finalOpportunityScore), lineHeight: 1 }}>
               {assessment.finalOpportunityScore}
             </span>
-            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.06em", color: "#8b9ab8", display: "inline-flex", alignItems: "center", gap: 3 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", color: "#8b9ab8", display: "inline-flex", alignItems: "center", gap: 3 }}>
               HEURISTIC SCORE {showBreakdown ? <ChevronUp style={{ width: 10, height: 10 }} /> : <ChevronDown style={{ width: 10, height: 10 }} />}
             </span>
           </button>
@@ -277,7 +271,7 @@ export default function OpportunityCard({
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: 16 }}>
           <div>
             <span style={fieldLabelStyle}>Asking</span>
-            <span style={{ fontSize: 18, fontWeight: 900, color: "#f0f4ff" }}>{formatCurrency(lead.price)}</span>
+            <span style={{ fontSize: 16, fontWeight: 800, color: "#f0f4ff" }}>{formatCurrency(lead.price)}</span>
           </div>
           <div>
             <span style={fieldLabelStyle}>Est. range</span>
@@ -300,10 +294,10 @@ export default function OpportunityCard({
               </span>
             ) : maxOffer.status === "below-acquisition-range" ? (
               <span style={{ fontSize: 13, fontWeight: 700, color: "#fbbf24" }} title={`Internal estimate: computed ceiling ${formatCurrency(maxOffer.amount)}`}>
-                Below configured acquisition range — investigate only
+                Offer ceiling below your minimum acquisition price — investigate only
               </span>
             ) : (
-              <span style={{ fontSize: 16, fontWeight: 900, color: "#ff9147" }} title={maxOffer.inputs.conservativeRetail.note}>
+              <span style={{ fontSize: 18, fontWeight: 900, color: "#ff9147" }} title={maxOffer.inputs.conservativeRetail.note}>
                 {formatCurrency(maxOffer.amount)}
                 <span style={{ fontSize: 10, fontWeight: 700, color: "#8b9ab8", marginLeft: 6 }}>
                   Spotr heuristic{maxOffer.cappedByAcquisitionMax ? " · capped at your max" : ""}
@@ -373,8 +367,9 @@ export default function OpportunityCard({
               ? "Outside buy box"
               : `Buy box ${buyBoxMatch.fitPoints}/${buyBoxMatch.maxFitPoints}${buyBoxMatch.priority ? ` · ${buyBoxMatch.priority}` : ""}`}
           </span>
+          {/* Neutral chip — the recommendation chip is the card's one accent. */}
           <span
-            style={{ ...chipStyle, color: tierColor, borderColor: `${tierColor}44` }}
+            style={chipStyle}
             title={`Confidence reflects listing data completeness only (${assessment.completeness.present} of ${assessment.completeness.total} key fields present). Heuristic, not statistical.`}
           >
             {assessment.confidenceTier} confidence · {assessment.confidencePercent}% · from data completeness
