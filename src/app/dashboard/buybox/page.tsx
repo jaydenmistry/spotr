@@ -173,7 +173,9 @@ export default function BuyBoxPage() {
       setSaveMessage({ kind: "ok", text: "Saved. Feed rankings and dossiers now use these settings." });
     } catch (error) {
       const detail =
-        axios.isAxiosError(error) && typeof error.response?.data?.error === "string"
+        axios.isAxiosError(error) && error.response?.status === 401
+          ? "Your session has expired. Please sign in again — unsaved changes will be lost."
+          : axios.isAxiosError(error) && typeof error.response?.data?.error === "string"
           ? error.response.data.error
           : "Save failed. Please try again.";
       setSaveMessage({ kind: "error", text: detail });
@@ -283,7 +285,7 @@ export default function BuyBoxPage() {
             <label style={labelStyle} htmlFor="bb-yearmin">Year range</label>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <input id="bb-yearmin" type="number" placeholder="Any" value={form.yearMin} onChange={set("yearMin")} style={inputStyle} />
-              <span style={{ color: "#4a5670", fontSize: 12 }}>to</span>
+              <span style={{ color: "#8b9ab8", fontSize: 12 }}>to</span>
               <input aria-label="Year max" type="number" placeholder="Any" value={form.yearMax} onChange={set("yearMax")} style={inputStyle} />
             </div>
           </div>
@@ -302,14 +304,14 @@ export default function BuyBoxPage() {
             <label style={labelStyle} htmlFor="bb-acqmin">Acquisition price band ($)</label>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <input id="bb-acqmin" type="number" placeholder="No min" value={form.acquisitionMin} onChange={set("acquisitionMin")} style={inputStyle} />
-              <span style={{ color: "#4a5670", fontSize: 12 }}>to</span>
+              <span style={{ color: "#8b9ab8", fontSize: 12 }}>to</span>
               <input aria-label="Acquisition max" type="number" placeholder="No max" value={form.acquisitionMax} onChange={set("acquisitionMax")} style={inputStyle} />
             </div>
           </div>
           <div>
             <label style={labelStyle} htmlFor="bb-gross">Target min gross ($)</label>
             <input id="bb-gross" type="number" min={500} value={form.targetMinGross} onChange={set("targetMinGross")} style={inputStyle} />
-            <p style={{ fontSize: 11, color: "#4a5670", marginTop: 5 }}>Planning target — drives the recommended max offer.</p>
+            <p style={{ fontSize: 11, color: "#8b9ab8", marginTop: 5 }}>Planning target — drives the recommended max offer.</p>
           </div>
         </div>
       </div>
@@ -353,7 +355,7 @@ export default function BuyBoxPage() {
         </div>
 
         {form.makeRules.length === 0 ? (
-          <p style={{ fontSize: 12.5, color: "#4a5670" }}>No make rules yet — every make is treated neutrally.</p>
+          <p style={{ fontSize: 12.5, color: "#8b9ab8" }}>No make rules yet — every make is treated neutrally.</p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {rulesByPriority.filter(({ makes }) => makes.length > 0).map(({ priority, makes }) => (
@@ -413,15 +415,15 @@ export default function BuyBoxPage() {
               <label style={labelStyle} htmlFor="bb-retailmin">Target retail range ($)</label>
               <div style={{ display: "flex", gap: 8, alignItems: "center", maxWidth: 360 }}>
                 <input id="bb-retailmin" type="number" placeholder="No min" value={form.targetRetailMin} onChange={set("targetRetailMin")} style={inputStyle} />
-                <span style={{ color: "#4a5670", fontSize: 12 }}>to</span>
+                <span style={{ color: "#8b9ab8", fontSize: 12 }}>to</span>
                 <input aria-label="Target retail max" type="number" placeholder="No max" value={form.targetRetailMax} onChange={set("targetRetailMax")} style={inputStyle} />
               </div>
-              <p style={{ fontSize: 11, color: "#4a5670", marginTop: 5 }}>Where you want retail estimates to land (informational for now).</p>
+              <p style={{ fontSize: 11, color: "#8b9ab8", marginTop: 5 }}>Where you want retail estimates to land (informational for now).</p>
             </div>
 
             <div>
               <label style={labelStyle} htmlFor="bb-keyword">Excluded keywords</label>
-              <p style={{ fontSize: 11.5, color: "#4a5670", marginBottom: 8 }}>
+              <p style={{ fontSize: 11.5, color: "#8b9ab8", marginBottom: 8 }}>
                 Hard exclusions matched against title, make, model, and trim — e.g. “salvage”, “rebuilt title”, “flood”.
               </p>
               <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>

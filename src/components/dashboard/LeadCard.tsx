@@ -233,7 +233,7 @@ export default function LeadCard({ lead, onClick }: { lead: Lead; onClick: () =>
             }}
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span style={{ fontSize: 11, color: "#8b9ab8" }}>Fair value</span>
+              <span style={{ fontSize: 11, color: "#8b9ab8" }}>Spotr est. value</span>
               <span style={{ fontSize: 13, fontWeight: 700, color: "#f0f4ff" }}>
                 {formatCurrency(analytics.estimatedMarketValue)}
               </span>
@@ -246,7 +246,7 @@ export default function LeadCard({ lead, onClick }: { lead: Lead; onClick: () =>
                 color: analytics.fairValueSpread >= 0 ? "#34d399" : "#ff9147",
               }}
             >
-              {formatSignedCurrency(analytics.fairValueSpread)} vs asking
+              {formatSignedCurrency(analytics.fairValueSpread)} vs asking · heuristic
             </p>
           </div>
 

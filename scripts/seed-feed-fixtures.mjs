@@ -127,6 +127,17 @@ const FIXTURES = [
     createdAt: daysAgo(7),
   },
   {
+    // Mainstream inventory: exercises the neutral default for makes without
+    // a hardcoded segment entry (a real used-car desk's bread and butter).
+    vin: "SPOTR-FEED-0014",
+    listingTitle: "2019 Toyota 4Runner SR5 Premium 4WD",
+    year: 2019, make: "Toyota", model: "4Runner", trim: "SR5 Premium",
+    price: 31500, miles: 54200, distanceMiles: 14.6,
+    city: "Suwanee", state: "GA",
+    photo_url: photo("spotr-feed-0014"), vdp_url: "https://example.com/spotr-fixtures/0014",
+    createdAt: daysAgo(1),
+  },
+  {
     // Title-branded car: exercises buy-box excluded-keyword hard exclusion
     // once the user adds e.g. "rebuilt title" to their exclusions.
     vin: "SPOTR-FEED-0013",

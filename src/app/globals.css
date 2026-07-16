@@ -13,7 +13,14 @@
   --accent-orange-dim: rgba(255, 122, 26, 0.15);
   --text-primary: #f0f4ff;
   --text-secondary: #8b9ab8;
+  /* Decorative only — fails AA contrast on card backgrounds; never use for
+     essential copy (use --text-secondary instead). */
   --text-muted: #4a5670;
+  /* Body-emphasis tier between primary and secondary (reason lines, prose). */
+  --text-body: #c6d0e2;
+  /* Caution semantic: Medium confidence, INVESTIGATE, sample-data badges,
+     below-range offer states. Distinct from the brand orange gradient. */
+  --accent-caution: #fbbf24;
   --glass-bg: rgba(15, 21, 32, 0.75);
   --glass-border: rgba(255, 255, 255, 0.08);
   --shadow-glow: 0 0 60px rgba(255, 122, 26, 0.12);

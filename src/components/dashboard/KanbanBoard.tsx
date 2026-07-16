@@ -6,7 +6,7 @@ import LeadCard from "./LeadCard";
 import axios from "axios";
 import type { LeadRecord } from "@/lib/vehicleAnalytics";
 
-const STAGES = ["New Leads", "Contacted", "Appraisal", "Offer Made", "Acquired", "Lost"];
+import { STAGES } from "@/lib/stages";
 
 const STAGE_COLORS: Record<string, string> = {
   "New Leads": "#60a5fa",

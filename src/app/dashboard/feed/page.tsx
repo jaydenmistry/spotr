@@ -100,6 +100,7 @@ export default function FeedPage() {
   const [searchInput, setSearchInput] = useState("");
   const [q, setQ] = useState("");
   const [dossierLead, setDossierLead] = useState<FeedLead | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
   // Debounce search input into the applied query.
@@ -115,6 +116,7 @@ export default function FeedPage() {
     let cancelled = false;
 
     const fetchFeed = async () => {
+      setRefreshing(true);
       try {
         const res = await axios.get<FeedResponse>("/api/leads/feed", {
           params: { page, view, sort, q: q || undefined, recommendation: recFilter || undefined },
@@ -142,6 +144,7 @@ export default function FeedPage() {
       } finally {
         if (!cancelled) {
           setLoading(false);
+          setRefreshing(false);
         }
       }
     };
@@ -186,6 +189,8 @@ export default function FeedPage() {
           refetch();
         } else {
           setLeads((prev) => prev.map((lead) => (lead.id === leadId ? { ...lead, ...updated } : lead)));
+          // Keep an open dossier's watch/assign state in sync with the action.
+          setDossierLead((prev) => (prev?.id === leadId ? { ...prev, ...updated } : prev));
         }
       } catch (error) {
         console.error("Feed action failed", error);
@@ -422,7 +427,8 @@ export default function FeedPage() {
               : ""}
           </p>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {/* Dim the list while search/sort/filter changes are in flight. */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, opacity: refreshing ? 0.55 : 1, transition: "opacity 0.15s" }}>
             {leads.map((lead) => (
               <OpportunityCard
                 key={lead.id}
@@ -464,7 +470,14 @@ export default function FeedPage() {
 
       {/* Acquisition dossier */}
       {dossierLead && (
-        <LeadModal lead={dossierLead} assessment={dossierLead.assessment} onClose={() => setDossierLead(null)} />
+        <LeadModal
+          lead={dossierLead}
+          assessment={dossierLead.assessment}
+          buyBoxPersisted={meta?.buyBoxPersisted}
+          onAction={(leadId, action) => void handleAction(leadId, action)}
+          actionBusy={busyLeadId === dossierLead.id}
+          onClose={() => setDossierLead(null)}
+        />
       )}
     </div>
   );

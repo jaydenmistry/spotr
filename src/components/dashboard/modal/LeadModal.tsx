@@ -4,12 +4,15 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import {
   AlertTriangle,
+  Ban,
   Clock,
+  Eye,
   ExternalLink,
   Gauge,
   Hash,
   MapPin,
   ShieldCheck,
+  UserPlus,
   X,
 } from "lucide-react";
 import Image from "next/image";
@@ -18,8 +21,10 @@ import CarfaxMock from "./CarfaxMock";
 import {
   formatCurrency,
   formatDistance,
+  formatMiles,
   getVehicleTitle,
   isVerifiedListing,
+  type LeadRecord,
 } from "@/lib/vehicleAnalytics";
 import {
   getOpportunityAssessment,
@@ -30,30 +35,7 @@ import {
   type SourcedValue,
 } from "@/lib/opportunity";
 import { DEFAULT_BUY_BOX, type BuyBoxConfig } from "@/lib/buyBox";
-
-interface Lead {
-  id: string;
-  year: number | null;
-  make: string | null;
-  model: string | null;
-  trim?: string | null;
-  listingTitle: string | null;
-  price: number | null;
-  miles: number | null;
-  distanceMiles: number | null;
-  searchZip: string | null;
-  searchRadius: number | null;
-  city: string | null;
-  state: string | null;
-  photo_url: string | null;
-  stage: string;
-  vin: string | null;
-  source: string | null;
-  vdp_url: string | null;
-  sellerName: string | null;
-  createdAt: string;
-  updatedAt?: string;
-}
+import type { FeedAction } from "@/lib/feedActions";
 
 const RECOMMENDATION_COLORS: Record<Recommendation, string> = {
   BUY: "#34d399",
@@ -66,6 +48,21 @@ const RISK_COLORS: Record<string, string> = {
   Low: "#34d399",
   Medium: "#fbbf24",
   High: "#f87171",
+};
+
+const actionButtonStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  padding: "7px 12px",
+  borderRadius: 8,
+  fontSize: 12,
+  fontWeight: 700,
+  cursor: "pointer",
+  border: "1px solid rgba(255,255,255,0.12)",
+  background: "rgba(255,255,255,0.04)",
+  color: "#f0f4ff",
+  transition: "background 0.15s, border-color 0.15s, color 0.15s",
 };
 
 /* Reusable row for detail tables */
@@ -99,7 +96,7 @@ function DetailRow({
           flexShrink: 0,
         }}
       >
-        {Icon && <Icon style={{ width: 14, height: 14, color: "#4a5670" }} />}
+        {Icon && <Icon style={{ width: 14, height: 14, color: "#8b9ab8" }} />}
         {label}
       </span>
       <span style={{ fontSize: 13, fontWeight: 600, color: "#f0f4ff", textAlign: "right" }}>
@@ -109,17 +106,32 @@ function DetailRow({
   );
 }
 
-/** Provenance chip rendered from SourcedValue metadata, never hardcoded copy. */
-function SourceTag({ sourced }: { sourced: Pick<SourcedValue, "source" | "note"> }) {
+/**
+ * Provenance chip rendered from SourcedValue metadata, never hardcoded copy.
+ * A real button: clicking (or keyboard-activating) it toggles the assumption
+ * note inline, so the explanation is not hover-only.
+ */
+function SourceTag({
+  sourced,
+  expanded,
+  onToggle,
+}: {
+  sourced: Pick<SourcedValue, "source" | "note">;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
   const colors: Record<string, string> = {
     provider: "#60a5fa",
     heuristic: "#a78bfa",
     "fixture-assumption": "#fbbf24",
-    unavailable: "#4a5670",
+    unavailable: "#8b9ab8",
   };
   const color = colors[sourced.source];
   return (
-    <span
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={expanded}
       title={sourced.note}
       style={{
         display: "inline-flex",
@@ -132,37 +144,43 @@ function SourceTag({ sourced }: { sourced: Pick<SourcedValue, "source" | "note">
         color,
         background: `${color}14`,
         border: `1px solid ${color}40`,
-        cursor: "help",
+        cursor: "pointer",
         whiteSpace: "nowrap",
       }}
     >
       {SOURCE_LABELS[sourced.source]}
-    </span>
+    </button>
   );
 }
 
-/** Money row in the economics table: value + provenance + assumption note. */
+/** Money row in the economics table: value + provenance + toggleable note. */
 function MoneyRow({ label, sourced, strong }: { label: string; sourced: SourcedValue; strong?: boolean }) {
+  const [showNote, setShowNote] = useState(false);
   return (
-    <DetailRow
-      label={
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          {label}
-          <SourceTag sourced={sourced} />
-        </span>
-      }
-      value={
-        sourced.value === null ? (
-          <span style={{ color: "#8b9ab8" }} title={sourced.note}>
-            Unavailable
+    <div>
+      <DetailRow
+        label={
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+            {label}
+            <SourceTag sourced={sourced} expanded={showNote} onToggle={() => setShowNote((v) => !v)} />
           </span>
-        ) : (
-          <span style={{ fontSize: strong ? 15 : 13, fontWeight: strong ? 900 : 600 }} title={sourced.note}>
-            {formatCurrency(sourced.value)}
-          </span>
-        )
-      }
-    />
+        }
+        value={
+          sourced.value === null ? (
+            <span style={{ color: "#8b9ab8" }}>Unavailable</span>
+          ) : (
+            <span style={{ fontSize: strong ? 15 : 13, fontWeight: strong ? 900 : 600 }}>
+              {formatCurrency(sourced.value)}
+            </span>
+          )
+        }
+      />
+      {showNote && (
+        <p style={{ padding: "6px 0 8px", fontSize: 11.5, color: "#8b9ab8", lineHeight: 1.5, borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+          {sourced.note}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -170,15 +188,32 @@ export default function LeadModal({
   lead,
   onClose,
   assessment: assessmentProp,
+  buyBoxPersisted,
+  onAction,
+  actionBusy = false,
 }: {
-  lead: Lead;
+  lead: LeadRecord;
   onClose: () => void;
   /** Server-computed assessment (feed); when absent the modal computes one. */
   assessment?: OpportunityAssessment;
+  /** Whether a saved buy box backs the provided assessment (feed knows this). */
+  buyBoxPersisted?: boolean;
+  /** When provided, the dossier can act directly (watch/assign/pass). */
+  onAction?: (leadId: string, action: FeedAction) => void;
+  actionBusy?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<"decision" | "chat" | "carfax">("decision");
   const [assessment, setAssessment] = useState<OpportunityAssessment | null>(assessmentProp ?? null);
-  const [buyBoxNote, setBuyBoxNote] = useState<string | null>(null);
+  const [buyBoxNote, setBuyBoxNote] = useState<string | null>(
+    assessmentProp && buyBoxPersisted === false
+      ? "No saved buy box — assessed against default settings."
+      : null
+  );
+
+  // Keep in sync when the parent refreshes the assessment (e.g. after actions).
+  useEffect(() => {
+    if (assessmentProp) setAssessment(assessmentProp);
+  }, [assessmentProp]);
 
   // Dossier entry points outside the feed (kanban, inventory) compute the
   // assessment client-side against the saved buy box; same pure function the
@@ -209,6 +244,8 @@ export default function LeadModal({
   const verified = isVerifiedListing(lead);
   const fixture = isFixtureLead(lead);
   const recColor = assessment ? RECOMMENDATION_COLORS[assessment.recommendation] : "#8b9ab8";
+  const isWatched = Boolean(lead.watchedAt);
+  const isAssigned = Boolean(lead.assignedTo);
 
   return (
     /* Backdrop */
@@ -334,7 +371,7 @@ export default function LeadModal({
                   fontSize: 13,
                   fontWeight: 700,
                   textTransform: "capitalize",
-                  color: active ? "#ff9147" : "#4a5670",
+                  color: active ? "#ff9147" : "#8b9ab8",
                   background: "none",
                   border: "none",
                   borderBottom: `2px solid ${active ? "#ff7a1a" : "transparent"}`,
@@ -342,8 +379,6 @@ export default function LeadModal({
                   transition: "color 0.15s",
                   marginBottom: -1,
                 }}
-                onMouseEnter={(e) => { if (!active) e.currentTarget.style.color = "#8b9ab8"; }}
-                onMouseLeave={(e) => { if (!active) e.currentTarget.style.color = "#4a5670"; }}
               >
                 {tab === "decision" ? "Decision" : tab}
               </button>
@@ -357,7 +392,7 @@ export default function LeadModal({
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "1fr 1fr",
+                gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
                 gap: 20,
               }}
             >
@@ -372,14 +407,14 @@ export default function LeadModal({
                 }}
               >
                 {!assessment ? (
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, color: "#8b9ab8", fontSize: 13 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, color: "#8b9ab8", fontSize: 13, minHeight: 96 }}>
                     <div style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(255,122,26,0.2)", borderTopColor: "#ff7a1a", animation: "spin 0.8s linear infinite" }} />
                     Assessing against your buy box…
                   </div>
                 ) : (
                   <>
-                    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 14 }}>
-                      <div style={{ minWidth: 0, flex: "1 1 320px" }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 14 }}>
+                      <div style={{ minWidth: 0, flex: "1 1 300px" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
                           <span
                             style={{
@@ -403,9 +438,64 @@ export default function LeadModal({
                         {buyBoxNote && (
                           <p style={{ fontSize: 12, color: "#fbbf24", marginTop: 6 }}>{buyBoxNote}</p>
                         )}
+                        {onAction && (
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+                            <button
+                              disabled={actionBusy}
+                              onClick={() => onAction(lead.id, isWatched ? "unwatch" : "watch")}
+                              style={{
+                                ...actionButtonStyle,
+                                ...(isWatched
+                                  ? { background: "rgba(255,122,26,0.15)", borderColor: "rgba(255,122,26,0.5)", color: "#ff9147" }
+                                  : {}),
+                              }}
+                            >
+                              <Eye style={{ width: 14, height: 14 }} />
+                              {isWatched ? "Watching" : "Watch"}
+                            </button>
+                            <button
+                              disabled={actionBusy}
+                              onClick={() => onAction(lead.id, isAssigned ? "unassign" : "assign")}
+                              style={{
+                                ...actionButtonStyle,
+                                ...(isAssigned
+                                  ? { background: "rgba(96,165,250,0.12)", borderColor: "rgba(96,165,250,0.45)", color: "#60a5fa" }
+                                  : {}),
+                              }}
+                            >
+                              <UserPlus style={{ width: 14, height: 14 }} />
+                              {isAssigned ? "Unassign" : "Assign to me"}
+                            </button>
+                            <button
+                              disabled={actionBusy}
+                              onClick={() => onAction(lead.id, "pass")}
+                              style={{ ...actionButtonStyle, color: "#f87171", borderColor: "rgba(248,113,113,0.35)" }}
+                            >
+                              <Ban style={{ width: 14, height: 14 }} />
+                              Pass
+                            </button>
+                          </div>
+                        )}
                       </div>
-                      <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, flexShrink: 0 }}>
                         {[
+                          {
+                            label: "Asking",
+                            value: lead.price ? formatCurrency(lead.price) : "—",
+                            sub: fixture ? "demo listing" : "provider data",
+                            color: "#f0f4ff",
+                          },
+                          {
+                            label: "Max offer",
+                            value:
+                              assessment.maxOffer.status === "ok"
+                                ? formatCurrency(assessment.maxOffer.amount)
+                                : assessment.maxOffer.status === "below-acquisition-range"
+                                ? "Below min"
+                                : "—",
+                            sub: "Spotr heuristic",
+                            color: assessment.maxOffer.status === "ok" ? "#ff9147" : "#fbbf24",
+                          },
                           {
                             label: "Score",
                             value: String(assessment.finalOpportunityScore),
@@ -415,7 +505,7 @@ export default function LeadModal({
                           {
                             label: "Confidence",
                             value: `${assessment.confidencePercent}%`,
-                            sub: `${assessment.confidenceTier} · data completeness`,
+                            sub: `${assessment.confidenceTier} · completeness`,
                             color: "#f0f4ff",
                           },
                           {
@@ -426,7 +516,7 @@ export default function LeadModal({
                           },
                         ].map(({ label, value, sub, color }) => (
                           <div key={label} style={{ textAlign: "center", borderRadius: 10, padding: "10px 14px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                            <p style={{ fontSize: 10, fontWeight: 700, color: "#4a5670", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 3 }}>{label}</p>
+                            <p style={{ fontSize: 10, fontWeight: 700, color: "#8b9ab8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 3 }}>{label}</p>
                             <p style={{ fontSize: 18, fontWeight: 900, color }}>{value}</p>
                             <p style={{ fontSize: 10, color: "#8b9ab8", marginTop: 2 }}>{sub}</p>
                           </div>
@@ -464,7 +554,7 @@ export default function LeadModal({
                       justifyContent: "center",
                       fontSize: 13,
                       fontWeight: 600,
-                      color: "#4a5670",
+                      color: "#8b9ab8",
                     }}
                   >
                     No photo available
@@ -496,11 +586,7 @@ export default function LeadModal({
                 <DetailRow label="Listing" value={getVehicleTitle(lead)} />
                 <DetailRow label="VIN" value={lead.vin || "Not supplied"} icon={Hash} />
                 <DetailRow label="Trim" value={lead.trim || "Unknown"} />
-                <DetailRow
-                  label="Mileage"
-                  value={lead.miles ? `${new Intl.NumberFormat("en-US").format(lead.miles)} mi` : "Unknown"}
-                  icon={Gauge}
-                />
+                <DetailRow label="Mileage" value={formatMiles(lead.miles)} icon={Gauge} />
                 <DetailRow
                   label="Location"
                   value={[lead.city, lead.state].filter(Boolean).join(", ") || "Unknown"}
@@ -595,7 +681,25 @@ export default function LeadModal({
               </div>
 
               {/* ── B. Acquisition economics ───────────────── */}
-              {assessment && (
+              {!assessment ? (
+                <div
+                  style={{
+                    gridColumn: "1 / -1",
+                    background: "var(--bg-card)",
+                    borderRadius: 14,
+                    padding: "18px 20px",
+                    border: "1px solid rgba(255,255,255,0.07)",
+                    minHeight: 320,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#8b9ab8",
+                    fontSize: 13,
+                  }}
+                >
+                  Economics and risk assessment load once the buy box is available…
+                </div>
+              ) : (
                 <div
                   style={{
                     gridColumn: "1 / -1",
@@ -609,7 +713,7 @@ export default function LeadModal({
                     Acquisition economics
                   </h3>
                   <p style={{ fontSize: 12, color: "#8b9ab8", marginBottom: 12 }}>
-                    Planning figures from stated assumptions — not guarantees. Hover any tag for the assumption behind the number.
+                    Planning figures from stated assumptions — not guarantees. Click any source tag for the assumption behind the number.
                   </p>
 
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
@@ -617,18 +721,13 @@ export default function LeadModal({
                     <div>
                       <MoneyRow label="Asking price" sourced={assessment.askingPrice} strong />
                       {assessment.estimatedRange ? (
-                        <DetailRow
-                          label={
-                            <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                              Est. retail range
-                              <SourceTag sourced={assessment.estimatedRange} />
-                            </span>
-                          }
-                          value={
-                            <span title={assessment.estimatedRange.note}>
-                              {formatCurrency(assessment.estimatedRange.low)} – {formatCurrency(assessment.estimatedRange.high)}
-                            </span>
-                          }
+                        <MoneyRow
+                          label="Est. retail (low end)"
+                          sourced={{
+                            value: assessment.estimatedRange.low,
+                            source: assessment.estimatedRange.source,
+                            note: `${assessment.estimatedRange.note} Full band: ${formatCurrency(assessment.estimatedRange.low)} – ${formatCurrency(assessment.estimatedRange.high)} (midpoint ${formatCurrency(assessment.estimatedRange.mid)}).`,
+                          }}
                         />
                       ) : (
                         <DetailRow label="Est. retail range" value={<span style={{ color: "#8b9ab8" }}>Unavailable — no asking price</span>} />
@@ -667,7 +766,7 @@ export default function LeadModal({
                         ) : assessment.maxOffer.status === "below-acquisition-range" ? (
                           <>
                             <p style={{ fontSize: 14, fontWeight: 800, color: "#fbbf24" }}>
-                              Below configured acquisition range — investigate only
+                              Offer ceiling below your minimum acquisition price — investigate only
                             </p>
                             <p style={{ fontSize: 12, color: "#8b9ab8", marginTop: 3 }}>
                               Internal estimate of the ceiling: {formatCurrency(assessment.maxOffer.amount)} (under your configured minimum).
@@ -705,7 +804,6 @@ export default function LeadModal({
                             return (
                               <div
                                 key={scenario.name}
-                                title={scenario.description}
                                 style={{
                                   borderRadius: 10,
                                   padding: "10px 14px",
@@ -715,14 +813,14 @@ export default function LeadModal({
                               >
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
                                   <span style={{ fontSize: 13, fontWeight: 800, color: "#f0f4ff" }}>{scenario.name}</span>
-                                  <span style={{ fontSize: 15, fontWeight: 900, color: gross >= 0 ? "#34d399" : "#f87171" }} title={scenario.projectedGross.note}>
+                                  <span style={{ fontSize: 15, fontWeight: 900, color: gross >= 0 ? "#34d399" : "#f87171" }}>
                                     {gross >= 0 ? "+" : "−"}{formatCurrency(Math.abs(gross))} gross
                                   </span>
                                 </div>
                                 <p style={{ fontSize: 11.5, color: "#8b9ab8", marginTop: 3 }}>
                                   Retail {formatCurrency(scenario.retail.value)} · all-in {formatCurrency(scenario.allIn.value)}
                                 </p>
-                                <p style={{ fontSize: 10.5, color: "#4a5670", marginTop: 2 }}>{scenario.description}</p>
+                                <p style={{ fontSize: 10.5, color: "#8b9ab8", marginTop: 2 }}>{scenario.description}</p>
                               </div>
                             );
                           })}
@@ -749,7 +847,7 @@ export default function LeadModal({
                     Risks & data gaps
                   </h3>
                   {assessment.riskFactors.length === 0 && assessment.completeness.missing.length === 0 ? (
-                    <p style={{ fontSize: 13, color: "#8b9ab8" }}>
+                    <p style={{ fontSize: 13, color: "#c6d0e2" }}>
                       No risk flags and no missing key fields. Condition and title status still require inspection — Spotr has no data for either.
                     </p>
                   ) : (
@@ -768,7 +866,7 @@ export default function LeadModal({
                           {assessment.completeness.missing.join(", ")} — treated as uncertainty, lowering confidence to {assessment.confidencePercent}%.
                         </p>
                       )}
-                      <p style={{ fontSize: 12, color: "#4a5670" }}>
+                      <p style={{ fontSize: 12.5, fontWeight: 600, color: "#8b9ab8" }}>
                         Condition and title status are never inferred — verify by inspection and history report before an offer.
                       </p>
                     </div>

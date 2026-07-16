@@ -228,7 +228,7 @@ export function getOpportunityAssessment(
   // Heuristic retail band around the synthesized market value. Width grows as
   // confidence falls (±7% at 90% confidence, ~±13% at 60%).
   const estimateNote =
-    "Derived from the asking price and make/model segment keywords — a Spotr heuristic, not market comps or an appraisal.";
+    "Derived from the asking price and make/model segment keywords — a Spotr heuristic, not market comps or an appraisal. Because it is anchored to asking, it rarely differs from asking by more than ~18%; verify with a real valuation source before offering.";
   let estimatedRange: OpportunityAssessment["estimatedRange"] = null;
   if (asking && analytics.estimatedMarketValue > 0) {
     const halfWidth = 0.05 + (100 - confidencePercent) * 0.002;
