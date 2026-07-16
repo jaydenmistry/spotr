@@ -9,10 +9,15 @@ import { loadBuyBoxConfig } from "@/lib/buyBoxStore";
 export const dynamic = "force-dynamic";
 
 // GET is read-only by design: it never creates the row (see buyBoxStore).
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const ip = clientIp(request.headers);
+  if (!rateLimit(`buybox-get:${ip}`, 120, 60 * 1000)) {
+    return NextResponse.json({ error: "Too many requests. Try again in a minute." }, { status: 429 });
   }
 
   try {

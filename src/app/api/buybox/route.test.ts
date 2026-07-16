@@ -37,7 +37,7 @@ beforeEach(() => {
 describe("authorization", () => {
   it("rejects unauthenticated GET with 401 and touches no data", async () => {
     getServerSession.mockResolvedValue(null);
-    const res = await GET();
+    const res = await GET(new Request("http://localhost/api/buybox"));
     expect(res.status).toBe(401);
     expect(findUnique).not.toHaveBeenCalled();
   });
@@ -53,7 +53,7 @@ describe("authorization", () => {
 describe("GET read-only behavior", () => {
   it("returns in-memory defaults without creating a row when none exists", async () => {
     findUnique.mockResolvedValue(null);
-    const res = await GET();
+    const res = await GET(new Request("http://localhost/api/buybox"));
     const body = await res.json();
     expect(res.status).toBe(200);
     expect(body.persisted).toBe(false);
@@ -78,7 +78,7 @@ describe("GET read-only behavior", () => {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
-    const res = await GET();
+    const res = await GET(new Request("http://localhost/api/buybox"));
     const body = await res.json();
     expect(res.status).toBe(200);
     expect(body.config.makeRules).toEqual([]);

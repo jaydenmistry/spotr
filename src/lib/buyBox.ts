@@ -57,12 +57,16 @@ function isMakeRule(value: unknown): value is MakeRule {
   );
 }
 
+// Cap how much of an untrusted array the sanitizers will even walk, so an
+// oversized payload can't buy CPU time before the post-sanitize slice.
+const MAX_SANITIZE_INPUT = 200;
+
 /** Validates an untrusted array (API payloads, parsed JSON) into MakeRules. */
 export function sanitizeMakeRules(value: unknown): MakeRule[] {
   if (!Array.isArray(value)) return [];
   const seen = new Set<string>();
   const rules: MakeRule[] = [];
-  for (const entry of value) {
+  for (const entry of value.slice(0, MAX_SANITIZE_INPUT)) {
     if (!isMakeRule(entry)) continue;
     const make = entry.make.trim();
     const key = make.toLowerCase();
@@ -77,7 +81,7 @@ export function sanitizeKeywords(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   const seen = new Set<string>();
   const keywords: string[] = [];
-  for (const entry of value) {
+  for (const entry of value.slice(0, MAX_SANITIZE_INPUT)) {
     if (typeof entry !== "string") continue;
     const keyword = entry.trim();
     if (keyword.length === 0 || keyword.length > 40) continue;
