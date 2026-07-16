@@ -1,10 +1,15 @@
 "use client";
 
-import { DollarSign, Car, TrendingUp } from "lucide-react";
+import { Car, DollarSign, TrendingUp } from "lucide-react";
+import { formatSignedCurrency, getVehicleAnalytics } from "@/lib/vehicleAnalytics";
 
 interface Lead {
   id: string;
+  make: string | null;
+  model: string | null;
+  year: number | null;
   price: number | null;
+  miles: number | null;
   stage: string;
   createdAt: string;
 }
@@ -15,6 +20,10 @@ export default function TopStats({ leads }: { leads: Lead[] }) {
 
   const pipelineLeads = leads.filter((l) => !["Acquired", "Lost"].includes(l.stage));
   const pipelineValue = pipelineLeads.reduce((sum, l) => sum + (l.price || 0), 0);
+  const projectedMovement = pipelineLeads.reduce(
+    (sum, lead) => sum + getVehicleAnalytics(lead).projectedChangeDollars,
+    0
+  );
 
   const oneWeekAgo = new Date();
   oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
@@ -26,46 +35,72 @@ export default function TopStats({ leads }: { leads: Lead[] }) {
       value: new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(acquiredValue),
       icon: DollarSign,
       subtext: `${acquiredLeads.length} vehicles acquired`,
+      color: "#34d399",
     },
     {
       name: "Pipeline Value",
       value: new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(pipelineValue),
       icon: TrendingUp,
       subtext: `${pipelineLeads.length} active leads`,
+      color: "#ff9147",
     },
     {
       name: "New This Week",
       value: newThisWeek.toString(),
       icon: Car,
       subtext: "Fresh leads imported",
+      color: "#60a5fa",
+    },
+    {
+      name: "Projected Movement",
+      value: formatSignedCurrency(projectedMovement),
+      icon: TrendingUp,
+      subtext: "12-month value outlook",
+      color: "#a78bfa",
     },
   ];
 
   return (
-    <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-3">
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+        gap: 14,
+        marginBottom: 24,
+      }}
+    >
       {stats.map((item) => (
         <div
           key={item.name}
-          className="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6"
+          style={{
+            background: "var(--bg-card)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: 14,
+            padding: "18px 20px",
+          }}
         >
-          <div className="flex items-center">
-            <div className="flex-shrink-0 rounded-md bg-blue-50 p-3">
-              <item.icon className="h-6 w-6 text-blue-600" aria-hidden="true" />
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+            <div
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 10,
+                display: "grid",
+                placeItems: "center",
+                flexShrink: 0,
+                background: `${item.color}1a`,
+              }}
+            >
+              <item.icon style={{ width: 18, height: 18, color: item.color }} aria-hidden="true" />
             </div>
-            <div className="ml-5 w-0 flex-1">
-              <dt className="truncate text-sm font-medium text-gray-500">
-                {item.name}
-              </dt>
-              <dd className="flex items-baseline">
-                <div className="text-2xl font-semibold text-gray-900">
-                  {item.value}
-                </div>
-              </dd>
-            </div>
+            <p style={{ fontSize: 12, fontWeight: 700, color: "#8b9ab8", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+              {item.name}
+            </p>
           </div>
-          <div className="mt-4 text-sm text-gray-600 border-t border-gray-100 pt-3">
-            {item.subtext}
-          </div>
+          <p style={{ fontSize: 24, fontWeight: 900, color: "#f0f4ff", letterSpacing: "-0.02em", marginBottom: 4 }}>
+            {item.value}
+          </p>
+          <p style={{ fontSize: 12, color: "#4a5670" }}>{item.subtext}</p>
         </div>
       ))}
     </div>

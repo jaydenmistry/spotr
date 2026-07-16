@@ -7,7 +7,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./dev.db"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -16,14 +16,43 @@ model User {
   password String
 }
 
+// Dealership acquisition criteria. Single-tenant v1: exactly one row with
+// id "default"; the id column is the future per-dealer tenancy seam.
+// makeRules / excludedKeywords hold JSON strings (SQLite has no Json type);
+// parse/serialize lives in src/lib/buyBox.ts.
+model BuyBox {
+  id               String   @id
+  yearMin          Int?
+  yearMax          Int?
+  maxMileage       Int?
+  // Asking-price band the desk buys in (USD).
+  acquisitionMin   Int?
+  acquisitionMax   Int?
+  // Sanity band for retail estimates (USD).
+  targetRetailMin  Int?
+  targetRetailMax  Int?
+  // Gross-profit planning target (USD) — drives the recommended max offer.
+  targetMinGross   Int      @default(3000)
+  radiusMiles      Int      @default(100)
+  makeRules        String   @default("[]")
+  excludedKeywords String   @default("[]")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
 model Lead {
   id          String   @id @default(cuid())
   vin         String?
   year        Int?
   make        String?
   model       String?
+  trim        String?
+  listingTitle String?
   price       Int?
   miles       Int?
+  distanceMiles Float?
+  searchZip   String?
+  searchRadius Int?
   city        String?
   state       String?
   source      String?
@@ -32,9 +61,18 @@ model Lead {
   stage       String   @default("New Leads")
   sellerName  String?
   sellerPhone String?
+  // Opportunity Feed actions — nullable so existing rows are unaffected.
+  watchedAt   DateTime?
+  passedAt    DateTime?
+  assignedTo  String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   messages    Message[]
+
+  // Every list endpoint filters on VIN prefixes; index it before the table grows.
+  @@index([vin])
+  // Feed hot path: filters on stage/passedAt, orders by createdAt.
+  @@index([stage, passedAt, createdAt])
 }
 
 model Message {

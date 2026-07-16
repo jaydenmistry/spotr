@@ -4,39 +4,36 @@ import { useEffect, useState } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import LeadCard from "./LeadCard";
 import axios from "axios";
+import type { LeadRecord } from "@/lib/vehicleAnalytics";
 
-interface Lead {
-  id: string;
-  year: number | null;
-  make: string | null;
-  model: string | null;
-  price: number | null;
-  miles: number | null;
-  city: string | null;
-  state: string | null;
-  photo_url: string | null;
-  stage: string;
-  vin: string | null;
-  source: string | null;
-  vdp_url: string | null;
-  sellerName: string | null;
-}
+import { STAGES } from "@/lib/stages";
 
-const STAGES = ["New Leads", "Contacted", "Appraisal", "Offer Made", "Acquired", "Lost"];
+const STAGE_COLORS: Record<string, string> = {
+  "New Leads": "#60a5fa",
+  "Contacted": "#ff9147",
+  "Appraisal": "#a78bfa",
+  "Offer Made": "#f59e0b",
+  "Acquired": "#34d399",
+  "Lost": "#f87171",
+};
 
 export default function KanbanBoard({
   leads,
   onLeadClick,
   onLeadUpdate
 }: {
-  leads: Lead[];
-  onLeadClick: (lead: Lead) => void;
-  onLeadUpdate: (updatedLeads: Lead[]) => void;
+  leads: LeadRecord[];
+  onLeadClick: (lead: LeadRecord) => void;
+  onLeadUpdate: (updatedLeads: LeadRecord[]) => void;
 }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
+    const frame = window.requestAnimationFrame(() => {
+      setMounted(true);
+    });
+
+    return () => window.cancelAnimationFrame(frame);
   }, []);
 
   const onDragEnd = async (result: DropResult) => {
@@ -53,7 +50,6 @@ export default function KanbanBoard({
 
     const newStage = destination.droppableId;
 
-    // Optimistic UI update
     const updatedLeads = leads.map(lead =>
       lead.id === draggableId ? { ...lead, stage: newStage } : lead
     );
@@ -67,7 +63,6 @@ export default function KanbanBoard({
       });
     } catch (error) {
       console.error("Failed to update lead status:", error);
-      // Revert on failure
       onLeadUpdate(leads);
     }
   };
@@ -76,15 +71,73 @@ export default function KanbanBoard({
 
   return (
     <DragDropContext onDragEnd={onDragEnd}>
-      <div className="flex h-[calc(100vh-16rem)] gap-4 overflow-x-auto pb-4">
+      <div
+        style={{
+          display: "flex",
+          height: "calc(100vh - 20rem)",
+          gap: 12,
+          overflowX: "auto",
+          paddingBottom: 16,
+        }}
+      >
         {STAGES.map((stage) => {
           const stageLeads = leads.filter(l => l.stage === stage);
+          const color = STAGE_COLORS[stage] ?? "#8b9ab8";
 
           return (
-            <div key={stage} className="flex h-full w-80 flex-shrink-0 flex-col rounded-lg bg-gray-50 p-4">
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="font-semibold text-gray-700">{stage}</h3>
-                <span className="rounded-full bg-gray-200 px-2 py-1 text-xs font-medium text-gray-600">
+            <div
+              key={stage}
+              style={{
+                display: "flex",
+                height: "100%",
+                width: 300,
+                flexShrink: 0,
+                flexDirection: "column",
+                borderRadius: 14,
+                background: "rgba(255,255,255,0.025)",
+                border: "1px solid rgba(255,255,255,0.07)",
+                padding: "14px 12px",
+              }}
+            >
+              {/* Column header */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 12,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      background: color,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <h3
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: "#f0f4ff",
+                    }}
+                  >
+                    {stage}
+                  </h3>
+                </div>
+                <span
+                  style={{
+                    borderRadius: 100,
+                    padding: "2px 9px",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color,
+                    background: `${color}18`,
+                  }}
+                >
                   {stageLeads.length}
                 </span>
               </div>
@@ -94,9 +147,15 @@ export default function KanbanBoard({
                   <div
                     ref={provided.innerRef}
                     {...provided.droppableProps}
-                    className={`flex-1 overflow-y-auto transition-colors ${
-                      snapshot.isDraggingOver ? "bg-blue-50" : ""
-                    }`}
+                    style={{
+                      flex: 1,
+                      overflowY: "auto",
+                      borderRadius: 10,
+                      transition: "background 0.15s",
+                      background: snapshot.isDraggingOver
+                        ? "rgba(255,122,26,0.04)"
+                        : "transparent",
+                    }}
                   >
                     {stageLeads.map((lead, index) => (
                       <Draggable key={lead.id} draggableId={lead.id} index={index}>
@@ -107,7 +166,7 @@ export default function KanbanBoard({
                             {...provided.dragHandleProps}
                             style={{
                               ...provided.draggableProps.style,
-                              opacity: snapshot.isDragging ? 0.8 : 1,
+                              opacity: snapshot.isDragging ? 0.85 : 1,
                             }}
                           >
                             <LeadCard lead={lead} onClick={() => onLeadClick(lead)} />
