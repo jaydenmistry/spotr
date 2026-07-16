@@ -1,6 +1,7 @@
 "use client";
 
 import { ExternalLink, FileText } from "lucide-react";
+import { isSafeHttpUrl } from "@/lib/url";
 
 export default function CarfaxMock({
   vdpUrl,
@@ -68,7 +69,7 @@ export default function CarfaxMock({
         .
       </p>
 
-      {vdpUrl && vdpUrl !== "#" ? (
+      {isSafeHttpUrl(vdpUrl) ? (
         <a
           href={vdpUrl}
           target="_blank"

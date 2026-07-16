@@ -36,6 +36,7 @@ import {
 } from "@/lib/opportunity";
 import { DEFAULT_BUY_BOX, type BuyBoxConfig } from "@/lib/buyBox";
 import type { FeedAction } from "@/lib/feedActions";
+import { isSafeHttpUrl } from "@/lib/url";
 
 const RECOMMENDATION_COLORS: Record<Recommendation, string> = {
   BUY: "#34d399",
@@ -210,10 +211,13 @@ export default function LeadModal({
       : null
   );
 
-  // Keep in sync when the parent refreshes the assessment (e.g. after actions).
-  useEffect(() => {
+  // Keep in sync when the parent refreshes the assessment (e.g. after
+  // actions) — adjust during render instead of in an effect.
+  const [prevAssessmentProp, setPrevAssessmentProp] = useState(assessmentProp);
+  if (assessmentProp !== prevAssessmentProp) {
+    setPrevAssessmentProp(assessmentProp);
     if (assessmentProp) setAssessment(assessmentProp);
-  }, [assessmentProp]);
+  }
 
   // Dossier entry points outside the feed (kanban, inventory) compute the
   // assessment client-side against the saved buy box; same pure function the
@@ -656,7 +660,7 @@ export default function LeadModal({
                   />
                   <DetailRow label="Seller" value={lead.sellerName || "Private Party"} />
                 </div>
-                {lead.vdp_url && lead.vdp_url !== "#" && (
+                {isSafeHttpUrl(lead.vdp_url) && (
                   <div style={{ paddingTop: 10 }}>
                     <a
                       href={lead.vdp_url}

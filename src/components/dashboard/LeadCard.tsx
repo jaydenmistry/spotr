@@ -12,6 +12,7 @@ import {
   getVehicleAnalytics,
   isVerifiedListing,
 } from "@/lib/vehicleAnalytics";
+import { isSafeHttpUrl } from "@/lib/url";
 
 interface Lead {
   id: string;
@@ -285,7 +286,7 @@ export default function LeadCard({ lead, onClick }: { lead: Lead; onClick: () =>
             <span>{formatSignedPercent(analytics.projectedChangePercent)}</span>
           </div>
 
-          {lead.vdp_url && lead.vdp_url !== "#" && (
+          {isSafeHttpUrl(lead.vdp_url) && (
             <a
               href={lead.vdp_url}
               target="_blank"

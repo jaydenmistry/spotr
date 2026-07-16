@@ -27,6 +27,7 @@ import {
 } from "@/lib/vehicleAnalytics";
 import { isFixtureLead, SOURCE_LABELS, type OpportunityAssessment, type Recommendation } from "@/lib/opportunity";
 import type { FeedAction } from "@/lib/feedActions";
+import { isSafeHttpUrl } from "@/lib/url";
 
 export const RECOMMENDATION_COLORS: Record<Recommendation, string> = {
   BUY: "#34d399",
@@ -472,7 +473,7 @@ export default function OpportunityCard({
               </button>
             </>
           )}
-          {lead.vdp_url && lead.vdp_url !== "#" && (
+          {isSafeHttpUrl(lead.vdp_url) && (
             <a
               href={lead.vdp_url}
               target="_blank"
