@@ -123,6 +123,7 @@ export default function BoardLeadCard({
               src={lead.photo_url}
               alt=""
               fill
+              unoptimized
               sizes="54px"
               style={{ objectFit: "cover" }}
             />

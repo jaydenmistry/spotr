@@ -23,6 +23,18 @@ vi.mock("next-auth/react", () => ({
   signOut: vi.fn(),
 }));
 
+const mockReplace = vi.fn((url: string) => {
+  const query = url.includes("?") ? url.split("?")[1] : "";
+  mockSearchParamString = query;
+});
+let mockSearchParamString = "";
+
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => new URLSearchParams(mockSearchParamString),
+  useRouter: () => ({ push: vi.fn(), replace: mockReplace }),
+  usePathname: () => "/dashboard/inventory",
+}));
+
 import axios from "axios";
 
 function createMockLead(id: string, overrides: Partial<LeadRecord> = {}): LeadRecord {
@@ -70,6 +82,7 @@ function mockGetLeads(leads: LeadRecord[]) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockSearchParamString = "";
   window.scrollTo = vi.fn();
 });
 
@@ -347,6 +360,7 @@ describe("Inventory Page - Pagination and Auto-Reset", () => {
       expect(screen.getByText("25–30")).toBeTruthy();
       expect(screen.getByText("Vehicle #25")).toBeTruthy();
       expect(screen.queryByText("Vehicle #1")).toBeNull();
+      expect(mockReplace).toHaveBeenCalledWith("/dashboard/inventory?page=2", { scroll: false });
     });
   });
 
@@ -368,6 +382,49 @@ describe("Inventory Page - Pagination and Auto-Reset", () => {
 
     await waitFor(() => {
       expect(screen.getByText("1–24")).toBeTruthy();
+    });
+  });
+
+  it("initializes page state from URL searchParams when ?page=2 is passed", async () => {
+    mockSearchParamString = "page=2";
+    const leads = Array.from({ length: 30 }, (_, i) =>
+      createMockLead(`${i + 1}`, { listingTitle: `Vehicle #${i + 1}` })
+    );
+    mockGetLeads(leads);
+
+    render(<InventoryPage />);
+    await waitFor(() => expect(screen.queryByText("Loading inventory…")).toBeNull());
+
+    expect(screen.getByText("25–30")).toBeTruthy();
+    expect(screen.getByText("Vehicle #25")).toBeTruthy();
+    expect(screen.queryByText("Vehicle #1")).toBeNull();
+  });
+
+  it("updates page size when selecting a new option from Per Page dropdown", async () => {
+    const user = userEvent.setup();
+    const leads = Array.from({ length: 30 }, (_, i) =>
+      createMockLead(`${i + 1}`, { listingTitle: `Vehicle #${i + 1}` })
+    );
+    mockGetLeads(leads);
+
+    render(<InventoryPage />);
+    await waitFor(() => expect(screen.queryByText("Loading inventory…")).toBeNull());
+
+    expect(screen.getByText("1–24")).toBeTruthy();
+
+    const selectElements = screen.getAllByRole("combobox");
+    const pageSizeSelect = selectElements.find(s =>
+      Array.from(s.getElementsByTagName("option")).some(o => o.value === "12")
+    )!;
+
+    expect(pageSizeSelect).toBeTruthy();
+
+    await user.selectOptions(pageSizeSelect, "12");
+
+    await waitFor(() => {
+      expect(screen.getByText("1–12")).toBeTruthy();
+      expect(screen.getByText("Vehicle #12")).toBeTruthy();
+      expect(screen.queryByText("Vehicle #13")).toBeNull();
     });
   });
 });

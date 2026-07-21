@@ -10,11 +10,15 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   images: {
-    // Listing photos come from arbitrary dealer/seller CDNs, so the hostname
-    // must stay open — but only over https in production.
+    // Listing photos come from arbitrary dealer/seller CDNs over http and https
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: "https",
+        hostname: "**",
+      },
+      {
+        protocol: "http",
         hostname: "**",
       },
     ],

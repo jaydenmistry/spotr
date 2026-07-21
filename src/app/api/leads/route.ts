@@ -41,11 +41,17 @@ export async function GET() {
       },
     });
 
-    // Flatten to `lastActivity` so clients never see the relation array.
+    // Flatten to `lastActivity` so clients never see the relation array or PII fields.
     return NextResponse.json(
       leads.map(({ activities, ...lead }) => ({
         ...lead,
-        lastActivity: activities[0] ?? null,
+        lastActivity: activities[0]
+          ? {
+              type: activities[0].type,
+              summary: activities[0].summary,
+              createdAt: activities[0].createdAt,
+            }
+          : null,
       }))
     );
   } catch (error) {

@@ -70,7 +70,44 @@ export const EXOTIC_MAKES = [
   "Land Rover",
 ];
 
-export const MAKE_FILTER_OPTIONS = ["All", "All Exotics", ...EXOTIC_MAKES];
+export const COMMON_MAKES = [
+  "Acura",
+  "Aston Martin",
+  "Audi",
+  "Bentley",
+  "BMW",
+  "Buick",
+  "Cadillac",
+  "Chevrolet",
+  "Dodge",
+  "Ferrari",
+  "Ford",
+  "GMC",
+  "Honda",
+  "Hyundai",
+  "Infiniti",
+  "Jeep",
+  "Kia",
+  "Lamborghini",
+  "Land Rover",
+  "Lexus",
+  "Lincoln",
+  "Maserati",
+  "Mazda",
+  "McLaren",
+  "Mercedes-Benz",
+  "Nissan",
+  "Porsche",
+  "RAM",
+  "Rolls-Royce",
+  "Subaru",
+  "Tesla",
+  "Toyota",
+  "Volkswagen",
+  "Volvo",
+];
+
+export const MAKE_FILTER_OPTIONS = ["All", "All Exotics", ...COMMON_MAKES];
 
 export const SORT_OPTIONS: LeadSortOrder[] = [
   "Newest Added",
@@ -96,6 +133,14 @@ const MAKE_ALIASES: Record<string, string[]> = {
   BMW: ["bmw", "m"],
   Audi: ["audi", "rs"],
   "Land Rover": ["land rover", "range rover"],
+  Nissan: ["nissan", "gtr", "gt-r", "z", "370z", "350z", "altima", "maxima", "rogue"],
+  Toyota: ["toyota", "supra", "4runner", "tacoma", "tundra", "camry"],
+  Chevrolet: ["chevy", "chevrolet", "corvette", "camaro", "silverado"],
+  Ford: ["ford", "mustang", "f-150", "raptor", "gt"],
+  Honda: ["honda", "civic", "type r", "accord"],
+  Tesla: ["tesla", "model s", "model 3", "model x", "model y"],
+  Jeep: ["jeep", "wrangler", "rubicon", "gladiator"],
+  Dodge: ["dodge", "viper", "hellcat", "charger", "challenger"],
 };
 
 const MAKE_TREND_BASE: Record<string, number> = {

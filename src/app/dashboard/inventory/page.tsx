@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import axios from "axios";
 import LeadCard from "@/components/dashboard/LeadCard";
@@ -16,7 +16,8 @@ import {
   type MovementFilter,
 } from "@/lib/vehicleAnalytics";
 
-const PAGE_SIZE = 24;
+const PAGE_SIZE_OPTIONS = [12, 24, 48, 96] as const;
+const DEFAULT_PAGE_SIZE = 24;
 
 const inputStyle: React.CSSProperties = {
   background: "rgba(255,255,255,0.04)",
@@ -37,7 +38,11 @@ function InventoryContent() {
   const pathname = usePathname();
 
   const pageParam = searchParams.get("page");
+  const limitParam = searchParams.get("limit");
   const initialPage = pageParam ? Math.max(1, parseInt(pageParam, 10) || 1) : 1;
+  const initialPageSize = limitParam && PAGE_SIZE_OPTIONS.includes(Number(limitParam) as typeof PAGE_SIZE_OPTIONS[number])
+    ? Number(limitParam)
+    : DEFAULT_PAGE_SIZE;
 
   const [leads, setLeads] = useState<LeadRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,6 +58,7 @@ function InventoryContent() {
   
   // Sort and pagination
   const [sortOrder, setSortOrder] = useState<LeadSortOrder>("Distance (Nearest)");
+  const [pageSize, setPageSize] = useState<number>(initialPageSize);
   const [page, setPage] = useState(initialPage);
 
   useEffect(() => {
@@ -61,12 +67,17 @@ function InventoryContent() {
     setPage(parsed);
   }, [searchParams]);
 
-  const updatePageInUrl = (newPage: number) => {
+  const updatePageInUrl = (newPage: number, newSize: number = pageSize) => {
     const params = new URLSearchParams(searchParams.toString());
     if (newPage > 1) {
       params.set("page", newPage.toString());
     } else {
       params.delete("page");
+    }
+    if (newSize !== DEFAULT_PAGE_SIZE) {
+      params.set("limit", newSize.toString());
+    } else {
+      params.delete("limit");
     }
     const queryString = params.toString();
     const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
@@ -94,14 +105,16 @@ function InventoryContent() {
     void fetchLeads();
   }, []);
 
-  // Reset to page 1 whenever any filter/sort changes
-  const filterKey = JSON.stringify([searchTerm, selectedMakes, minPrice, maxPrice, maxDistance, movementFilter, sortOrder]);
-  const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
-  if (filterKey !== prevFilterKey) {
-    setPrevFilterKey(filterKey);
+  // Reset to page 1 whenever any filter/sort/pageSize changes
+  const isFirstMount = useRef(true);
+  useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
     setPage(1);
     updatePageInUrl(1);
-  }
+  }, [searchTerm, selectedMakes, minPrice, maxPrice, maxDistance, movementFilter, sortOrder, pageSize]);
 
   const filteredAndSortedLeads = useMemo(() => {
     const filtered = filterLeads(leads, {
@@ -116,11 +129,11 @@ function InventoryContent() {
     return sortLeads(filtered, sortOrder);
   }, [leads, searchTerm, selectedMakes, minPrice, maxPrice, maxDistance, movementFilter, sortOrder]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredAndSortedLeads.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filteredAndSortedLeads.length / pageSize));
   const safePage = Math.min(page, totalPages);
   const pageLeads = filteredAndSortedLeads.slice(
-    (safePage - 1) * PAGE_SIZE,
-    safePage * PAGE_SIZE
+    (safePage - 1) * pageSize,
+    safePage * pageSize
   );
 
   const makeCounts = useMemo(() => {
@@ -169,36 +182,72 @@ function InventoryContent() {
           </p>
         </div>
 
-        {/* Action bar: Result count + Sort dropdown */}
+        {/* Action bar: Result count + Per Page + Sort dropdown */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, paddingBottom: 16, borderBottom: "1px solid rgba(255,255,255,0.07)", flexWrap: "wrap", gap: 16 }}>
           <p style={{ fontSize: 13, color: "#4a5670" }}>
-            Showing <span style={{ fontWeight: 700, color: "#ff9147" }}>{(safePage - 1) * PAGE_SIZE + (filteredAndSortedLeads.length > 0 ? 1 : 0)}–{Math.min(safePage * PAGE_SIZE, filteredAndSortedLeads.length)}</span> of <span style={{ fontWeight: 700, color: "#f0f4ff" }}>{filteredAndSortedLeads.length}</span> results
+            Showing <span style={{ fontWeight: 700, color: "#ff9147" }}>{(safePage - 1) * pageSize + (filteredAndSortedLeads.length > 0 ? 1 : 0)}–{Math.min(safePage * pageSize, filteredAndSortedLeads.length)}</span> of <span style={{ fontWeight: 700, color: "#f0f4ff" }}>{filteredAndSortedLeads.length}</span> results
           </p>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 12, color: "#4a5670", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Sort by:</span>
-            <div style={{ position: "relative" }}>
-              <select
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value as LeadSortOrder)}
-                style={{
-                  ...inputStyle,
-                  padding: "6px 32px 6px 12px",
-                  appearance: "none",
-                  cursor: "pointer",
-                  fontWeight: 600,
-                  color: "#f0f4ff",
-                  border: "none",
-                  background: "rgba(255,255,255,0.03)",
-                }}
-              >
-                {SORT_OPTIONS.map((option) => (
-                  <option key={option} value={option} style={{ background: "#0f1520" }}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-              <ArrowUpDown style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, color: "#8b9ab8", pointerEvents: "none" }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            {/* Items Per Page selector */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 12, color: "#4a5670", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Per page:</span>
+              <div style={{ position: "relative" }}>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    const newSize = Number(e.target.value);
+                    setPageSize(newSize);
+                    setPage(1);
+                    updatePageInUrl(1, newSize);
+                  }}
+                  style={{
+                    ...inputStyle,
+                    padding: "6px 28px 6px 12px",
+                    appearance: "none",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    color: "#f0f4ff",
+                    border: "none",
+                    background: "rgba(255,255,255,0.03)",
+                  }}
+                >
+                  {PAGE_SIZE_OPTIONS.map((size) => (
+                    <option key={size} value={size} style={{ background: "#0f1520" }}>
+                      {size}
+                    </option>
+                  ))}
+                </select>
+                <ArrowUpDown style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, color: "#8b9ab8", pointerEvents: "none" }} />
+              </div>
+            </div>
+
+            {/* Sort dropdown */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 12, color: "#4a5670", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Sort by:</span>
+              <div style={{ position: "relative" }}>
+                <select
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value as LeadSortOrder)}
+                  style={{
+                    ...inputStyle,
+                    padding: "6px 32px 6px 12px",
+                    appearance: "none",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    color: "#f0f4ff",
+                    border: "none",
+                    background: "rgba(255,255,255,0.03)",
+                  }}
+                >
+                  {SORT_OPTIONS.map((option) => (
+                    <option key={option} value={option} style={{ background: "#0f1520" }}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                <ArrowUpDown style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, color: "#8b9ab8", pointerEvents: "none" }} />
+              </div>
             </div>
           </div>
         </div>
@@ -222,10 +271,7 @@ function InventoryContent() {
             <PaginationControls
               page={safePage}
               totalPages={totalPages}
-              onPageChange={(p) => {
-                setPage(p);
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }}
+              onPageChange={handlePageChange}
             />
           </div>
         )}
@@ -405,5 +451,20 @@ function PaginationControls({
         <ChevronRight style={{ width: 15, height: 15 }} />
       </button>
     </div>
+  );
+}
+
+export default function InventoryPage() {
+  return (
+    <Suspense
+      fallback={
+        <div style={{ display: "flex", height: "60vh", alignItems: "center", justifyContent: "center", color: "#8b9ab8", fontSize: 15, gap: 10 }}>
+          <div style={{ width: 20, height: 20, borderRadius: "50%", border: "2px solid rgba(255,122,26,0.2)", borderTopColor: "#ff7a1a", animation: "spin 0.8s linear infinite" }} />
+          Loading inventory…
+        </div>
+      }
+    >
+      <InventoryContent />
+    </Suspense>
   );
 }

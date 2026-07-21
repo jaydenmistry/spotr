@@ -148,6 +148,7 @@ export default function OpportunityCard({
             src={lead.photo_url}
             alt={getVehicleTitle(lead)}
             fill
+            unoptimized
             sizes="(max-width: 800px) 100vw, 210px"
             style={{ objectFit: "cover" }}
           />

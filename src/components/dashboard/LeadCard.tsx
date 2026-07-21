@@ -68,6 +68,7 @@ export default function LeadCard({
             src={lead.photo_url}
             alt={getVehicleTitle(lead)}
             fill
+            unoptimized
             sizes="300px"
             style={{ objectFit: "cover" }}
           />

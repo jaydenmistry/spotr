@@ -658,6 +658,7 @@ export default function LeadModal({
                     src={lead.photo_url}
                     alt={getVehicleTitle(lead)}
                     fill
+                    unoptimized
                     sizes="450px"
                     style={{ objectFit: "cover" }}
                   />
