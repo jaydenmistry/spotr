@@ -1,19 +1,30 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import TopStats from "@/components/dashboard/TopStats";
 import KanbanBoard from "@/components/dashboard/KanbanBoard";
+import NeedsAttentionList from "@/components/dashboard/NeedsAttentionList";
+import PipelineControls, {
+  EMPTY_PIPELINE_FILTERS,
+  hasActiveFilters,
+  type PipelineFilterState,
+} from "@/components/dashboard/PipelineControls";
+import OutcomeReasonDialog from "@/components/dashboard/OutcomeReasonDialog";
 import LeadModal from "@/components/dashboard/modal/LeadModal";
-import { CalendarClock, Database, MapPin, RefreshCw, Search, SlidersHorizontal } from "lucide-react";
+import { Database, LayoutGrid, ListChecks, MapPin, RefreshCw } from "lucide-react";
 import {
   filterLeads,
   getMakeFilterList,
-  MAKE_FILTER_OPTIONS,
   type LeadRecord,
-  type MovementFilter,
 } from "@/lib/vehicleAnalytics";
 import { FOLLOW_UP_TICK_MS, getFollowUpStatus } from "@/lib/followUp";
+import { isTerminalStage } from "@/lib/stages";
+import type { Recommendation } from "@/lib/opportunity";
+import { buildAssessmentMap } from "@/lib/pipeline";
+import { DEFAULT_BUY_BOX, type BuyBoxConfig } from "@/lib/buyBox";
+import type { FeedAction } from "@/lib/feedActions";
+import type { OutcomeReasonCode } from "@/lib/followUp";
 
 interface FetchResponse {
   success: boolean;
@@ -27,47 +38,39 @@ interface FetchResponse {
   source: string;
 }
 
-/* ─── Shared input style ─────────────────────────────────────── */
-const inputStyle: React.CSSProperties = {
-  background: "rgba(255,255,255,0.04)",
-  border: "1px solid rgba(255,255,255,0.1)",
-  borderRadius: 8,
-  padding: "8px 12px",
-  fontSize: 13,
-  color: "#f0f4ff",
-  outline: "none",
-  width: "100%",
-  boxSizing: "border-box",
-};
+type ViewMode = "attention" | "board";
 
 export default function DashboardPage() {
   const [leads, setLeads] = useState<LeadRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [buyBox, setBuyBox] = useState<BuyBoxConfig>(DEFAULT_BUY_BOX);
   const [fetchingLeads, setFetchingLeads] = useState(false);
   const [selectedLead, setSelectedLead] = useState<LeadRecord | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [makeFilter, setMakeFilter] = useState("All");
-  const [minPrice, setMinPrice] = useState("75000");
-  const [maxPrice, setMaxPrice] = useState("");
+
+  const [filters, setFilters] = useState<PipelineFilterState>(EMPTY_PIPELINE_FILTERS);
   const [zipCode, setZipCode] = useState("30043");
   const [radiusMiles, setRadiusMiles] = useState(100);
-  const [movementFilter, setMovementFilter] = useState<MovementFilter>("All");
-  const [followUpOnly, setFollowUpOnly] = useState(false);
   const [fetchLimit, setFetchLimit] = useState(1000);
   const [fetchMessage, setFetchMessage] = useState("");
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [busyLeadId, setBusyLeadId] = useState<string | null>(null);
+  const [pendingPass, setPendingPass] = useState<string | null>(null);
 
-  // One shared clock for every follow-up readout on this page. Without the
-  // tick, a lead that crosses its due time while the board sits open keeps
-  // rendering its stale status until some unrelated state change re-renders;
-  // without sharing it, the badge, the stat, and the filter could each read a
-  // different `new Date()` and disagree.
+  // View is user-owned once resolved: default is decided a single time after
+  // the first load, then never auto-changed by follow-up edits, filters, or
+  // stage moves.
+  const [viewMode, setViewMode] = useState<ViewMode | null>(null);
+  const viewResolved = useRef(false);
+
+  // One shared clock for every follow-up readout on this page (badge, stats,
+  // filter, needs-attention ordering), so they can never disagree.
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), FOLLOW_UP_TICK_MS);
     return () => clearInterval(timer);
   }, []);
 
-  const fetchLocalLeads = async () => {
+  const fetchLocalLeads = useCallback(async () => {
     try {
       const res = await axios.get<LeadRecord[]>("/api/leads");
       setLeads(res.data);
@@ -76,28 +79,28 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     let isActive = true;
-
-    const loadLeads = async () => {
+    const load = async () => {
       try {
-        const res = await axios.get<LeadRecord[]>("/api/leads");
-        if (isActive) {
-          setLeads(res.data);
-        }
+        const [leadsRes, buyBoxRes] = await Promise.all([
+          axios.get<LeadRecord[]>("/api/leads"),
+          axios
+            .get<{ config: BuyBoxConfig }>("/api/buybox")
+            .catch(() => ({ data: { config: DEFAULT_BUY_BOX } })),
+        ]);
+        if (!isActive) return;
+        setLeads(leadsRes.data);
+        setBuyBox(buyBoxRes.data.config ?? DEFAULT_BUY_BOX);
       } catch (error) {
         console.error("Failed to load leads", error);
       } finally {
-        if (isActive) {
-          setLoading(false);
-        }
+        if (isActive) setLoading(false);
       }
     };
-
-    void loadLeads();
-
+    void load();
     return () => {
       isActive = false;
     };
@@ -107,418 +110,361 @@ export default function DashboardPage() {
     setFetchingLeads(true);
     setFetchMessage("");
     try {
-      // Empty list = no make restriction; the API pulls all vehicles.
-      const makes = getMakeFilterList(makeFilter);
       const response = await axios.post<FetchResponse>("/api/leads/fetch", {
         limit: fetchLimit,
-        makes,
-        minPrice: Number(minPrice) || undefined,
-        maxPrice: Number(maxPrice) || undefined,
+        makes: [],
         zipCode,
         radiusMiles,
       });
-      setFetchMessage(`${response.data.message} from ${response.data.source} near ${response.data.zipCode} within ${response.data.radiusMiles} mi.`);
+      setFetchMessage(
+        `${response.data.message} from ${response.data.source} near ${response.data.zipCode} within ${response.data.radiusMiles} mi.`
+      );
       await fetchLocalLeads();
     } catch (error) {
       console.error("Failed to fetch new leads from API", error);
-      alert("Failed to fetch leads. Please try again.");
+      setFetchMessage("Failed to fetch leads. Please try again.");
     } finally {
       setFetchingLeads(false);
     }
   };
 
-  const filteredLeads = useMemo(() => {
-    return filterLeads(leads, {
-      searchTerm,
-      makeFilter: getMakeFilterList(makeFilter),
-      minPrice,
-      maxPrice,
-      maxDistance: radiusMiles.toString(),
-      movementFilter,
-    });
-  }, [leads, searchTerm, makeFilter, minPrice, maxPrice, radiusMiles, movementFilter]);
-
-  // Same shared status helper and same `now` TopStats and LeadCard use, so the
-  // "Needs Follow-up" count always equals what this filter shows.
-  const visibleLeads = useMemo(
-    () =>
-      followUpOnly
-        ? filteredLeads.filter((lead) => getFollowUpStatus(lead, now) === "overdue")
-        : filteredLeads,
-    [filteredLeads, followUpOnly, now]
+  // Recommendation + score per lead id, computed in ONE assessment pass and
+  // recomputed only when leads or the buy box change. Shared by the board
+  // chips, the needs-attention list (both its score-sort and card chips), and
+  // the recommendation filter, so nothing drifts and nothing reassesses on the
+  // 60s tick.
+  const assessmentMap = useMemo(
+    () => buildAssessmentMap(leads, buyBox, now),
+    // now intentionally excluded: scoring isn't meaningfully time-sensitive
+    // (day-level listing age), and re-running the assessment every tick would
+    // be wasteful.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [leads, buyBox]
+  );
+  const recommendationOf = useCallback(
+    (lead: LeadRecord): Recommendation | undefined => assessmentMap.get(lead.id)?.recommendation,
+    [assessmentMap]
+  );
+  const scoreOf = useCallback(
+    (lead: LeadRecord) => assessmentMap.get(lead.id)?.score ?? 0,
+    [assessmentMap]
   );
 
-  if (loading) {
+  // Non-view filters applied to the full lead set. Stats and both views all
+  // read from this, so header counts describe the same set the views render.
+  const filteredLeads = useMemo(() => {
+    const base = filterLeads(leads, {
+      searchTerm: filters.searchTerm,
+      makeFilter: getMakeFilterList(filters.makeFilter),
+      minPrice: filters.minPrice,
+      maxPrice: filters.maxPrice,
+      // Distance is NOT filtered here: the pipeline shows every eligible lead
+      // regardless of how far it is. The pull radius is an ingestion setting,
+      // never a hidden view filter that silently drops far-away leads.
+      maxDistance: "",
+      movementFilter: filters.movementFilter,
+    });
+    return base.filter((lead) => {
+      if (filters.stage !== "All" && lead.stage !== filters.stage) return false;
+      if (filters.recommendation !== "All" && assessmentMap.get(lead.id)?.recommendation !== filters.recommendation) {
+        return false;
+      }
+      if (filters.watchedOnly && !lead.watchedAt) return false;
+      if (filters.followUp !== "all") {
+        // Follow-up filters intersect with everything else (never replace).
+        if (getFollowUpStatus(lead, now) !== filters.followUp) return false;
+      }
+      return true;
+    });
+  }, [leads, filters, assessmentMap, now]);
+
+  // Count of active leads whose follow-up is overdue — drives the control-bar
+  // badge. Independent of whether the follow-up filter is currently on.
+  const overdueActiveCount = useMemo(
+    () =>
+      leads.filter(
+        (l) => !isTerminalStage(l.stage) && !l.passedAt && getFollowUpStatus(l, now) === "overdue"
+      ).length,
+    [leads, now]
+  );
+
+  // Resolve the default view once, after the first real load: Needs Attention
+  // only if something is overdue or due soon among active leads.
+  useEffect(() => {
+    if (loading || viewResolved.current) return;
+    viewResolved.current = true;
+    const hasAttention = leads.some((l) => {
+      if (isTerminalStage(l.stage) || l.passedAt) return false;
+      const s = getFollowUpStatus(l, now);
+      return s === "overdue" || s === "due-soon";
+    });
+    setViewMode(hasAttention ? "attention" : "board");
+    // Only the initial resolution matters; deps kept minimal on purpose.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, leads]);
+
+  const updateFilters = useCallback((next: Partial<PipelineFilterState>) => {
+    setFilters((prev) => ({ ...prev, ...next }));
+  }, []);
+  const clearAllFilters = useCallback(() => setFilters(EMPTY_PIPELINE_FILTERS), []);
+
+  const applyLeadUpdate = useCallback((updated: LeadRecord) => {
+    setLeads((current) => current.map((l) => (l.id === updated.id ? { ...l, ...updated } : l)));
+    setSelectedLead((prev) => (prev && prev.id === updated.id ? { ...prev, ...updated } : prev));
+  }, []);
+
+  // Watch / Assign / Pass / unpass from the dossier — same validated flow the
+  // feed uses. Pass is intercepted for a reason; nothing bypasses it.
+  const performAction = useCallback(
+    async (leadId: string, action: FeedAction, extra?: { reason: OutcomeReasonCode; note: string | null }) => {
+      setBusyLeadId(leadId);
+      setActionError(null);
+      try {
+        const res = await axios.post<LeadRecord>("/api/leads/action", {
+          leadId,
+          action,
+          ...(extra ? { reason: extra.reason, note: extra.note ?? undefined } : {}),
+        });
+        applyLeadUpdate(res.data);
+      } catch (error) {
+        console.error("Pipeline action failed", error);
+        setActionError(
+          axios.isAxiosError(error) && error.response?.status === 401
+            ? "Your session has expired. Please sign in again."
+            : axios.isAxiosError(error) && typeof error.response?.data?.error === "string"
+            ? error.response.data.error
+            : "That action didn't save. Please try again."
+        );
+      } finally {
+        setBusyLeadId(null);
+      }
+    },
+    [applyLeadUpdate]
+  );
+
+  const handleAction = useCallback(
+    (leadId: string, action: FeedAction) => {
+      if (action === "pass") {
+        setPendingPass(leadId);
+        return;
+      }
+      void performAction(leadId, action);
+    },
+    [performAction]
+  );
+
+  // Mark done from a Needs Attention row — completes the active next action.
+  const completeNextAction = useCallback(
+    async (lead: LeadRecord) => {
+      setBusyLeadId(lead.id);
+      setActionError(null);
+      try {
+        const res = await axios.post<{ lead: LeadRecord }>("/api/leads/followup", {
+          leadId: lead.id,
+          op: "complete-next-action",
+        });
+        applyLeadUpdate(res.data.lead);
+      } catch (error) {
+        console.error("Complete next action failed", error);
+        setActionError("Couldn't mark that done. Please try again.");
+      } finally {
+        setBusyLeadId(null);
+      }
+    },
+    [applyLeadUpdate]
+  );
+
+  if (loading || viewMode === null) {
     return (
-      <div
-        style={{
-          display: "flex",
-          height: "60vh",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "#8b9ab8",
-          fontSize: 15,
-          gap: 10,
-        }}
-      >
-        <div
-          style={{
-            width: 20,
-            height: 20,
-            borderRadius: "50%",
-            border: "2px solid rgba(255,122,26,0.2)",
-            borderTopColor: "#ff7a1a",
-            animation: "spin 0.8s linear infinite",
-          }}
-        />
-        Loading dashboard…
+      <div style={{ display: "flex", height: "60vh", alignItems: "center", justifyContent: "center", color: "#8b9ab8", fontSize: 15, gap: 10 }}>
+        <div style={{ width: 20, height: 20, borderRadius: "50%", border: "2px solid rgba(255,122,26,0.2)", borderTopColor: "#ff7a1a", animation: "spin 0.8s linear infinite" }} />
+        Loading pipeline…
       </div>
     );
   }
 
+  const filtersActive = hasActiveFilters(filters);
+  const priceFilterActive = filters.minPrice !== "" || filters.maxPrice !== "";
+
   return (
-    <div style={{ padding: "32px 28px" }}>
-      {/* Header row */}
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          gap: 16,
-          marginBottom: 28,
-        }}
-      >
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "calc(100vh - 40px)", padding: "28px 28px 20px" }}>
+      {/* Pass requires a standardized reason */}
+      {pendingPass && (
+        <OutcomeReasonDialog
+          title="Pass on this vehicle"
+          description="A standardized reason keeps the pipeline honest about why opportunities were rejected."
+          confirmLabel="Pass"
+          busy={busyLeadId === pendingPass}
+          onCancel={() => setPendingPass(null)}
+          onConfirm={(reason, note) => {
+            const id = pendingPass;
+            void performAction(id, "pass", { reason, note }).finally(() => setPendingPass(null));
+          }}
+        />
+      )}
+
+      {/* Header */}
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 20 }}>
         <div>
-          <h1
-            style={{
-              fontSize: 28,
-              fontWeight: 900,
-              letterSpacing: "-0.02em",
-              color: "#f0f4ff",
-              marginBottom: 4,
-            }}
-          >
+          <h1 style={{ fontSize: 26, fontWeight: 900, letterSpacing: "-0.02em", color: "#f0f4ff", marginBottom: 4 }}>
             Pipeline
           </h1>
           <p style={{ fontSize: 13, color: "#8b9ab8" }}>
-            Private party acquisition leads with heuristic scoring and value movement filters.
+            Your acquisition command center — what needs action, what&apos;s worth pursuing, and what happened last.
           </p>
         </div>
 
-        {/* Fetch controls */}
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-          <label
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 7,
-              padding: "8px 12px",
-              borderRadius: 10,
-              background: "var(--bg-card)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              fontSize: 13,
-              fontWeight: 600,
-              color: "#8b9ab8",
-              cursor: "pointer",
-            }}
-          >
-            <MapPin style={{ width: 14, height: 14, color: "#ff7a1a", flexShrink: 0 }} />
+          <label style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 12px", borderRadius: 10, background: "var(--bg-card)", border: "1px solid rgba(255,255,255,0.08)", fontSize: 13, fontWeight: 600, color: "#8b9ab8" }}>
+            <MapPin style={{ width: 14, height: 14, color: "#ff7a1a", flexShrink: 0 }} aria-hidden="true" />
             ZIP
             <input
               type="text"
               inputMode="numeric"
               maxLength={5}
+              aria-label="ZIP code"
               value={zipCode}
               onChange={(e) => setZipCode(e.target.value.replace(/\D/g, "").slice(0, 5))}
-              style={{
-                width: 56,
-                background: "rgba(255,255,255,0.06)",
-                border: "1px solid rgba(255,255,255,0.1)",
-                borderRadius: 6,
-                padding: "4px 8px",
-                fontSize: 13,
-                color: "#f0f4ff",
-                outline: "none",
-              }}
+              style={{ width: 56, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, padding: "4px 8px", fontSize: 13, color: "#f0f4ff", outline: "none" }}
               placeholder="30043"
             />
           </label>
-
-          <label
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 7,
-              padding: "8px 12px",
-              borderRadius: 10,
-              background: "var(--bg-card)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              fontSize: 13,
-              fontWeight: 600,
-              color: "#8b9ab8",
-              cursor: "pointer",
-            }}
-          >
+          <label style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 12px", borderRadius: 10, background: "var(--bg-card)", border: "1px solid rgba(255,255,255,0.08)", fontSize: 13, fontWeight: 600, color: "#8b9ab8" }}>
+            {/* Ingestion radius for Pull Listings only — it does NOT filter the
+                board/attention views (every eligible lead is always shown). */}
             Radius
             <input
               type="number"
               min={10}
               max={100}
               step={10}
+              aria-label="Pull radius in miles"
               value={radiusMiles}
               onChange={(e) => setRadiusMiles(Math.max(10, Math.min(100, Number(e.target.value) || 100)))}
-              style={{
-                width: 52,
-                background: "rgba(255,255,255,0.06)",
-                border: "1px solid rgba(255,255,255,0.1)",
-                borderRadius: 6,
-                padding: "4px 8px",
-                fontSize: 13,
-                color: "#f0f4ff",
-                outline: "none",
-              }}
+              style={{ width: 52, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, padding: "4px 8px", fontSize: 13, color: "#f0f4ff", outline: "none" }}
             />
             mi
           </label>
-
-          <label
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 7,
-              padding: "8px 12px",
-              borderRadius: 10,
-              background: "var(--bg-card)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              fontSize: 13,
-              fontWeight: 600,
-              color: "#8b9ab8",
-              cursor: "pointer",
-            }}
-          >
-            <Database style={{ width: 14, height: 14, color: "#ff7a1a", flexShrink: 0 }} />
+          <label style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 12px", borderRadius: 10, background: "var(--bg-card)", border: "1px solid rgba(255,255,255,0.08)", fontSize: 13, fontWeight: 600, color: "#8b9ab8" }}>
+            <Database style={{ width: 14, height: 14, color: "#ff7a1a", flexShrink: 0 }} aria-hidden="true" />
             Pull
             <input
               type="number"
               min={100}
               max={1500}
               step={100}
+              aria-label="Number of listings to pull"
               value={fetchLimit}
               onChange={(e) => setFetchLimit(Math.max(100, Math.min(1500, Number(e.target.value) || 1000)))}
-              style={{
-                width: 60,
-                background: "rgba(255,255,255,0.06)",
-                border: "1px solid rgba(255,255,255,0.1)",
-                borderRadius: 6,
-                padding: "4px 8px",
-                fontSize: 13,
-                color: "#f0f4ff",
-                outline: "none",
-              }}
+              style={{ width: 60, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, padding: "4px 8px", fontSize: 13, color: "#f0f4ff", outline: "none" }}
             />
           </label>
-
           <button
             onClick={handleFindNewLeads}
             disabled={fetchingLeads}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 7,
-              padding: "9px 18px",
-              borderRadius: 10,
-              border: "none",
-              cursor: fetchingLeads ? "not-allowed" : "pointer",
-              fontSize: 13,
-              fontWeight: 700,
-              color: "#fff",
-              background: fetchingLeads ? "rgba(255,122,26,0.4)" : "linear-gradient(135deg, #ff7a1a, #f59e0b)",
-              boxShadow: fetchingLeads ? "none" : "0 4px 16px rgba(255,122,26,0.35)",
-              transition: "opacity 0.15s",
-            }}
+            style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 18px", borderRadius: 10, border: "none", cursor: fetchingLeads ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 700, color: "#fff", background: fetchingLeads ? "rgba(255,122,26,0.4)" : "linear-gradient(135deg, #ff7a1a, #f59e0b)", boxShadow: fetchingLeads ? "none" : "0 4px 16px rgba(255,122,26,0.35)" }}
           >
-            <RefreshCw
-              style={{
-                width: 14,
-                height: 14,
-                animation: fetchingLeads ? "spin 0.8s linear infinite" : "none",
-              }}
-            />
+            <RefreshCw style={{ width: 14, height: 14, animation: fetchingLeads ? "spin 0.8s linear infinite" : "none" }} aria-hidden="true" />
             Pull Listings
           </button>
         </div>
       </div>
 
-      {/* Filter bar */}
-      <div
-        style={{
-          background: "var(--bg-card)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: 14,
-          padding: "18px 20px",
-          marginBottom: 24,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            marginBottom: 14,
-            fontSize: 13,
-            fontWeight: 700,
-            color: "#f0f4ff",
-          }}
-        >
-          <SlidersHorizontal style={{ width: 15, height: 15, color: "#ff7a1a" }} />
-          Acquisition Filters
-        </div>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-            gap: 10,
-          }}
-        >
-          {/* Search */}
-          <div style={{ position: "relative", gridColumn: "span 2" }}>
-            <Search
-              style={{
-                position: "absolute",
-                left: 12,
-                top: "50%",
-                transform: "translateY(-50%)",
-                width: 14,
-                height: 14,
-                color: "#4a5670",
-                pointerEvents: "none",
-              }}
-            />
-            <input
-              type="text"
-              style={{ ...inputStyle, paddingLeft: 34 }}
-              placeholder="Search Lamborghini, Ferrari, Porsche, VIN…"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
+      <TopStats
+        leads={filteredLeads}
+        now={now}
+        followUp={filters.followUp}
+        watchedOnly={filters.watchedOnly}
+        onToggleFollowUp={(next) => updateFilters({ followUp: next })}
+        onToggleWatched={(next) => updateFilters({ watchedOnly: next })}
+      />
 
-          <select
-            value={makeFilter}
-            onChange={(e) => setMakeFilter(e.target.value)}
-            style={{ ...inputStyle, cursor: "pointer" }}
-          >
-            {MAKE_FILTER_OPTIONS.map((make) => (
-              <option key={make} value={make} style={{ background: "#0f1520" }}>
-                {make}
-              </option>
-            ))}
-          </select>
+      <PipelineControls
+        filters={filters}
+        onChange={updateFilters}
+        onClearAll={clearAllFilters}
+        overdueCount={overdueActiveCount}
+      />
 
-          <input
-            type="number"
-            style={inputStyle}
-            placeholder="Min price"
-            value={minPrice}
-            onChange={(e) => setMinPrice(e.target.value)}
-          />
-
-          <input
-            type="number"
-            style={inputStyle}
-            placeholder="Max price"
-            value={maxPrice}
-            onChange={(e) => setMaxPrice(e.target.value)}
-          />
-
-          <select
-            value={movementFilter}
-            onChange={(e) => setMovementFilter(e.target.value as MovementFilter)}
-            style={{ ...inputStyle, cursor: "pointer" }}
-          >
-            <option style={{ background: "#0f1520" }}>All</option>
-            <option style={{ background: "#0f1520" }}>Appreciating</option>
-            <option style={{ background: "#0f1520" }}>Depreciating</option>
-          </select>
+      {/* View toggle + result summary */}
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
+        <div role="tablist" aria-label="Pipeline view" style={{ display: "inline-flex", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.03)", padding: 3, gap: 3 }}>
+          {([
+            { key: "attention", label: "Needs attention", icon: ListChecks },
+            { key: "board", label: "Board", icon: LayoutGrid },
+          ] as const).map((tab) => {
+            const active = viewMode === tab.key;
+            return (
+              <button
+                key={tab.key}
+                role="tab"
+                aria-selected={active}
+                onClick={() => setViewMode(tab.key)}
+                style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none", background: active ? "rgba(255,122,26,0.15)" : "transparent", color: active ? "#ff9147" : "#8b9ab8" }}
+              >
+                <tab.icon style={{ width: 14, height: 14 }} aria-hidden="true" />
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
 
-        <div
-          style={{
-            marginTop: 12,
-            display: "flex",
-            flexWrap: "wrap",
-            alignItems: "center",
-            gap: 6,
-            fontSize: 12,
-            color: "#4a5670",
-          }}
-        >
-          <span style={{ fontWeight: 700, color: "#ff9147" }}>{visibleLeads.length}</span>
-          <span>of {leads.length} listings shown</span>
-          <span style={{ color: "#1e2a3a" }}>·</span>
-          <span>ZIP {zipCode || "30043"} · {radiusMiles} mi radius</span>
-          <span style={{ color: "#1e2a3a" }}>·</span>
-          <button
-            onClick={() => setFollowUpOnly((value) => !value)}
-            aria-pressed={followUpOnly}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 5,
-              padding: "4px 10px",
-              borderRadius: 7,
-              fontSize: 12,
-              fontWeight: 700,
-              cursor: "pointer",
-              border: `1px solid ${followUpOnly ? "rgba(248,113,113,0.5)" : "rgba(255,255,255,0.12)"}`,
-              background: followUpOnly ? "rgba(248,113,113,0.12)" : "rgba(255,255,255,0.04)",
-              color: followUpOnly ? "#f87171" : "#8b9ab8",
-            }}
-          >
-            <CalendarClock style={{ width: 12, height: 12 }} aria-hidden="true" />
-            Needs follow-up only
-          </button>
+        <div aria-live="polite" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, fontSize: 12, color: "#4a5670" }}>
+          <span style={{ fontWeight: 700, color: "#ff9147" }}>{filteredLeads.length}</span>
+          <span>of {leads.length} shown</span>
+          {filtersActive && (
+            <>
+              <span style={{ color: "#1e2a3a" }}>·</span>
+              <span style={{ color: "#fbbf24", fontWeight: 700 }}>
+                filtered{priceFilterActive ? " (price filter active)" : ""}
+              </span>
+            </>
+          )}
         </div>
-
-        {fetchMessage && (
-          <div
-            style={{
-              marginTop: 10,
-              padding: "10px 14px",
-              borderRadius: 10,
-              background: "rgba(255,122,26,0.1)",
-              border: "1px solid rgba(255,122,26,0.2)",
-              fontSize: 13,
-              fontWeight: 600,
-              color: "#ff9147",
-            }}
-          >
-            {fetchMessage}
-          </div>
-        )}
       </div>
 
-      <TopStats leads={filteredLeads} now={now} />
+      {actionError && (
+        <div role="alert" style={{ marginBottom: 14, padding: "10px 14px", borderRadius: 10, background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.3)", fontSize: 13, fontWeight: 600, color: "#f87171" }}>
+          {actionError}
+        </div>
+      )}
 
-      <KanbanBoard
-        leads={visibleLeads}
-        now={now}
-        onLeadClick={(lead) => setSelectedLead(lead)}
-        onLeadUpdate={(updatedLeads) => {
-          const updatedById = new Map(updatedLeads.map((lead) => [lead.id, lead]));
-          setLeads((currentLeads) => currentLeads.map((lead) => updatedById.get(lead.id) || lead));
-        }}
-      />
+      {fetchMessage && (
+        <div style={{ marginBottom: 14, padding: "10px 14px", borderRadius: 10, background: "rgba(255,122,26,0.1)", border: "1px solid rgba(255,122,26,0.2)", fontSize: 13, fontWeight: 600, color: "#ff9147" }}>
+          {fetchMessage}
+        </div>
+      )}
+
+      {viewMode === "attention" ? (
+        <NeedsAttentionList
+          leads={filteredLeads}
+          now={now}
+          recommendationOf={recommendationOf}
+          scoreOf={scoreOf}
+          onOpen={(lead) => setSelectedLead(lead)}
+          onCompleteNextAction={completeNextAction}
+          busyLeadId={busyLeadId}
+        />
+      ) : (
+        <KanbanBoard
+          leads={filteredLeads}
+          now={now}
+          recommendationOf={recommendationOf}
+          onLeadClick={(lead) => setSelectedLead(lead)}
+          onLeadUpdate={(updatedLeads) => {
+            const updatedById = new Map(updatedLeads.map((lead) => [lead.id, lead]));
+            setLeads((currentLeads) => currentLeads.map((lead) => updatedById.get(lead.id) || lead));
+          }}
+        />
+      )}
 
       {selectedLead && (
         <LeadModal
           lead={selectedLead}
           onClose={() => setSelectedLead(null)}
-          onLeadUpdated={(updated) => {
-            setLeads((current) => current.map((l) => (l.id === updated.id ? { ...l, ...updated } : l)));
-            setSelectedLead((prev) => (prev && prev.id === updated.id ? { ...prev, ...updated } : prev));
-          }}
+          onAction={(leadId, action) => handleAction(leadId, action)}
+          actionBusy={busyLeadId === selectedLead.id}
+          onLeadUpdated={applyLeadUpdate}
         />
       )}
     </div>

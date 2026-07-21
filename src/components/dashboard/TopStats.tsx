@@ -1,134 +1,159 @@
 "use client";
 
-import { CalendarClock, Car, DollarSign, Eye, TrendingUp } from "lucide-react";
-import { formatSignedCurrency, getVehicleAnalytics, type LeadRecord } from "@/lib/vehicleAnalytics";
+import { CalendarClock, Clock, Eye, Layers } from "lucide-react";
+import type { LeadRecord } from "@/lib/vehicleAnalytics";
 import { isTerminalStage } from "@/lib/stages";
 import { getFollowUpStatus } from "@/lib/followUp";
+import type { FollowUpFilter } from "./PipelineControls";
 
+/**
+ * Operational header for the Pipeline. Four action-focused stats — Active
+ * pipeline, Overdue, Due soon, Watching — computed from the caller's already
+ * non-view-filtered leads, so the numbers describe the same set the board and
+ * Needs Attention list render. Overdue / Due soon / Watching double as filter
+ * toggles; the counts never change based on which view is selected.
+ */
 export default function TopStats({
   leads,
   now,
+  followUp,
+  watchedOnly,
+  onToggleFollowUp,
+  onToggleWatched,
 }: {
   leads: LeadRecord[];
-  /** Shared clock from the page, so this count can't disagree with the
-   *  board's overdue badges or the needs-follow-up filter. */
   now?: Date;
+  followUp: FollowUpFilter;
+  watchedOnly: boolean;
+  onToggleFollowUp: (next: FollowUpFilter) => void;
+  onToggleWatched: (next: boolean) => void;
 }) {
-  const acquiredLeads = leads.filter((l) => l.stage === "Acquired");
-  const acquiredValue = acquiredLeads.reduce((sum, l) => sum + (l.price || 0), 0);
+  const activeLeads = leads.filter((l) => !isTerminalStage(l.stage) && !l.passedAt);
 
-  const pipelineLeads = leads.filter((l) => !isTerminalStage(l.stage));
-  const pipelineValue = pipelineLeads.reduce((sum, l) => sum + (l.price || 0), 0);
-  const projectedMovement = pipelineLeads.reduce(
-    (sum, lead) => sum + getVehicleAnalytics(lead).projectedChangeDollars,
-    0
-  );
-
-  const oneWeekAgo = new Date();
-  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-  const newThisWeek = leads.filter((l) => new Date(l.createdAt) > oneWeekAgo).length;
+  let overdue = 0;
+  let dueSoon = 0;
+  for (const lead of activeLeads) {
+    const status = getFollowUpStatus(lead, now);
+    if (status === "overdue") overdue += 1;
+    else if (status === "due-soon") dueSoon += 1;
+  }
 
   // Same definition as the feed's Watching tab: shortlisted, not passed,
   // still an open opportunity.
-  const watchingCount = leads.filter(
-    (l) => l.watchedAt && !l.passedAt && !isTerminalStage(l.stage)
-  ).length;
+  const watching = activeLeads.filter((l) => l.watchedAt).length;
 
-  // Shared helper — must stay in lockstep with the pipeline's
-  // "Needs follow-up only" filter so the count matches the filtered view.
-  const needsFollowUpCount = leads.filter((l) => getFollowUpStatus(l, now) === "overdue").length;
-
-  const stats = [
+  const stats: Array<{
+    key: string;
+    name: string;
+    value: number;
+    icon: typeof Layers;
+    color: string;
+    subtext: string;
+    pressed?: boolean;
+    onClick?: () => void;
+  }> = [
     {
-      name: "Acquired Value",
-      value: new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(acquiredValue),
-      icon: DollarSign,
-      subtext: `${acquiredLeads.length} vehicles acquired`,
-      color: "#34d399",
-    },
-    {
-      name: "Pipeline Value",
-      value: new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(pipelineValue),
-      icon: TrendingUp,
-      subtext: `${pipelineLeads.length} active leads`,
-      color: "#ff9147",
-    },
-    {
-      name: "New This Week",
-      value: newThisWeek.toString(),
-      icon: Car,
-      subtext: "Fresh leads imported",
+      key: "active",
+      name: "Active pipeline",
+      value: activeLeads.length,
+      icon: Layers,
       color: "#60a5fa",
+      subtext: "Open, non-terminal leads",
     },
     {
-      name: "Watching",
-      value: watchingCount.toString(),
-      icon: Eye,
-      subtext: "Feed shortlist · matches current filters",
-      color: "#ff9147",
-    },
-    {
-      name: "Needs Follow-up",
-      value: needsFollowUpCount.toString(),
-      icon: CalendarClock,
-      subtext: "Overdue next actions · matches current filters",
+      key: "overdue",
+      name: "Overdue",
+      value: overdue,
+      icon: Clock,
       color: "#f87171",
+      subtext: overdue ? "Follow up now" : "Nothing overdue",
+      pressed: followUp === "overdue",
+      onClick: () => onToggleFollowUp(followUp === "overdue" ? "all" : "overdue"),
     },
     {
-      name: "Projected Movement",
-      value: formatSignedCurrency(projectedMovement),
-      icon: TrendingUp,
-      subtext: "12-month value outlook",
-      color: "#a78bfa",
+      key: "due-soon",
+      name: "Due soon",
+      value: dueSoon,
+      icon: CalendarClock,
+      color: "#fbbf24",
+      subtext: "Due within 48h",
+      pressed: followUp === "due-soon",
+      onClick: () => onToggleFollowUp(followUp === "due-soon" ? "all" : "due-soon"),
+    },
+    {
+      key: "watching",
+      name: "Watching",
+      value: watching,
+      icon: Eye,
+      color: "#ff9147",
+      subtext: "Shortlisted opportunities",
+      pressed: watchedOnly,
+      onClick: () => onToggleWatched(!watchedOnly),
     },
   ];
 
   return (
-    // Flex-wrap (not grid auto-fit) so a trailing card stretches to fill its
-    // row instead of sitting beside empty tracks at mid laptop widths.
-    <div
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        gap: 14,
-        marginBottom: 24,
-      }}
-    >
-      {stats.map((item) => (
-        <div
-          key={item.name}
-          style={{
-            flex: "1 1 200px",
-            background: "var(--bg-card)",
-            border: "1px solid rgba(255,255,255,0.08)",
-            borderRadius: 14,
-            padding: "18px 20px",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-            <div
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: 10,
-                display: "grid",
-                placeItems: "center",
-                flexShrink: 0,
-                background: `${item.color}1a`,
-              }}
-            >
-              <item.icon style={{ width: 18, height: 18, color: item.color }} aria-hidden="true" />
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginBottom: 20 }}>
+      {stats.map((item) => {
+        const interactive = Boolean(item.onClick);
+        const content = (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+              <div
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 9,
+                  display: "grid",
+                  placeItems: "center",
+                  flexShrink: 0,
+                  background: `${item.color}1a`,
+                }}
+              >
+                <item.icon style={{ width: 17, height: 17, color: item.color }} aria-hidden="true" />
+              </div>
+              <p style={{ fontSize: 11.5, fontWeight: 700, color: "#8b9ab8", letterSpacing: "0.03em", textTransform: "uppercase" }}>
+                {item.name}
+              </p>
             </div>
-            <p style={{ fontSize: 12, fontWeight: 700, color: "#8b9ab8", letterSpacing: "0.04em", textTransform: "uppercase" }}>
-              {item.name}
+            <p style={{ fontSize: 26, fontWeight: 900, color: "#f0f4ff", letterSpacing: "-0.02em", marginBottom: 3 }}>
+              {item.value}
             </p>
-          </div>
-          <p style={{ fontSize: 24, fontWeight: 900, color: "#f0f4ff", letterSpacing: "-0.02em", marginBottom: 4 }}>
-            {item.value}
-          </p>
-          <p style={{ fontSize: 12, color: "#4a5670" }}>{item.subtext}</p>
-        </div>
-      ))}
+            <p style={{ fontSize: 11.5, color: "#4a5670" }}>{item.subtext}</p>
+          </>
+        );
+
+        const baseStyle: React.CSSProperties = {
+          flex: "1 1 200px",
+          textAlign: "left",
+          background: "var(--bg-card)",
+          borderRadius: 14,
+          padding: "16px 18px",
+          border: `1px solid ${item.pressed ? `${item.color}80` : "rgba(255,255,255,0.08)"}`,
+          boxShadow: item.pressed ? `inset 0 0 0 1px ${item.color}40` : "none",
+        };
+
+        if (!interactive) {
+          return (
+            <div key={item.key} style={baseStyle}>
+              {content}
+            </div>
+          );
+        }
+
+        return (
+          <button
+            key={item.key}
+            type="button"
+            aria-pressed={item.pressed}
+            aria-label={`${item.name}: ${item.value}. ${item.pressed ? "Filter active" : "Click to filter"}`}
+            onClick={item.onClick}
+            style={{ ...baseStyle, cursor: "pointer", transition: "border-color 0.15s" }}
+          >
+            {content}
+          </button>
+        );
+      })}
     </div>
   );
 }

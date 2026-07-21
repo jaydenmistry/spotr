@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import axios from "axios";
 import LeadCard from "@/components/dashboard/LeadCard";
 import LeadModal from "@/components/dashboard/modal/LeadModal";
@@ -30,7 +31,14 @@ const inputStyle: React.CSSProperties = {
   transition: "border-color 0.15s",
 };
 
-export default function InventoryPage() {
+function InventoryContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const pageParam = searchParams.get("page");
+  const initialPage = pageParam ? Math.max(1, parseInt(pageParam, 10) || 1) : 1;
+
   const [leads, setLeads] = useState<LeadRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedLead, setSelectedLead] = useState<LeadRecord | null>(null);
@@ -45,7 +53,31 @@ export default function InventoryPage() {
   
   // Sort and pagination
   const [sortOrder, setSortOrder] = useState<LeadSortOrder>("Distance (Nearest)");
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(initialPage);
+
+  useEffect(() => {
+    const p = searchParams.get("page");
+    const parsed = p ? Math.max(1, parseInt(p, 10) || 1) : 1;
+    setPage(parsed);
+  }, [searchParams]);
+
+  const updatePageInUrl = (newPage: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (newPage > 1) {
+      params.set("page", newPage.toString());
+    } else {
+      params.delete("page");
+    }
+    const queryString = params.toString();
+    const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
+    router.replace(newUrl, { scroll: false });
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    updatePageInUrl(newPage);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   useEffect(() => {
     const fetchLeads = async () => {
@@ -68,6 +100,7 @@ export default function InventoryPage() {
   if (filterKey !== prevFilterKey) {
     setPrevFilterKey(filterKey);
     setPage(1);
+    updatePageInUrl(1);
   }
 
   const filteredAndSortedLeads = useMemo(() => {
@@ -288,7 +321,7 @@ export default function InventoryPage() {
               {makeCounts.map(({ make, count }) => {
                 const isSelected = selectedMakes.includes(make);
                 return (
-                  <label key={make} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+                  <div key={make} onClick={() => toggleMake(make)} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
                     <div style={{ 
                       width: 16, height: 16, borderRadius: 4, 
                       border: `1px solid ${isSelected ? "#ff7a1a" : "rgba(255,255,255,0.15)"}`,
@@ -300,7 +333,7 @@ export default function InventoryPage() {
                     </div>
                     <span style={{ fontSize: 13, color: isSelected ? "#f0f4ff" : "#8b9ab8", flex: 1, fontWeight: isSelected ? 600 : 400 }}>{make}</span>
                     <span style={{ fontSize: 11, color: "#4a5670" }}>{count}</span>
-                  </label>
+                  </div>
                 );
               })}
             </div>

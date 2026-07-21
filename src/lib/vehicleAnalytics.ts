@@ -39,6 +39,9 @@ export interface LeadRecord {
   nextActionCompletedAt?: string | null;
   outcomeReason?: string | null;
   outcomeNote?: string | null;
+  // Newest activity summary, attached by GET /api/leads in one bounded query.
+  // Server-built and PII-free; optional because most surfaces don't request it.
+  lastActivity?: { type: string; summary: string; createdAt: string } | null;
   createdAt: string;
   updatedAt?: string;
 }

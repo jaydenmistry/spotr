@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
-import LeadCard from "./LeadCard";
+import { Clock } from "lucide-react";
+import BoardLeadCard from "./BoardLeadCard";
 import OutcomeReasonDialog from "./OutcomeReasonDialog";
 import axios from "axios";
 import type { LeadRecord } from "@/lib/vehicleAnalytics";
-import type { OutcomeReasonCode } from "@/lib/followUp";
+import { getFollowUpStatus, type OutcomeReasonCode } from "@/lib/followUp";
+import type { Recommendation } from "@/lib/opportunity";
 
 import { STAGES } from "@/lib/stages";
 
@@ -24,12 +26,15 @@ export default function KanbanBoard({
   onLeadClick,
   onLeadUpdate,
   now,
+  recommendationOf,
 }: {
   leads: LeadRecord[];
   onLeadClick: (lead: LeadRecord) => void;
   onLeadUpdate: (updatedLeads: LeadRecord[]) => void;
   /** Shared clock, forwarded to each card's follow-up status. */
   now?: Date;
+  /** Recommendation per lead id, computed once by the page. */
+  recommendationOf?: (lead: LeadRecord) => Recommendation | undefined;
 }) {
   const [mounted, setMounted] = useState(false);
   // Drag-to-Lost is held here until the buyer picks a standardized reason;
@@ -103,7 +108,7 @@ export default function KanbanBoard({
   if (!mounted) return null;
 
   return (
-    <>
+    <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
       {pendingLost && (
         <OutcomeReasonDialog
           title="Mark lead as Lost"
@@ -160,7 +165,8 @@ export default function KanbanBoard({
       <div
         style={{
           display: "flex",
-          height: "calc(100vh - 20rem)",
+          flex: 1,
+          minHeight: 420,
           gap: 12,
           overflowX: "auto",
           paddingBottom: 16,
@@ -169,6 +175,9 @@ export default function KanbanBoard({
         {STAGES.map((stage) => {
           const stageLeads = leads.filter(l => l.stage === stage);
           const color = STAGE_COLORS[stage] ?? "#8b9ab8";
+          const overdueInStage = stageLeads.filter(
+            (l) => getFollowUpStatus(l, now) === "overdue"
+          ).length;
 
           return (
             <div
@@ -176,7 +185,7 @@ export default function KanbanBoard({
               style={{
                 display: "flex",
                 height: "100%",
-                width: 300,
+                width: 288,
                 flexShrink: 0,
                 flexDirection: "column",
                 borderRadius: 14,
@@ -194,7 +203,7 @@ export default function KanbanBoard({
                   marginBottom: 12,
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
                   <div
                     style={{
                       width: 8,
@@ -209,23 +218,48 @@ export default function KanbanBoard({
                       fontSize: 13,
                       fontWeight: 700,
                       color: "#f0f4ff",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
                     }}
                   >
                     {stage}
                   </h3>
                 </div>
-                <span
-                  style={{
-                    borderRadius: 100,
-                    padding: "2px 9px",
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color,
-                    background: `${color}18`,
-                  }}
-                >
-                  {stageLeads.length}
-                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                  {overdueInStage > 0 && (
+                    <span
+                      aria-label={`${overdueInStage} overdue in ${stage}`}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 3,
+                        borderRadius: 100,
+                        padding: "2px 7px",
+                        fontSize: 10.5,
+                        fontWeight: 800,
+                        color: "#f87171",
+                        background: "rgba(248,113,113,0.14)",
+                        border: "1px solid rgba(248,113,113,0.35)",
+                      }}
+                    >
+                      <Clock style={{ width: 10, height: 10 }} aria-hidden="true" />
+                      {overdueInStage}
+                    </span>
+                  )}
+                  <span
+                    style={{
+                      borderRadius: 100,
+                      padding: "2px 9px",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color,
+                      background: `${color}18`,
+                    }}
+                  >
+                    {stageLeads.length}
+                  </span>
+                </div>
               </div>
 
               <Droppable droppableId={stage}>
@@ -237,12 +271,34 @@ export default function KanbanBoard({
                       flex: 1,
                       overflowY: "auto",
                       borderRadius: 10,
-                      transition: "background 0.15s",
+                      padding: 4,
+                      transition: "background 0.15s, box-shadow 0.15s",
                       background: snapshot.isDraggingOver
-                        ? "rgba(255,122,26,0.04)"
+                        ? "rgba(255,122,26,0.06)"
                         : "transparent",
+                      boxShadow: snapshot.isDraggingOver
+                        ? `inset 0 0 0 2px ${color}66`
+                        : "inset 0 0 0 1px transparent",
                     }}
                   >
+                    {stageLeads.length === 0 && !snapshot.isDraggingOver && (
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          height: 76,
+                          borderRadius: 10,
+                          border: "1px dashed rgba(255,255,255,0.1)",
+                          fontSize: 11.5,
+                          color: "#4a5670",
+                          textAlign: "center",
+                          padding: "0 12px",
+                        }}
+                      >
+                        Nothing in {stage}
+                      </div>
+                    )}
                     {stageLeads.map((lead, index) => (
                       <Draggable key={lead.id} draggableId={lead.id} index={index}>
                         {(provided, snapshot) => (
@@ -255,7 +311,12 @@ export default function KanbanBoard({
                               opacity: snapshot.isDragging ? 0.85 : 1,
                             }}
                           >
-                            <LeadCard lead={lead} now={now} onClick={() => onLeadClick(lead)} />
+                            <BoardLeadCard
+                              lead={lead}
+                              now={now}
+                              recommendation={recommendationOf?.(lead)}
+                              onClick={() => onLeadClick(lead)}
+                            />
                           </div>
                         )}
                       </Draggable>
@@ -269,6 +330,6 @@ export default function KanbanBoard({
         })}
       </div>
     </DragDropContext>
-    </>
+    </div>
   );
 }

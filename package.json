@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "test:inventory": "vitest run src/app/dashboard/inventory/page.test.tsx",
     "seed": "node prisma/seed.js",
     "seed:fixtures": "node scripts/seed-feed-fixtures.mjs"
   },

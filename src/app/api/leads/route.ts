@@ -23,11 +23,31 @@ export async function GET() {
   }
 
   try {
+    // TODO(tenancy): scope this query (and the joined Activity relation below)
+    // by the caller's dealer/tenant id once multi-tenancy lands — today it
+    // returns every verified lead unscoped.
     const leads = await prisma.lead.findMany({
       where: VERIFIED_LISTING_FILTER,
-      orderBy: { createdAt: "desc" }
+      orderBy: { createdAt: "desc" },
+      include: {
+        // Newest activity per lead, resolved by Prisma in ONE bounded relation
+        // query for the whole page — never a request per card. Only the
+        // server-built, PII-free scalars are selected.
+        activities: {
+          take: 1,
+          orderBy: { createdAt: "desc" },
+          select: { type: true, summary: true, createdAt: true },
+        },
+      },
     });
-    return NextResponse.json(leads);
+
+    // Flatten to `lastActivity` so clients never see the relation array.
+    return NextResponse.json(
+      leads.map(({ activities, ...lead }) => ({
+        ...lead,
+        lastActivity: activities[0] ?? null,
+      }))
+    );
   } catch (error) {
     console.error("Error fetching leads:", error);
     return NextResponse.json({ error: "Failed to fetch leads" }, { status: 500 });

@@ -12,7 +12,7 @@ vi.mock("@/lib/db/prisma", () => ({
 
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/db/prisma";
-import { PATCH } from "./route";
+import { GET, PATCH } from "./route";
 
 function patch(body: unknown) {
   return PATCH(
@@ -27,6 +27,53 @@ function patch(body: unknown) {
 beforeEach(() => {
   vi.clearAllMocks();
   (getServerSession as Mock).mockResolvedValue({ user: { email: "buyer@spotr.test" } });
+});
+
+describe("GET /api/leads", () => {
+  it("rejects unauthenticated requests", async () => {
+    (getServerSession as Mock).mockResolvedValue(null);
+    expect((await GET()).status).toBe(401);
+  });
+
+  it("flattens the newest activity to a PII-free lastActivity and strips extra fields", async () => {
+    // Prisma returns the full activity row; the handler must expose only
+    // type/summary/createdAt — never detail, actor, id, or seller fields.
+    (prisma.lead.findMany as Mock).mockResolvedValue([
+      {
+        id: "l1",
+        stage: "Contacted",
+        sellerName: "Jane Doe",
+        activities: [
+          {
+            type: "note_added",
+            summary: "Note added",
+            createdAt: new Date("2026-07-20T00:00:00Z"),
+            id: "act-1",
+            detail: '{"note":"555-1234"}',
+            actor: "buyer@spotr.test",
+          },
+        ],
+      },
+      { id: "l2", stage: "New Leads", sellerName: null, activities: [] },
+    ]);
+
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const body = await res.json();
+
+    expect(body[0].lastActivity).toEqual({
+      type: "note_added",
+      summary: "Note added",
+      createdAt: "2026-07-20T00:00:00.000Z",
+    });
+    // The raw relation array and smuggled fields must not leak.
+    expect(body[0].activities).toBeUndefined();
+    expect(body[0].lastActivity.detail).toBeUndefined();
+    expect(body[0].lastActivity.actor).toBeUndefined();
+    expect(body[0].lastActivity.id).toBeUndefined();
+    // A lead with no activity gets null, not a crash.
+    expect(body[1].lastActivity).toBeNull();
+  });
 });
 
 describe("PATCH /api/leads (stage changes)", () => {
