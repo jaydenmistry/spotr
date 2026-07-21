@@ -5,7 +5,7 @@ import axios from "axios";
 import TopStats from "@/components/dashboard/TopStats";
 import KanbanBoard from "@/components/dashboard/KanbanBoard";
 import LeadModal from "@/components/dashboard/modal/LeadModal";
-import { Database, MapPin, RefreshCw, Search, SlidersHorizontal } from "lucide-react";
+import { CalendarClock, Database, MapPin, RefreshCw, Search, SlidersHorizontal } from "lucide-react";
 import {
   filterLeads,
   getMakeFilterList,
@@ -13,6 +13,7 @@ import {
   type LeadRecord,
   type MovementFilter,
 } from "@/lib/vehicleAnalytics";
+import { FOLLOW_UP_TICK_MS, getFollowUpStatus } from "@/lib/followUp";
 
 interface FetchResponse {
   success: boolean;
@@ -51,8 +52,20 @@ export default function DashboardPage() {
   const [zipCode, setZipCode] = useState("30043");
   const [radiusMiles, setRadiusMiles] = useState(100);
   const [movementFilter, setMovementFilter] = useState<MovementFilter>("All");
+  const [followUpOnly, setFollowUpOnly] = useState(false);
   const [fetchLimit, setFetchLimit] = useState(1000);
   const [fetchMessage, setFetchMessage] = useState("");
+
+  // One shared clock for every follow-up readout on this page. Without the
+  // tick, a lead that crosses its due time while the board sits open keeps
+  // rendering its stale status until some unrelated state change re-renders;
+  // without sharing it, the badge, the stat, and the filter could each read a
+  // different `new Date()` and disagree.
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), FOLLOW_UP_TICK_MS);
+    return () => clearInterval(timer);
+  }, []);
 
   const fetchLocalLeads = async () => {
     try {
@@ -124,6 +137,16 @@ export default function DashboardPage() {
       movementFilter,
     });
   }, [leads, searchTerm, makeFilter, minPrice, maxPrice, radiusMiles, movementFilter]);
+
+  // Same shared status helper and same `now` TopStats and LeadCard use, so the
+  // "Needs Follow-up" count always equals what this filter shows.
+  const visibleLeads = useMemo(
+    () =>
+      followUpOnly
+        ? filteredLeads.filter((lead) => getFollowUpStatus(lead, now) === "overdue")
+        : filteredLeads,
+    [filteredLeads, followUpOnly, now]
+  );
 
   if (loading) {
     return (
@@ -431,10 +454,31 @@ export default function DashboardPage() {
             color: "#4a5670",
           }}
         >
-          <span style={{ fontWeight: 700, color: "#ff9147" }}>{filteredLeads.length}</span>
+          <span style={{ fontWeight: 700, color: "#ff9147" }}>{visibleLeads.length}</span>
           <span>of {leads.length} listings shown</span>
           <span style={{ color: "#1e2a3a" }}>·</span>
           <span>ZIP {zipCode || "30043"} · {radiusMiles} mi radius</span>
+          <span style={{ color: "#1e2a3a" }}>·</span>
+          <button
+            onClick={() => setFollowUpOnly((value) => !value)}
+            aria-pressed={followUpOnly}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+              padding: "4px 10px",
+              borderRadius: 7,
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: "pointer",
+              border: `1px solid ${followUpOnly ? "rgba(248,113,113,0.5)" : "rgba(255,255,255,0.12)"}`,
+              background: followUpOnly ? "rgba(248,113,113,0.12)" : "rgba(255,255,255,0.04)",
+              color: followUpOnly ? "#f87171" : "#8b9ab8",
+            }}
+          >
+            <CalendarClock style={{ width: 12, height: 12 }} aria-hidden="true" />
+            Needs follow-up only
+          </button>
         </div>
 
         {fetchMessage && (
@@ -455,10 +499,11 @@ export default function DashboardPage() {
         )}
       </div>
 
-      <TopStats leads={filteredLeads} />
+      <TopStats leads={filteredLeads} now={now} />
 
       <KanbanBoard
-        leads={filteredLeads}
+        leads={visibleLeads}
+        now={now}
         onLeadClick={(lead) => setSelectedLead(lead)}
         onLeadUpdate={(updatedLeads) => {
           const updatedById = new Map(updatedLeads.map((lead) => [lead.id, lead]));
@@ -467,7 +512,14 @@ export default function DashboardPage() {
       />
 
       {selectedLead && (
-        <LeadModal lead={selectedLead} onClose={() => setSelectedLead(null)} />
+        <LeadModal
+          lead={selectedLead}
+          onClose={() => setSelectedLead(null)}
+          onLeadUpdated={(updated) => {
+            setLeads((current) => current.map((l) => (l.id === updated.id ? { ...l, ...updated } : l)));
+            setSelectedLead((prev) => (prev && prev.id === updated.id ? { ...prev, ...updated } : prev));
+          }}
+        />
       )}
     </div>
   );

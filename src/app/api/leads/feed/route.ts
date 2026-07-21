@@ -115,6 +115,10 @@ export async function GET(request: Request) {
         updatedAt: lead.updatedAt.toISOString(),
         watchedAt: lead.watchedAt ? lead.watchedAt.toISOString() : null,
         passedAt: lead.passedAt ? lead.passedAt.toISOString() : null,
+        nextActionAt: lead.nextActionAt ? lead.nextActionAt.toISOString() : null,
+        nextActionCompletedAt: lead.nextActionCompletedAt
+          ? lead.nextActionCompletedAt.toISOString()
+          : null,
       };
       return { ...serialized, assessment: getOpportunityAssessment(serialized, buyBox.config) };
     });

@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import LeadCard from "./LeadCard";
+import OutcomeReasonDialog from "./OutcomeReasonDialog";
 import axios from "axios";
 import type { LeadRecord } from "@/lib/vehicleAnalytics";
+import type { OutcomeReasonCode } from "@/lib/followUp";
 
 import { STAGES } from "@/lib/stages";
 
@@ -20,13 +22,23 @@ const STAGE_COLORS: Record<string, string> = {
 export default function KanbanBoard({
   leads,
   onLeadClick,
-  onLeadUpdate
+  onLeadUpdate,
+  now,
 }: {
   leads: LeadRecord[];
   onLeadClick: (lead: LeadRecord) => void;
   onLeadUpdate: (updatedLeads: LeadRecord[]) => void;
+  /** Shared clock, forwarded to each card's follow-up status. */
+  now?: Date;
 }) {
   const [mounted, setMounted] = useState(false);
+  // Drag-to-Lost is held here until the buyer picks a standardized reason;
+  // the drop is only committed (optimistic UI + PATCH) after confirmation.
+  const [pendingLost, setPendingLost] = useState<{ leadId: string } | null>(null);
+  const [lostBusy, setLostBusy] = useState(false);
+  // Drop rejected client-side (e.g. Passed lead dragged to Lost); the server
+  // enforces the same rule with a 409.
+  const [dropNotice, setDropNotice] = useState<string | null>(null);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -35,6 +47,28 @@ export default function KanbanBoard({
 
     return () => window.cancelAnimationFrame(frame);
   }, []);
+
+  const commitStageChange = async (
+    leadId: string,
+    newStage: string,
+    outcome?: { reason: OutcomeReasonCode; note: string | null }
+  ) => {
+    const previousLeads = leads;
+    onLeadUpdate(
+      leads.map((lead) => (lead.id === leadId ? { ...lead, stage: newStage } : lead))
+    );
+
+    try {
+      await axios.patch("/api/leads", {
+        leadId,
+        stage: newStage,
+        ...(outcome ? { reason: outcome.reason, note: outcome.note ?? undefined } : {}),
+      });
+    } catch (error) {
+      console.error("Failed to update lead status:", error);
+      onLeadUpdate(previousLeads);
+    }
+  };
 
   const onDragEnd = async (result: DropResult) => {
     const { source, destination, draggableId } = result;
@@ -49,27 +83,79 @@ export default function KanbanBoard({
     }
 
     const newStage = destination.droppableId;
+    setDropNotice(null);
 
-    const updatedLeads = leads.map(lead =>
-      lead.id === draggableId ? { ...lead, stage: newStage } : lead
-    );
-
-    onLeadUpdate(updatedLeads);
-
-    try {
-      await axios.patch("/api/leads", {
-        leadId: draggableId,
-        stage: newStage
-      });
-    } catch (error) {
-      console.error("Failed to update lead status:", error);
-      onLeadUpdate(leads);
+    if (newStage === "Lost") {
+      // A Passed lead can't also be marked Lost — the two outcomes share the
+      // reason fields. Mirrors the server's 409 guard.
+      const lead = leads.find((candidate) => candidate.id === draggableId);
+      if (lead?.passedAt) {
+        setDropNotice("This lead is Passed — restore it from Passed before marking it Lost.");
+        return;
+      }
+      setPendingLost({ leadId: draggableId });
+      return;
     }
+
+    await commitStageChange(draggableId, newStage);
   };
 
   if (!mounted) return null;
 
   return (
+    <>
+      {pendingLost && (
+        <OutcomeReasonDialog
+          title="Mark lead as Lost"
+          description="A standardized reason is required so the team can see why this lead didn't work out."
+          confirmLabel="Mark Lost"
+          busy={lostBusy}
+          onCancel={() => setPendingLost(null)}
+          onConfirm={(reason, note) => {
+            setLostBusy(true);
+            void commitStageChange(pendingLost.leadId, "Lost", { reason, note }).finally(() => {
+              setLostBusy(false);
+              setPendingLost(null);
+            });
+          }}
+        />
+      )}
+    {dropNotice && (
+      <div
+        role="status"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 10,
+          marginBottom: 10,
+          borderRadius: 10,
+          border: "1px solid rgba(251,191,36,0.4)",
+          background: "rgba(251,191,36,0.08)",
+          padding: "9px 14px",
+          fontSize: 12.5,
+          fontWeight: 600,
+          color: "#fbbf24",
+        }}
+      >
+        {dropNotice}
+        <button
+          onClick={() => setDropNotice(null)}
+          aria-label="Dismiss"
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            color: "#fbbf24",
+            fontSize: 14,
+            fontWeight: 700,
+            lineHeight: 1,
+          }}
+        >
+          ×
+        </button>
+      </div>
+    )}
     <DragDropContext onDragEnd={onDragEnd}>
       <div
         style={{
@@ -169,7 +255,7 @@ export default function KanbanBoard({
                               opacity: snapshot.isDragging ? 0.85 : 1,
                             }}
                           >
-                            <LeadCard lead={lead} onClick={() => onLeadClick(lead)} />
+                            <LeadCard lead={lead} now={now} onClick={() => onLeadClick(lead)} />
                           </div>
                         )}
                       </Draggable>
@@ -183,5 +269,6 @@ export default function KanbanBoard({
         })}
       </div>
     </DragDropContext>
+    </>
   );
 }

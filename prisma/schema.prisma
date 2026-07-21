@@ -65,9 +65,18 @@ model Lead {
   watchedAt   DateTime?
   passedAt    DateTime?
   assignedTo  String?
+  // Follow-up workflow — all nullable, additive.
+  nextAction            String?
+  nextActionAt          DateTime?
+  nextActionCompletedAt DateTime?
+  // Standardized reason recorded when the lead is Passed or marked Lost;
+  // cleared when restored from Passed. Codes live in src/lib/followUp.ts.
+  outcomeReason String?
+  outcomeNote   String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   messages    Message[]
+  activities  Activity[]
 
   // Every list endpoint filters on VIN prefixes; index it before the table grows.
   @@index([vin])
@@ -82,4 +91,24 @@ model Message {
   leadId    String
   lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+}
+
+// Buyer-action audit trail for a lead. Rows are written only inside the same
+// Prisma transaction as the Lead mutation they describe; `detail` is a JSON
+// string built server-side from a per-type allowlist (src/lib/followUp.ts) —
+// never raw client JSON, never seller PII.
+model Activity {
+  id        String   @id @default(cuid())
+  type      String   // ActivityType in src/lib/followUp.ts
+  summary   String   // concise human-readable, buyer-attributed
+  detail    String?
+  // TODO: replace with a User relation (actorId) once RBAC/multi-tenancy
+  // lands — email is not a stable cross-tenant key, and this append-only
+  // table will be the largest backfill if it waits.
+  actor     String?  // session email (single-tenant v1)
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([leadId, createdAt])
 }

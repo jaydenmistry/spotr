@@ -6,7 +6,9 @@ import Link from "next/link";
 import { ArrowUpDown, ChevronLeft, ChevronRight, Radar, RefreshCw, Search, Undo2 } from "lucide-react";
 import OpportunityCard from "@/components/dashboard/feed/OpportunityCard";
 import LeadModal from "@/components/dashboard/modal/LeadModal";
+import OutcomeReasonDialog from "@/components/dashboard/OutcomeReasonDialog";
 import type { FeedAction } from "@/lib/feedActions";
+import type { OutcomeReasonCode } from "@/lib/followUp";
 import type { OpportunityAssessment, Recommendation } from "@/lib/opportunity";
 import { type LeadRecord } from "@/lib/vehicleAnalytics";
 
@@ -100,6 +102,7 @@ export default function FeedPage() {
   const [searchInput, setSearchInput] = useState("");
   const [q, setQ] = useState("");
   const [dossierLead, setDossierLead] = useState<FeedLead | null>(null);
+  const [pendingPass, setPendingPass] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -171,12 +174,16 @@ export default function FeedPage() {
     setLoading(true);
   }, []);
 
-  const handleAction = useCallback(
-    async (leadId: string, action: FeedAction) => {
+  const performAction = useCallback(
+    async (leadId: string, action: FeedAction, extra?: { reason: OutcomeReasonCode; note: string | null }) => {
       setBusyLeadId(leadId);
       setActionError(null);
       try {
-        const res = await axios.post<LeadRecord>("/api/leads/action", { leadId, action });
+        const res = await axios.post<LeadRecord>("/api/leads/action", {
+          leadId,
+          action,
+          ...(extra ? { reason: extra.reason, note: extra.note ?? undefined } : {}),
+        });
         const updated = res.data;
         if (action === "pass") {
           setLastPassed(updated);
@@ -206,12 +213,40 @@ export default function FeedPage() {
     [refetch, view]
   );
 
+  // Passing requires a standardized reason — intercept and ask first.
+  const handleAction = useCallback(
+    (leadId: string, action: FeedAction) => {
+      if (action === "pass") {
+        setPendingPass(leadId);
+        return;
+      }
+      void performAction(leadId, action);
+    },
+    [performAction]
+  );
+
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const safePage = Math.min(page, totalPages);
   const hasFilters = Boolean(q || recFilter);
 
   return (
     <div style={{ padding: "32px 28px", maxWidth: 980 }}>
+      {/* Pass requires a standardized reason */}
+      {pendingPass && (
+        <OutcomeReasonDialog
+          title="Pass on this vehicle"
+          description="A standardized reason keeps the pipeline honest about why opportunities were rejected."
+          confirmLabel="Pass"
+          busy={busyLeadId === pendingPass}
+          onCancel={() => setPendingPass(null)}
+          onConfirm={(reason, note) => {
+            void performAction(pendingPass, "pass", { reason, note }).finally(() =>
+              setPendingPass(null)
+            );
+          }}
+        />
+      )}
+
       {/* Page header */}
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 28, fontWeight: 900, letterSpacing: "-0.02em", color: "#f0f4ff", marginBottom: 4 }}>
@@ -474,9 +509,13 @@ export default function FeedPage() {
           lead={dossierLead}
           assessment={dossierLead.assessment}
           buyBoxPersisted={meta?.buyBoxPersisted}
-          onAction={(leadId, action) => void handleAction(leadId, action)}
+          onAction={(leadId, action) => handleAction(leadId, action)}
           actionBusy={busyLeadId === dossierLead.id}
           onClose={() => setDossierLead(null)}
+          onLeadUpdated={(updated) => {
+            setLeads((prev) => prev.map((l) => (l.id === updated.id ? { ...l, ...updated } : l)));
+            setDossierLead((prev) => (prev && prev.id === updated.id ? { ...prev, ...updated } : prev));
+          }}
         />
       )}
     </div>

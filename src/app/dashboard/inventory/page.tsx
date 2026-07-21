@@ -311,7 +311,14 @@ export default function InventoryPage() {
 
       {/* Modal */}
       {selectedLead && (
-        <LeadModal lead={selectedLead} onClose={() => setSelectedLead(null)} />
+        <LeadModal
+          lead={selectedLead}
+          onClose={() => setSelectedLead(null)}
+          onLeadUpdated={(updated) => {
+            setLeads((current) => current.map((l) => (l.id === updated.id ? { ...l, ...updated } : l)));
+            setSelectedLead((prev) => (prev && prev.id === updated.id ? { ...prev, ...updated } : prev));
+          }}
+        />
       )}
     </div>
   );

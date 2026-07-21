@@ -8,6 +8,8 @@ export default defineConfig({
     },
   },
   test: {
-    include: ["src/**/*.test.ts"],
+    // Pure logic and route handlers run in node; component tests (.test.tsx)
+    // opt into jsdom with a `@vitest-environment jsdom` docblock.
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
   },
 });

@@ -34,6 +34,11 @@ export interface LeadRecord {
   watchedAt?: string | null;
   passedAt?: string | null;
   assignedTo?: string | null;
+  nextAction?: string | null;
+  nextActionAt?: string | null;
+  nextActionCompletedAt?: string | null;
+  outcomeReason?: string | null;
+  outcomeNote?: string | null;
   createdAt: string;
   updatedAt?: string;
 }

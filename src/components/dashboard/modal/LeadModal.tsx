@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import {
   AlertTriangle,
@@ -37,6 +37,10 @@ import {
 import { DEFAULT_BUY_BOX, type BuyBoxConfig } from "@/lib/buyBox";
 import type { FeedAction } from "@/lib/feedActions";
 import { isSafeHttpUrl } from "@/lib/url";
+import { outcomeReasonLabel, parseActivityDetail, type ActivityRecord } from "@/lib/followUp";
+import ActivityTimeline from "./ActivityTimeline";
+import FollowUpPanel from "./FollowUpPanel";
+import RecordOfferForm from "./RecordOfferForm";
 
 const RECOMMENDATION_COLORS: Record<Recommendation, string> = {
   BUY: "#34d399",
@@ -186,12 +190,13 @@ function MoneyRow({ label, sourced, strong }: { label: string; sourced: SourcedV
 }
 
 export default function LeadModal({
-  lead,
+  lead: leadProp,
   onClose,
   assessment: assessmentProp,
   buyBoxPersisted,
   onAction,
   actionBusy = false,
+  onLeadUpdated,
 }: {
   lead: LeadRecord;
   onClose: () => void;
@@ -202,8 +207,69 @@ export default function LeadModal({
   /** When provided, the dossier can act directly (watch/assign/pass). */
   onAction?: (leadId: string, action: FeedAction) => void;
   actionBusy?: boolean;
+  /** Notifies the parent when follow-up edits change the lead. */
+  onLeadUpdated?: (lead: LeadRecord) => void;
 }) {
-  const [activeTab, setActiveTab] = useState<"decision" | "chat" | "carfax">("decision");
+  const [activeTab, setActiveTab] = useState<"decision" | "activity" | "chat" | "carfax">("decision");
+  // Local overlay so follow-up edits render immediately; re-synced whenever
+  // the parent hands down a fresh lead (adjust-during-render pattern).
+  const [lead, setLead] = useState(leadProp);
+  const [activityReload, setActivityReload] = useState(0);
+  const [prevLeadProp, setPrevLeadProp] = useState(leadProp);
+  if (leadProp !== prevLeadProp) {
+    setPrevLeadProp(leadProp);
+    setLead(leadProp);
+    // Parent-driven changes (watch/pass/assign) also write activities.
+    setActivityReload((value) => value + 1);
+  }
+
+  const handleLeadUpdated = (updated: LeadRecord) => {
+    setLead((prev) => ({ ...prev, ...updated }));
+    setActivityReload((value) => value + 1);
+    onLeadUpdated?.(updated);
+  };
+
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // Dialog semantics: focus the panel on open, close on Escape. When a
+  // nested dialog (e.g. the pass-reason prompt) has focus, Escape belongs
+  // to it — the dossier stays open.
+  useEffect(() => {
+    panelRef.current?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      const target = event.target instanceof Element ? event.target : null;
+      const enclosingDialog = target?.closest('[role="dialog"]');
+      if (enclosingDialog && enclosingDialog !== panelRef.current?.parentElement) return;
+      onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  // The buyer's most recent recorded offer (a real buyer action, distinct
+  // from Spotr's heuristic max offer) — read from the activity trail so it
+  // survives closing/reopening the dossier.
+  const [lastOffer, setLastOffer] = useState<{ amountUsd: number; at: string } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    axios
+      .get<{ activities: ActivityRecord[] }>("/api/leads/activity", { params: { leadId: lead.id } })
+      .then((res) => {
+        if (cancelled) return;
+        const offer = res.data.activities.find((entry) => entry.type === "offer_recorded");
+        const amountUsd = offer ? parseActivityDetail(offer.detail)?.amountUsd : null;
+        setLastOffer(
+          offer && typeof amountUsd === "number" ? { amountUsd, at: offer.createdAt } : null
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setLastOffer(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [lead.id, activityReload]);
   const [assessment, setAssessment] = useState<OpportunityAssessment | null>(assessmentProp ?? null);
   const [buyBoxNote, setBuyBoxNote] = useState<string | null>(
     assessmentProp && buyBoxPersisted === false
@@ -254,6 +320,9 @@ export default function LeadModal({
   return (
     /* Backdrop */
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${getVehicleTitle(lead)} dossier`}
       style={{
         position: "fixed",
         inset: 0,
@@ -269,6 +338,8 @@ export default function LeadModal({
     >
       {/* Modal panel */}
       <div
+        ref={panelRef}
+        tabIndex={-1}
         style={{
           display: "flex",
           flexDirection: "column",
@@ -280,6 +351,7 @@ export default function LeadModal({
           background: "var(--bg-surface)",
           border: "1px solid rgba(255,255,255,0.1)",
           boxShadow: "0 32px 80px rgba(0,0,0,0.7)",
+          outline: "none",
         }}
       >
         {/* ── Header ─────────────────────────────────────────── */}
@@ -364,7 +436,7 @@ export default function LeadModal({
             flexShrink: 0,
           }}
         >
-          {(["decision", "chat", "carfax"] as const).map((tab) => {
+          {(["decision", "activity", "chat", "carfax"] as const).map((tab) => {
             const active = activeTab === tab;
             return (
               <button
@@ -501,6 +573,14 @@ export default function LeadModal({
                             color: assessment.maxOffer.status === "ok" ? "#ff9147" : "#fbbf24",
                           },
                           {
+                            label: "Your last offer",
+                            value: lastOffer ? formatCurrency(lastOffer.amountUsd) : "—",
+                            sub: lastOffer
+                              ? `buyer-recorded · ${new Date(lastOffer.at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+                              : "none recorded",
+                            color: lastOffer ? "#34d399" : "#8b9ab8",
+                          },
+                          {
                             label: "Score",
                             value: String(assessment.finalOpportunityScore),
                             sub: `raw ${assessment.rawScoreBeforeRisk} − risk ${assessment.riskPenalty}`,
@@ -529,6 +609,38 @@ export default function LeadModal({
                     </div>
                   </>
                 )}
+              </div>
+
+              {/* Outcome banner: why this lead was Passed / marked Lost */}
+              {lead.outcomeReason && (lead.passedAt || lead.stage === "Lost") && (
+                <div
+                  style={{
+                    gridColumn: "1 / -1",
+                    borderRadius: 12,
+                    border: "1px solid rgba(248,113,113,0.3)",
+                    background: "rgba(248,113,113,0.07)",
+                    padding: "12px 16px",
+                  }}
+                >
+                  <p style={{ fontSize: 13, fontWeight: 700, color: "#f87171" }}>
+                    {lead.passedAt ? "Passed" : "Lost"} — {outcomeReasonLabel(lead.outcomeReason)}
+                  </p>
+                  {lead.outcomeNote && (
+                    <p style={{ fontSize: 12, color: "#c6d0e2", marginTop: 4 }}>“{lead.outcomeNote}”</p>
+                  )}
+                </div>
+              )}
+
+              {/* Follow-up + offer logging */}
+              <div style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
+                <FollowUpPanel lead={lead} onLeadUpdated={handleLeadUpdated} />
+                <RecordOfferForm
+                  leadId={lead.id}
+                  recommendedMaxOfferLabel={
+                    assessment?.maxOffer.status === "ok" ? formatCurrency(assessment.maxOffer.amount) : null
+                  }
+                  onRecorded={() => setActivityReload((value) => value + 1)}
+                />
               </div>
 
               {/* Photo */}
@@ -880,6 +992,11 @@ export default function LeadModal({
             </div>
           )}
 
+          {activeTab === "activity" && (
+            <div style={{ maxWidth: 640 }}>
+              <ActivityTimeline leadId={lead.id} reloadKey={activityReload} />
+            </div>
+          )}
           {activeTab === "chat" && <ChatMock leadId={lead.id} sellerName={lead.sellerName} />}
           {activeTab === "carfax" && <CarfaxMock vdpUrl={lead.vdp_url} source={lead.source} />}
         </div>

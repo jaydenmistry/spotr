@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, Gauge, MapPin, ShieldCheck, TrendingDown, TrendingUp } from "lucide-react";
+import { Clock, ExternalLink, Eye, Gauge, MapPin, ShieldCheck, TrendingDown, TrendingUp } from "lucide-react";
 import Image from "next/image";
 import ValueTrendGraph from "./ValueTrendGraph";
 import {
@@ -11,36 +11,30 @@ import {
   getVehicleTitle,
   getVehicleAnalytics,
   isVerifiedListing,
+  type LeadRecord,
 } from "@/lib/vehicleAnalytics";
 import { isSafeHttpUrl } from "@/lib/url";
+import { isTerminalStage } from "@/lib/stages";
+import { getFollowUpStatus } from "@/lib/followUp";
 
-interface Lead {
-  id: string;
-  vin: string | null;
-  year: number | null;
-  make: string | null;
-  model: string | null;
-  listingTitle: string | null;
-  price: number | null;
-  miles: number | null;
-  distanceMiles: number | null;
-  searchZip: string | null;
-  searchRadius: number | null;
-  city: string | null;
-  state: string | null;
-  photo_url: string | null;
-  stage: string;
-  source: string | null;
-  vdp_url: string | null;
-  sellerName: string | null;
-  passedAt?: string | null;
-  createdAt: string;
-}
-
-export default function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
+export default function LeadCard({
+  lead,
+  onClick,
+  now,
+}: {
+  lead: LeadRecord;
+  onClick: () => void;
+  /** Shared clock from the page. Omitted (inventory grid) it falls back to the
+   *  helper's own `new Date()`; supplied, every follow-up readout on the page
+   *  is evaluated against the same instant. */
+  now?: Date;
+}) {
   const analytics = getVehicleAnalytics(lead);
   const isAppreciating = analytics.movement === "Appreciating";
   const verified = isVerifiedListing(lead);
+  // Overdue is the only follow-up state loud enough for a card badge; the
+  // shared helper already exempts passed/terminal leads.
+  const isOverdue = getFollowUpStatus(lead, now) === "overdue";
   const TrendIcon = isAppreciating ? TrendingUp : TrendingDown;
   const trendColor = isAppreciating ? "#34d399" : "#ff9147";
 
@@ -133,12 +127,37 @@ export default function LeadCard({ lead, onClick }: { lead: Lead; onClick: () =>
               border: "1px solid rgba(52,211,153,0.25)",
             }}
           >
-            <ShieldCheck style={{ width: 11, height: 11 }} />
+            <ShieldCheck style={{ width: 11, height: 11 }} aria-hidden="true" />
             Verified
           </div>
         )}
 
-        {/* Passed in the Opportunity Feed — decision is visible on every surface */}
+        {/* Feed decisions are visible on every surface. Pass outranks Watch,
+            and closed-out leads (Acquired/Lost) drop the badge — matching the
+            feed's Watching tab and the TopStats count. */}
+        {!lead.passedAt && lead.watchedAt && !isTerminalStage(lead.stage) && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: 8,
+              left: 8,
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              background: "rgba(8,12,20,0.85)",
+              backdropFilter: "blur(8px)",
+              borderRadius: 8,
+              padding: "3px 8px",
+              fontSize: 11,
+              fontWeight: 700,
+              color: "#ff9147",
+              border: "1px solid rgba(255,122,26,0.35)",
+            }}
+          >
+            <Eye style={{ width: 11, height: 11 }} aria-hidden="true" />
+            Watching
+          </div>
+        )}
         {lead.passedAt && (
           <div
             style={{
@@ -156,6 +175,34 @@ export default function LeadCard({ lead, onClick }: { lead: Lead; onClick: () =>
             }}
           >
             Passed in feed
+          </div>
+        )}
+
+        {/* Overdue follow-up — bottom-right so it never collides with the
+            watch/pass badges bottom-left. Icon + text, not color alone. */}
+        {isOverdue && (
+          <div
+            role="status"
+            aria-label="Follow-up overdue"
+            style={{
+              position: "absolute",
+              bottom: 8,
+              right: 8,
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              background: "rgba(8,12,20,0.85)",
+              backdropFilter: "blur(8px)",
+              borderRadius: 8,
+              padding: "3px 8px",
+              fontSize: 11,
+              fontWeight: 700,
+              color: "#f87171",
+              border: "1px solid rgba(248,113,113,0.4)",
+            }}
+          >
+            <Clock style={{ width: 11, height: 11 }} aria-hidden="true" />
+            Overdue
           </div>
         )}
       </div>

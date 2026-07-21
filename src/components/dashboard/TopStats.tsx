@@ -1,24 +1,23 @@
 "use client";
 
-import { Car, DollarSign, TrendingUp } from "lucide-react";
-import { formatSignedCurrency, getVehicleAnalytics } from "@/lib/vehicleAnalytics";
+import { CalendarClock, Car, DollarSign, Eye, TrendingUp } from "lucide-react";
+import { formatSignedCurrency, getVehicleAnalytics, type LeadRecord } from "@/lib/vehicleAnalytics";
+import { isTerminalStage } from "@/lib/stages";
+import { getFollowUpStatus } from "@/lib/followUp";
 
-interface Lead {
-  id: string;
-  make: string | null;
-  model: string | null;
-  year: number | null;
-  price: number | null;
-  miles: number | null;
-  stage: string;
-  createdAt: string;
-}
-
-export default function TopStats({ leads }: { leads: Lead[] }) {
+export default function TopStats({
+  leads,
+  now,
+}: {
+  leads: LeadRecord[];
+  /** Shared clock from the page, so this count can't disagree with the
+   *  board's overdue badges or the needs-follow-up filter. */
+  now?: Date;
+}) {
   const acquiredLeads = leads.filter((l) => l.stage === "Acquired");
   const acquiredValue = acquiredLeads.reduce((sum, l) => sum + (l.price || 0), 0);
 
-  const pipelineLeads = leads.filter((l) => !["Acquired", "Lost"].includes(l.stage));
+  const pipelineLeads = leads.filter((l) => !isTerminalStage(l.stage));
   const pipelineValue = pipelineLeads.reduce((sum, l) => sum + (l.price || 0), 0);
   const projectedMovement = pipelineLeads.reduce(
     (sum, lead) => sum + getVehicleAnalytics(lead).projectedChangeDollars,
@@ -28,6 +27,16 @@ export default function TopStats({ leads }: { leads: Lead[] }) {
   const oneWeekAgo = new Date();
   oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
   const newThisWeek = leads.filter((l) => new Date(l.createdAt) > oneWeekAgo).length;
+
+  // Same definition as the feed's Watching tab: shortlisted, not passed,
+  // still an open opportunity.
+  const watchingCount = leads.filter(
+    (l) => l.watchedAt && !l.passedAt && !isTerminalStage(l.stage)
+  ).length;
+
+  // Shared helper — must stay in lockstep with the pipeline's
+  // "Needs follow-up only" filter so the count matches the filtered view.
+  const needsFollowUpCount = leads.filter((l) => getFollowUpStatus(l, now) === "overdue").length;
 
   const stats = [
     {
@@ -52,6 +61,20 @@ export default function TopStats({ leads }: { leads: Lead[] }) {
       color: "#60a5fa",
     },
     {
+      name: "Watching",
+      value: watchingCount.toString(),
+      icon: Eye,
+      subtext: "Feed shortlist · matches current filters",
+      color: "#ff9147",
+    },
+    {
+      name: "Needs Follow-up",
+      value: needsFollowUpCount.toString(),
+      icon: CalendarClock,
+      subtext: "Overdue next actions · matches current filters",
+      color: "#f87171",
+    },
+    {
       name: "Projected Movement",
       value: formatSignedCurrency(projectedMovement),
       icon: TrendingUp,
@@ -61,10 +84,12 @@ export default function TopStats({ leads }: { leads: Lead[] }) {
   ];
 
   return (
+    // Flex-wrap (not grid auto-fit) so a trailing card stretches to fill its
+    // row instead of sitting beside empty tracks at mid laptop widths.
     <div
       style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+        display: "flex",
+        flexWrap: "wrap",
         gap: 14,
         marginBottom: 24,
       }}
@@ -73,6 +98,7 @@ export default function TopStats({ leads }: { leads: Lead[] }) {
         <div
           key={item.name}
           style={{
+            flex: "1 1 200px",
             background: "var(--bg-card)",
             border: "1px solid rgba(255,255,255,0.08)",
             borderRadius: 14,

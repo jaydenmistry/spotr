@@ -3,10 +3,106 @@ import { getServerSession } from "next-auth";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { authOptions } from "@/lib/auth";
-import { FEED_ACTIONS, isFeedAction } from "@/lib/feedActions";
+import { FEED_ACTIONS, isFeedAction, type FeedAction } from "@/lib/feedActions";
 import { rateLimit, clientIp } from "@/lib/rateLimit";
+import {
+  buildOutcomeDetail,
+  isOutcomeReason,
+  outcomeReasonLabel,
+  validateNote,
+  type OutcomeReasonCode,
+} from "@/lib/followUp";
+import { isTerminalStage } from "@/lib/stages";
 
 export const dynamic = "force-dynamic";
+
+interface ActionEffect {
+  data: Prisma.LeadUpdateInput;
+  activity: { type: string; summary: string; detail?: string };
+  // True when the action wouldn't change anything — skip all writes.
+  noop: boolean;
+}
+
+function getActionEffect(
+  action: FeedAction,
+  lead: {
+    stage: string;
+    watchedAt: Date | null;
+    passedAt: Date | null;
+    assignedTo: string | null;
+    outcomeReason: string | null;
+    outcomeNote: string | null;
+  },
+  actor: string,
+  outcome: { reason: OutcomeReasonCode; note: string | null } | null,
+  now: Date
+): ActionEffect {
+  switch (action) {
+    case "watch":
+      return {
+        noop: Boolean(lead.watchedAt),
+        data: { watchedAt: now },
+        activity: { type: "watched", summary: "Added to watchlist" },
+      };
+    case "unwatch":
+      return {
+        noop: !lead.watchedAt,
+        data: { watchedAt: null },
+        activity: { type: "unwatched", summary: "Removed from watchlist" },
+      };
+    case "pass": {
+      // Re-passing with the identical reason/note is a no-op; a different
+      // reason/note is a correction and must be applied (original pass
+      // timestamp is preserved).
+      const alreadyPassed = Boolean(lead.passedAt);
+      const samePass =
+        alreadyPassed &&
+        lead.outcomeReason === (outcome?.reason ?? null) &&
+        lead.outcomeNote === (outcome?.note ?? null);
+      const label = outcomeReasonLabel(outcome?.reason ?? "other");
+      return {
+        noop: samePass,
+        data: {
+          passedAt: lead.passedAt ?? now,
+          outcomeReason: outcome?.reason ?? null,
+          outcomeNote: outcome?.note ?? null,
+        },
+        activity: {
+          type: "passed",
+          summary: alreadyPassed ? `Pass reason updated — ${label}` : `Passed — ${label}`,
+          detail: outcome ? buildOutcomeDetail(outcome.reason, outcome.note) : undefined,
+        },
+      };
+    }
+    case "unpass":
+      return {
+        noop: !lead.passedAt,
+        // When the stage is Lost (legacy rows can hold both states), the
+        // outcome fields describe the Lost outcome — restoring from Passed
+        // must not destroy the required Lost reason.
+        data:
+          lead.stage === "Lost"
+            ? { passedAt: null }
+            : { passedAt: null, outcomeReason: null, outcomeNote: null },
+        activity: { type: "restored", summary: "Restored from Passed" },
+      };
+    case "assign":
+      return {
+        noop: lead.assignedTo === actor,
+        // Single-user v1: assign to the signed-in user.
+        // TODO: replace assignedTo with a User relation (assignedToId) once
+        // RBAC/multi-tenancy lands — email is not a stable cross-tenant key.
+        data: { assignedTo: actor },
+        activity: { type: "assigned", summary: `Assigned to ${actor}` },
+      };
+    case "unassign":
+      return {
+        noop: !lead.assignedTo,
+        data: { assignedTo: null },
+        activity: { type: "unassigned", summary: "Unassigned" },
+      };
+  }
+}
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
@@ -29,7 +125,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { leadId, action } = (body ?? {}) as { leadId?: unknown; action?: unknown };
+  const { leadId, action, reason, note } = (body ?? {}) as {
+    leadId?: unknown;
+    action?: unknown;
+    reason?: unknown;
+    note?: unknown;
+  };
 
   if (typeof leadId !== "string" || leadId.length === 0) {
     return NextResponse.json({ error: "leadId is required" }, { status: 400 });
@@ -42,28 +143,75 @@ export async function POST(request: Request) {
     );
   }
 
-  const now = new Date();
-  const data: Prisma.LeadUpdateInput =
-    action === "watch"
-      ? { watchedAt: now }
-      : action === "unwatch"
-      ? { watchedAt: null }
-      : action === "pass"
-      ? { passedAt: now }
-      : action === "unpass"
-      ? { passedAt: null }
-      : action === "assign"
-      ? // Single-user v1: assign to the signed-in user.
-        // TODO: replace assignedTo with a User relation (assignedToId) once
-        // RBAC/multi-tenancy lands — email is not a stable cross-tenant key.
-        { assignedTo: session.user?.email ?? "admin" }
-      : { assignedTo: null };
+  // Passing requires a standardized outcome reason (+ optional note).
+  let outcome: { reason: OutcomeReasonCode; note: string | null } | null = null;
+  if (action === "pass") {
+    if (!isOutcomeReason(reason)) {
+      return NextResponse.json(
+        { error: "A standardized reason is required to pass a lead" },
+        { status: 400 }
+      );
+    }
+
+    const outcomeNote = note === undefined || note === null ? null : validateNote(note);
+    if (note !== undefined && note !== null && outcomeNote === null) {
+      return NextResponse.json({ error: "note must be 1-500 characters" }, { status: 400 });
+    }
+
+    outcome = { reason, note: outcomeNote };
+  }
+
+  const actor = session.user?.email ?? "admin";
 
   try {
-    const updatedLead = await prisma.lead.update({
+    // TODO(tenancy): scope this lookup by the caller's dealer/tenant id once
+    // multi-tenancy lands — session-only auth is a cross-tenant IDOR seam.
+    const lead = await prisma.lead.findUnique({
       where: { id: leadId },
-      data,
+      select: {
+        stage: true,
+        watchedAt: true,
+        passedAt: true,
+        assignedTo: true,
+        outcomeReason: true,
+        outcomeNote: true,
+      },
     });
+    if (!lead) {
+      return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+    }
+
+    // Passed (feed) and Lost/Acquired (kanban) are separate terminal
+    // workflows sharing the outcome columns; passing a terminal-stage lead
+    // would clobber the stage outcome's reason, so refuse the overlap.
+    if (action === "pass" && isTerminalStage(lead.stage)) {
+      return NextResponse.json(
+        { error: `Lead is already ${lead.stage} — move it to an active stage before passing` },
+        { status: 409 }
+      );
+    }
+
+    const effect = getActionEffect(action, lead, actor, outcome, new Date());
+
+    // No-op: state already matches — return the lead untouched, no activity.
+    if (effect.noop) {
+      const current = await prisma.lead.findUnique({ where: { id: leadId } });
+      return NextResponse.json(current);
+    }
+
+    // Lead mutation and its activity are atomic: both or neither.
+    const [updatedLead] = await prisma.$transaction([
+      prisma.lead.update({ where: { id: leadId }, data: effect.data }),
+      prisma.activity.create({
+        data: {
+          leadId,
+          type: effect.activity.type,
+          summary: effect.activity.summary,
+          detail: effect.activity.detail ?? null,
+          actor,
+        },
+      }),
+    ]);
 
     return NextResponse.json(updatedLead);
   } catch (error) {
