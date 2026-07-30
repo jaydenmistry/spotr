@@ -1,47 +1,39 @@
 "use client";
 
 import { CalendarClock, Clock, Eye, Layers } from "lucide-react";
-import type { LeadRecord } from "@/lib/vehicleAnalytics";
-import { isTerminalStage } from "@/lib/stages";
-import { getFollowUpStatus } from "@/lib/followUp";
 import type { FollowUpFilter } from "./PipelineControls";
 
 /**
  * Operational header for the Pipeline. Four action-focused stats — Active
- * pipeline, Overdue, Due soon, Watching — computed from the caller's already
- * non-view-filtered leads, so the numbers describe the same set the board and
- * Needs Attention list render. Overdue / Due soon / Watching double as filter
- * toggles; the counts never change based on which view is selected.
+ * pipeline, Overdue, Due soon, Watching.
+ *
+ * This component derives NOTHING. Every count is supplied by the page from the
+ * shared `buildPipelineLeadSets` vocabulary, so the header, the control-bar
+ * badge, the Board pills and the Needs Attention groups are guaranteed to be
+ * the same numbers. Specifically the caller passes counts computed from
+ * `active` — the explicitly-filtered, non-terminal, non-passed set — which is
+ * why turning the Overdue filter on does not zero the Due-soon stat, and why
+ * switching between Board and Needs Attention never moves these numbers.
  */
 export default function TopStats({
-  leads,
-  now,
+  activeCount,
+  overdueCount,
+  dueSoonCount,
+  watchingCount,
   followUp,
   watchedOnly,
   onToggleFollowUp,
   onToggleWatched,
 }: {
-  leads: LeadRecord[];
-  now?: Date;
+  activeCount: number;
+  overdueCount: number;
+  dueSoonCount: number;
+  watchingCount: number;
   followUp: FollowUpFilter;
   watchedOnly: boolean;
   onToggleFollowUp: (next: FollowUpFilter) => void;
   onToggleWatched: (next: boolean) => void;
 }) {
-  const activeLeads = leads.filter((l) => !isTerminalStage(l.stage) && !l.passedAt);
-
-  let overdue = 0;
-  let dueSoon = 0;
-  for (const lead of activeLeads) {
-    const status = getFollowUpStatus(lead, now);
-    if (status === "overdue") overdue += 1;
-    else if (status === "due-soon") dueSoon += 1;
-  }
-
-  // Same definition as the feed's Watching tab: shortlisted, not passed,
-  // still an open opportunity.
-  const watching = activeLeads.filter((l) => l.watchedAt).length;
-
   const stats: Array<{
     key: string;
     name: string;
@@ -55,7 +47,7 @@ export default function TopStats({
     {
       key: "active",
       name: "Active pipeline",
-      value: activeLeads.length,
+      value: activeCount,
       icon: Layers,
       color: "#60a5fa",
       subtext: "Open, non-terminal leads",
@@ -63,17 +55,17 @@ export default function TopStats({
     {
       key: "overdue",
       name: "Overdue",
-      value: overdue,
+      value: overdueCount,
       icon: Clock,
       color: "#f87171",
-      subtext: overdue ? "Follow up now" : "Nothing overdue",
+      subtext: overdueCount ? "Follow up now" : "Nothing overdue",
       pressed: followUp === "overdue",
       onClick: () => onToggleFollowUp(followUp === "overdue" ? "all" : "overdue"),
     },
     {
       key: "due-soon",
       name: "Due soon",
-      value: dueSoon,
+      value: dueSoonCount,
       icon: CalendarClock,
       color: "#fbbf24",
       subtext: "Due within 48h",
@@ -83,7 +75,7 @@ export default function TopStats({
     {
       key: "watching",
       name: "Watching",
-      value: watching,
+      value: watchingCount,
       icon: Eye,
       color: "#ff9147",
       subtext: "Shortlisted opportunities",

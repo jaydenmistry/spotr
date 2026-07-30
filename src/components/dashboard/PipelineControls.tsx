@@ -18,6 +18,10 @@ export interface PipelineFilterState {
   makeFilter: string;
   minPrice: string;
   maxPrice: string;
+  /** Explicit Pipeline distance cap in miles. Blank = no distance filtering.
+   *  Never seeded from the Buy Box or the ingestion pull radius — a lead is
+   *  only hidden by distance when the user typed a number here. */
+  maxDistance: string;
   movementFilter: MovementFilter;
 }
 
@@ -30,6 +34,7 @@ export const EMPTY_PIPELINE_FILTERS: PipelineFilterState = {
   makeFilter: "All",
   minPrice: "",
   maxPrice: "",
+  maxDistance: "",
   movementFilter: "All",
 };
 
@@ -46,11 +51,22 @@ export function hasActiveFilters(f: PipelineFilterState): boolean {
     f.makeFilter !== "All" ||
     f.minPrice !== "" ||
     f.maxPrice !== "" ||
+    f.maxDistance.trim() !== "" ||
     f.movementFilter !== "All"
   );
 }
 
 const RECOMMENDATIONS: RecommendationFilter[] = ["All", "BUY", "INVESTIGATE", "WATCH", "PASS"];
+
+// Movement comes from getVehicleAnalytics(), a deterministic Spotr heuristic —
+// NOT observed market data and not a provider signal. The option labels say
+// "projected" so a buyer can never read them as factual market movement, while
+// the underlying MovementFilter values stay unchanged for other surfaces.
+const MOVEMENT_OPTIONS: Array<{ value: MovementFilter; label: string }> = [
+  { value: "All", label: "All projected movement" },
+  { value: "Appreciating", label: "Projected upward" },
+  { value: "Depreciating", label: "Projected downward" },
+];
 
 const inputStyle: React.CSSProperties = {
   background: "rgba(255,255,255,0.04)",
@@ -84,6 +100,7 @@ export default function PipelineControls({
   onChange,
   onClearAll,
   overdueCount,
+  dueSoonCount,
 }: {
   filters: PipelineFilterState;
   onChange: (next: Partial<PipelineFilterState>) => void;
@@ -91,9 +108,21 @@ export default function PipelineControls({
   /** Active leads currently overdue — shown on the Needs-follow-up toggle so
    *  buyers see the load without turning the filter on. */
   overdueCount: number;
+  /** Active leads currently due soon. Shown instead of overdueCount while the
+   *  due-soon scope is engaged, so the badge always describes the scope the
+   *  toggle is actually applying. */
+  dueSoonCount: number;
 }) {
   const [showMore, setShowMore] = useState(false);
   const active = hasActiveFilters(filters);
+  const followUpActive = filters.followUp !== "all";
+  const radiusActive = filters.maxDistance.trim() !== "";
+  const advancedActive =
+    radiusActive ||
+    filters.makeFilter !== "All" ||
+    filters.minPrice !== "" ||
+    filters.maxPrice !== "" ||
+    filters.movementFilter !== "All";
 
   return (
     <section
@@ -153,9 +182,12 @@ export default function PipelineControls({
         </label>
 
         <label style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 10, fontWeight: 700, color: "#4a5670", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          {/* BUY/PASS read as instructions, so the heuristic caveat matters
+              here at least as much as it does on the movement filter. */}
           Recommendation
           <select
-            aria-label="Filter by recommendation"
+            aria-label="Filter by Spotr recommendation (heuristic estimate, not a market signal)"
+            title="Spotr heuristic recommendation — an estimate, not market data"
             value={filters.recommendation}
             onChange={(e) => onChange({ recommendation: e.target.value as RecommendationFilter })}
             style={{ ...inputStyle, cursor: "pointer", width: "auto" }}
@@ -178,35 +210,56 @@ export default function PipelineControls({
           Watched
         </button>
 
+        {/* True toggle: active in EITHER follow-up scope, and clicking while
+            active always clears to "all" — including from due-soon, which
+            previously switched to overdue instead of turning off. */}
         <button
           type="button"
-          aria-pressed={filters.followUp !== "all"}
-          onClick={() => onChange({ followUp: filters.followUp === "overdue" ? "all" : "overdue" })}
-          style={toggleStyle(filters.followUp !== "all")}
+          aria-pressed={followUpActive}
+          onClick={() => onChange({ followUp: followUpActive ? "all" : "overdue" })}
+          style={toggleStyle(followUpActive)}
         >
           <CalendarClock style={{ width: 13, height: 13 }} aria-hidden="true" />
           Needs follow-up
           <span
+            aria-label={
+              filters.followUp === "due-soon" ? "due soon count" : "overdue count"
+            }
             style={{
               borderRadius: 100,
               padding: "1px 7px",
               fontSize: 11,
               fontWeight: 800,
-              background: filters.followUp !== "all" ? "rgba(255,122,26,0.25)" : "rgba(255,255,255,0.08)",
+              background: followUpActive ? "rgba(255,122,26,0.25)" : "rgba(255,255,255,0.08)",
             }}
           >
-            {overdueCount}
+            {filters.followUp === "due-soon" ? dueSoonCount : overdueCount}
           </span>
         </button>
 
+        {/* Advanced filters are collapsed, so surface when one is silently
+            constraining the results (radius especially). */}
         <button
           type="button"
           aria-expanded={showMore}
           onClick={() => setShowMore((v) => !v)}
-          style={toggleStyle(false)}
+          style={toggleStyle(advancedActive)}
         >
           <SlidersHorizontal style={{ width: 13, height: 13 }} aria-hidden="true" />
           More filters
+          {advancedActive && (
+            <span
+              style={{
+                borderRadius: 100,
+                padding: "1px 7px",
+                fontSize: 11,
+                fontWeight: 800,
+                background: "rgba(255,122,26,0.25)",
+              }}
+            >
+              on
+            </span>
+          )}
         </button>
 
         {active && (
@@ -234,7 +287,7 @@ export default function PipelineControls({
         )}
       </div>
 
-      {/* More filters (price, distance-free legacy filters) */}
+      {/* More filters: make, price, explicit radius, projected movement */}
       {showMore && (
         <div
           style={{
@@ -282,18 +335,55 @@ export default function PipelineControls({
               onChange={(e) => onChange({ maxPrice: e.target.value })}
             />
           </label>
+          {/* Explicit distance cap. Blank by default and never seeded from the
+              Buy Box or the ingestion pull radius, so nothing is hidden by
+              distance unless the buyer asks for it. Leads with unknown
+              distance are kept (filterLeads' documented behaviour). */}
           <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 10, fontWeight: 700, color: "#4a5670", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-            Movement
+            Within radius (mi)
+            {/* Digits only, leading zeros stripped. `filterLeads` treats a
+                falsy maxDistance as "no limit", so a bare "0" would silently
+                disable the filter while looking active — sanitizing to "" here
+                keeps the field's blank/active state honest, and makes negative
+                or non-numeric entries unrepresentable. Kept local to the
+                Pipeline so the shared parser (and Inventory) are unaffected. */}
+            <input
+              type="text"
+              inputMode="numeric"
+              aria-label="Maximum distance in miles"
+              aria-describedby="pipeline-radius-help"
+              style={inputStyle}
+              placeholder="Any distance"
+              value={filters.maxDistance}
+              onChange={(e) =>
+                onChange({ maxDistance: e.target.value.replace(/\D/g, "").replace(/^0+/, "") })
+              }
+            />
+            <span id="pipeline-radius-help" style={{ fontSize: 10, fontWeight: 500, color: "#4a5670", textTransform: "none", letterSpacing: 0 }}>
+              {radiusActive
+                ? `Showing leads within ${filters.maxDistance.trim()} mi (unknown distance still shown).`
+                : "Blank shows every distance."}
+            </span>
+          </label>
+
+          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 10, fontWeight: 700, color: "#4a5670", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            Spotr projected movement
             <select
-              aria-label="Filter by value movement"
+              aria-label="Filter by Spotr projected movement (heuristic estimate)"
+              aria-describedby="pipeline-movement-help"
               value={filters.movementFilter}
               onChange={(e) => onChange({ movementFilter: e.target.value as MovementFilter })}
               style={{ ...inputStyle, cursor: "pointer" }}
             >
-              <option style={{ background: "#0f1520" }}>All</option>
-              <option style={{ background: "#0f1520" }}>Appreciating</option>
-              <option style={{ background: "#0f1520" }}>Depreciating</option>
+              {MOVEMENT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value} style={{ background: "#0f1520" }}>
+                  {option.label}
+                </option>
+              ))}
             </select>
+            <span id="pipeline-movement-help" style={{ fontSize: 10, fontWeight: 500, color: "#4a5670", textTransform: "none", letterSpacing: 0 }}>
+              Estimate based on Spotr heuristic — not market data.
+            </span>
           </label>
         </div>
       )}

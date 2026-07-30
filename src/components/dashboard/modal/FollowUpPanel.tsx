@@ -139,7 +139,7 @@ export default function FollowUpPanel({
       ) : editing ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11, fontWeight: 700, color: "#8b9ab8" }}>
-            What&apos;s the next step?
+            What&apos;s the next step? (don&apos;t include seller contact info)
             <input
               value={text}
               onChange={(event) => setText(event.target.value.slice(0, NEXT_ACTION_MAX_LENGTH))}

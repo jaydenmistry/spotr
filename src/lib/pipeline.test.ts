@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildNeedsAttention, buildAssessmentMap } from "./pipeline";
+import { buildNeedsAttention, buildAssessmentMap, buildPipelineLeadSets } from "./pipeline";
 import { DEFAULT_BUY_BOX } from "./buyBox";
 import type { LeadRecord } from "./vehicleAnalytics";
 
@@ -39,6 +39,63 @@ function lead(overrides: Partial<LeadRecord> & { id: string }): LeadRecord {
 }
 
 const noScore = () => 0;
+
+describe("buildPipelineLeadSets", () => {
+  const base = [
+    lead({ id: "od1", nextAction: "a", nextActionAt: hoursFromNow(-5) }),
+    lead({ id: "od2", nextAction: "b", nextActionAt: hoursFromNow(-1) }),
+    lead({ id: "ds1", nextAction: "c", nextActionAt: hoursFromNow(6) }),
+    lead({ id: "plain" }),
+    lead({ id: "lost", stage: "Lost", nextAction: "d", nextActionAt: hoursFromNow(-9) }),
+    lead({ id: "passed", passedAt: hoursFromNow(-40), nextAction: "e", nextActionAt: hoursFromNow(-9) }),
+  ];
+
+  it("excludes terminal and passed leads from active/overdue/dueSoon", () => {
+    const sets = buildPipelineLeadSets(base, "all", NOW);
+    expect(sets.active.map((l) => l.id)).toEqual(["od1", "od2", "ds1", "plain"]);
+    expect(sets.overdue.map((l) => l.id)).toEqual(["od1", "od2"]);
+    expect(sets.dueSoon.map((l) => l.id)).toEqual(["ds1"]);
+  });
+
+  it("keeps base untouched and returns every lead as visible when follow-up is 'all'", () => {
+    const sets = buildPipelineLeadSets(base, "all", NOW);
+    expect(sets.base).toBe(base);
+    expect(sets.visible.map((l) => l.id)).toEqual(base.map((l) => l.id));
+  });
+
+  it("applies the follow-up scope only to `visible`, leaving the stat sets intact", () => {
+    const sets = buildPipelineLeadSets(base, "overdue", NOW);
+    // visible narrows...
+    expect(sets.visible.map((l) => l.id)).toEqual(["od1", "od2"]);
+    // ...but Due soon stays countable while the Overdue filter is on.
+    expect(sets.dueSoon.map((l) => l.id)).toEqual(["ds1"]);
+    expect(sets.active).toHaveLength(4);
+  });
+
+  it("scopes visible to due-soon without disturbing the overdue count", () => {
+    const sets = buildPipelineLeadSets(base, "due-soon", NOW);
+    expect(sets.visible.map((l) => l.id)).toEqual(["ds1"]);
+    expect(sets.overdue).toHaveLength(2);
+  });
+
+  it("derives every set from the caller's already-filtered base (intersection)", () => {
+    // Caller applied a 'watched' filter first; the sets must respect it.
+    const watchedOnly = base.filter((l) => l.id === "od1");
+    const sets = buildPipelineLeadSets(watchedOnly, "all", NOW);
+    expect(sets.active).toHaveLength(1);
+    expect(sets.overdue.map((l) => l.id)).toEqual(["od1"]);
+    expect(sets.dueSoon).toHaveLength(0);
+  });
+
+  it("agrees: overdue+dueSoon are always subsets of active", () => {
+    for (const scope of ["all", "overdue", "due-soon"] as const) {
+      const sets = buildPipelineLeadSets(base, scope, NOW);
+      const activeIds = new Set(sets.active.map((l) => l.id));
+      expect(sets.overdue.every((l) => activeIds.has(l.id))).toBe(true);
+      expect(sets.dueSoon.every((l) => activeIds.has(l.id))).toBe(true);
+    }
+  });
+});
 
 describe("buildNeedsAttention", () => {
   it("orders groups overdue → due-soon → unscheduled", () => {

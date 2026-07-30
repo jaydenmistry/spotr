@@ -103,7 +103,10 @@ describe("Pipeline follow-up propagation (revamp)", () => {
 
     render(<DashboardPage />);
     await screen.findAllByText(TITLE);
-    expect(screen.queryByLabelText(/Follow-up overdue/)).toBeNull();
+    // The overdue badge is a static badge (no live region), so assert on the
+    // action text it renders rather than an aria-label. Scoped to the action
+    // string so it can't collide with the "Overdue" header stat label.
+    expect(screen.queryByText(/· Call seller/)).toBeNull();
     expect(statValue("Overdue")).toBe("0");
 
     await openDossier(user);
@@ -114,7 +117,7 @@ describe("Pipeline follow-up propagation (revamp)", () => {
     await waitFor(() => expect(axios.post).toHaveBeenCalledTimes(1));
     await closeDossier(user);
 
-    await waitFor(() => expect(screen.getByLabelText(/Follow-up overdue/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/· Call seller/)).toBeTruthy());
     expect(statValue("Overdue")).toBe("1");
 
     // The control-bar follow-up filter keeps the lead visible.
@@ -241,6 +244,339 @@ describe("Pipeline safe actions", () => {
     expect(confirm.disabled).toBe(true);
     // axios.post must not have fired (no bypass).
     expect(axios.post).not.toHaveBeenCalled();
+  });
+});
+
+describe("Pipeline explicit radius filter", () => {
+  it("does not filter by distance until the user supplies a radius", async () => {
+    const user = userEvent.setup();
+    // DEFAULT_BUY_BOX carries a 100-mile radius. A lead 260mi out must still
+    // show: the Buy Box radius is never a hidden Pipeline filter.
+    mockGets([
+      baseLead({ id: "near", listingTitle: "Near Lead", distanceMiles: 12 }),
+      baseLead({ id: "far", listingTitle: "Far Lead", distanceMiles: 260 }),
+      baseLead({ id: "unknown", listingTitle: "Unknown Distance", distanceMiles: null }),
+    ]);
+    render(<DashboardPage />);
+    await screen.findByText("Far Lead");
+    expect(screen.getByText("of 3 shown")).toBeTruthy();
+
+    // Now supply an explicit radius — only then does distance constrain.
+    await user.click(screen.getByRole("button", { name: /more filters/i }));
+    await user.type(screen.getByLabelText(/maximum distance in miles/i), "50");
+
+    await waitFor(() => expect(screen.queryByText("Far Lead")).toBeNull());
+    expect(screen.getAllByText("Near Lead").length).toBeGreaterThan(0);
+    // Documented behaviour preserved: unknown distance is never hidden.
+    expect(screen.getAllByText("Unknown Distance").length).toBeGreaterThan(0);
+    // Surfaced both in the field's help text and in the result summary.
+    expect(screen.getAllByText(/within 50 mi/).length).toBeGreaterThan(1);
+  });
+
+  it("starts blank and is cleared by Clear all", async () => {
+    const user = userEvent.setup();
+    mockGets([baseLead({ id: "far", listingTitle: "Far Lead", distanceMiles: 260 })]);
+    render(<DashboardPage />);
+    await screen.findByRole("button", { name: /more filters/i });
+    await user.click(screen.getByRole("button", { name: /more filters/i }));
+
+    const radius = screen.getByLabelText(/maximum distance in miles/i) as HTMLInputElement;
+    expect(radius.value).toBe("");
+
+    await user.type(radius, "50");
+    await waitFor(() => expect(screen.queryByText("Far Lead")).toBeNull());
+
+    await user.click(screen.getByRole("button", { name: /clear all/i }));
+    await waitFor(() => expect(screen.getAllByText("Far Lead").length).toBeGreaterThan(0));
+  });
+});
+
+describe("Pipeline result-count copy", () => {
+  // A plain lead is in `visible` but is NOT an attention entry (not watched,
+  // not assigned, nothing scheduled), so the two counts genuinely differ —
+  // which is exactly the confusion this copy fix removes.
+  const overdueWatched = baseLead({
+    id: "od",
+    listingTitle: "Overdue Watched",
+    watchedAt: pastDue,
+    nextAction: "Call",
+    nextActionAt: pastDue,
+  });
+
+  it("counts rendered attention entries, not the visible-lead total", async () => {
+    mockGets([overdueWatched, baseLead({ id: "p1", listingTitle: "Plain One" }), baseLead({ id: "p2", listingTitle: "Plain Two" })]);
+    render(<DashboardPage />);
+    // Overdue present → defaults to Needs Attention.
+    await screen.findByRole("heading", { name: /^Overdue$/ });
+
+    expect(screen.getByText(/1 lead needs attention/)).toBeTruthy();
+    // The old copy quoted every visible lead beside a single rendered row.
+    expect(screen.queryByText(/of 3 shown/)).toBeNull();
+  });
+
+  it("pluralises when several leads need attention", async () => {
+    mockGets([
+      overdueWatched,
+      baseLead({ id: "od2", listingTitle: "Overdue Two", watchedAt: pastDue, nextAction: "Call", nextActionAt: pastDue }),
+      baseLead({ id: "p1", listingTitle: "Plain One" }),
+    ]);
+    render(<DashboardPage />);
+    await screen.findByRole("heading", { name: /^Overdue$/ });
+    expect(screen.getByText(/2 leads need attention/)).toBeTruthy();
+  });
+
+  it("keeps the N-of-M result count on the Board", async () => {
+    const user = userEvent.setup();
+    mockGets([overdueWatched, baseLead({ id: "p1", listingTitle: "Plain One" }), baseLead({ id: "p2", listingTitle: "Plain Two" })]);
+    render(<DashboardPage />);
+    await user.click(await screen.findByRole("tab", { name: /^Board$/ }));
+
+    await waitFor(() => expect(screen.getByText("of 3 shown")).toBeTruthy());
+    expect(screen.queryByText(/needs? attention$/)).toBeNull();
+  });
+
+  it("still flags the Board count as filtered when explicit filters are active", async () => {
+    const user = userEvent.setup();
+    mockGets([overdueWatched, baseLead({ id: "p1", listingTitle: "Plain One" })]);
+    render(<DashboardPage />);
+    await user.click(await screen.findByRole("tab", { name: /^Board$/ }));
+    await user.click(screen.getByRole("button", { name: /^Watched$/ }));
+
+    await waitFor(() => expect(screen.getByText("of 2 shown")).toBeTruthy());
+    expect(screen.getByText(/^filtered/)).toBeTruthy();
+  });
+
+  it("shrinks the attention count to match the entries an explicit filter leaves", async () => {
+    const user = userEvent.setup();
+    mockGets([
+      overdueWatched,
+      baseLead({
+        id: "od2",
+        listingTitle: "Overdue Two",
+        make: "Toyota",
+        watchedAt: pastDue,
+        nextAction: "Call",
+        nextActionAt: pastDue,
+      }),
+    ]);
+    render(<DashboardPage />);
+    await screen.findByRole("heading", { name: /^Overdue$/ });
+    expect(screen.getByText(/2 leads need attention/)).toBeTruthy();
+
+    // Search narrows to the Porsche lead only.
+    await user.type(screen.getByLabelText(/search leads/i), "Porsche");
+
+    await waitFor(() => expect(screen.getByText(/1 lead needs attention/)).toBeTruthy());
+    // Count matches the rows actually rendered.
+    expect(screen.getAllByRole("button", { name: /open dossier/i })).toHaveLength(1);
+    expect(screen.queryByText("Overdue Two")).toBeNull();
+  });
+
+  it("falls back to the empty state with no misleading total when nothing needs attention", async () => {
+    const user = userEvent.setup();
+    // No follow-ups and nothing watched/assigned → zero attention entries.
+    mockGets([baseLead({ id: "p1", listingTitle: "Plain One" }), baseLead({ id: "p2", listingTitle: "Plain Two" })]);
+    render(<DashboardPage />);
+    // Nothing overdue/due-soon → defaults to Board; switch across manually.
+    await user.click(await screen.findByRole("tab", { name: /needs attention/i }));
+
+    await screen.findByText(/Nothing needs attention/i);
+    expect(screen.queryByText(/of 2 shown/)).toBeNull();
+    expect(screen.queryByText(/0 leads? needs? attention/)).toBeNull();
+  });
+});
+
+describe("Pipeline radius input sanitising", () => {
+  it("rejects zero, negative and non-numeric entries rather than silently disabling the filter", async () => {
+    const user = userEvent.setup();
+    mockGets([baseLead({ id: "far", listingTitle: "Far Lead", distanceMiles: 260 })]);
+    render(<DashboardPage />);
+    await user.click(await screen.findByRole("button", { name: /more filters/i }));
+    const radius = screen.getByLabelText(/maximum distance in miles/i) as HTMLInputElement;
+
+    // "0" would make Number(x) falsy → Infinity → filter silently inactive.
+    await user.type(radius, "0");
+    expect(radius.value).toBe("");
+
+    await user.type(radius, "-5");
+    expect(radius.value).toBe("5");
+
+    await user.clear(radius);
+    await user.type(radius, "abc");
+    expect(radius.value).toBe("");
+
+    // Far lead never disappeared, because no valid radius was ever set.
+    expect(screen.getAllByText("Far Lead").length).toBeGreaterThan(0);
+  });
+});
+
+describe("Pipeline movement honesty", () => {
+  it("labels the movement control as a Spotr heuristic estimate, never as market data", async () => {
+    const user = userEvent.setup();
+    mockGets([baseLead()]);
+    render(<DashboardPage />);
+    await screen.findByRole("button", { name: /more filters/i });
+    await user.click(screen.getByRole("button", { name: /more filters/i }));
+
+    expect(screen.getByText(/Spotr projected movement/i)).toBeTruthy();
+    expect(screen.getByText(/Estimate based on Spotr heuristic — not market data\./i)).toBeTruthy();
+
+    // Options read as projections, not as factual observed movement.
+    const select = screen.getByLabelText(/spotr projected movement/i);
+    const labels = within(select).getAllByRole("option").map((o) => o.textContent);
+    expect(labels).toEqual(["All projected movement", "Projected upward", "Projected downward"]);
+    expect(labels).not.toContain("Appreciating");
+    expect(labels).not.toContain("Depreciating");
+  });
+});
+
+describe("Pipeline follow-up toggle", () => {
+  it("clears to all from the overdue state", async () => {
+    const user = userEvent.setup();
+    mockGets([
+      baseLead({ id: "od", listingTitle: "Overdue Lead", nextAction: "a", nextActionAt: pastDue }),
+      baseLead({ id: "plain", listingTitle: "Plain Lead" }),
+    ]);
+    render(<DashboardPage />);
+    // Board, so an untouched lead is renderable (Needs Attention correctly
+    // omits leads that are neither watched, assigned, nor scheduled).
+    await user.click(await screen.findByRole("tab", { name: /^Board$/ }));
+    const toggle = screen.getByRole("button", { name: /needs follow-up/i });
+
+    await user.click(toggle); // on → overdue
+    await waitFor(() => expect(toggle.getAttribute("aria-pressed")).toBe("true"));
+    expect(screen.queryByText("Plain Lead")).toBeNull();
+
+    await user.click(toggle); // off → all
+    await waitFor(() => expect(toggle.getAttribute("aria-pressed")).toBe("false"));
+    expect(screen.getAllByText("Plain Lead").length).toBeGreaterThan(0);
+  });
+
+  it("clears to all from the due-soon state instead of switching to overdue", async () => {
+    const user = userEvent.setup();
+    mockGets([
+      baseLead({ id: "ds", listingTitle: "Due Soon Lead", nextAction: "a", nextActionAt: dueSoon }),
+      baseLead({ id: "plain", listingTitle: "Plain Lead" }),
+    ]);
+    render(<DashboardPage />);
+    await user.click(await screen.findByRole("tab", { name: /^Board$/ }));
+    // Enter due-soon scope via the Due soon stat card.
+    await user.click(screen.getByRole("button", { name: /^Due soon: \d+/ }));
+
+    const toggle = screen.getByRole("button", { name: /needs follow-up/i });
+    await waitFor(() => expect(toggle.getAttribute("aria-pressed")).toBe("true"));
+    expect(screen.queryByText("Plain Lead")).toBeNull();
+
+    // Regression: this previously switched to overdue and hid everything.
+    await user.click(toggle);
+    await waitFor(() => expect(toggle.getAttribute("aria-pressed")).toBe("false"));
+    expect(screen.getAllByText("Plain Lead").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Due Soon Lead").length).toBeGreaterThan(0);
+  });
+
+  it("keeps aria-pressed in step with the visible active state", async () => {
+    const user = userEvent.setup();
+    mockGets([baseLead({ id: "ds", nextAction: "a", nextActionAt: dueSoon })]);
+    render(<DashboardPage />);
+    const toggle = await screen.findByRole("button", { name: /needs follow-up/i });
+    expect(toggle.getAttribute("aria-pressed")).toBe("false");
+
+    await user.click(screen.getByRole("button", { name: /^Due soon: \d+/ }));
+    await waitFor(() => expect(toggle.getAttribute("aria-pressed")).toBe("true"));
+  });
+});
+
+describe("Pipeline count consistency", () => {
+  it("agrees on Overdue across header stat, control badge, Board pills and Needs Attention", async () => {
+    const user = userEvent.setup();
+    mockGets([
+      baseLead({ id: "o1", listingTitle: "Overdue One", stage: "Contacted", nextAction: "a", nextActionAt: pastDue }),
+      baseLead({ id: "o2", listingTitle: "Overdue Two", stage: "Appraisal", nextAction: "b", nextActionAt: pastDue }),
+      baseLead({ id: "ds", listingTitle: "Due Soon One", nextAction: "c", nextActionAt: dueSoon }),
+      baseLead({ id: "plain", listingTitle: "Plain Lead" }),
+      // Terminal + passed leads must never be counted as active/overdue.
+      baseLead({ id: "lost", listingTitle: "Lost Lead", stage: "Lost", nextAction: "d", nextActionAt: pastDue }),
+      baseLead({ id: "passed", listingTitle: "Passed Lead", passedAt: pastDue, nextAction: "e", nextActionAt: pastDue }),
+    ]);
+    render(<DashboardPage />);
+    await screen.findByRole("button", { name: /^Overdue: \d+/ });
+
+    // Header stat and control-bar badge both read the shared `overdue` set.
+    expect(statValue("Overdue")).toBe("2");
+    const badge = within(screen.getByRole("button", { name: /needs follow-up/i })).getByText("2");
+    expect(badge).toBeTruthy();
+    expect(statValue("Due soon")).toBe("1");
+
+    // Board pills sum to the same number.
+    await user.click(screen.getByRole("tab", { name: /^Board$/ }));
+    await waitFor(() => expect(screen.getAllByText("Overdue One").length).toBeGreaterThan(0));
+    const pillTotal = screen
+      .getAllByLabelText(/^\d+ overdue in /)
+      .reduce((sum, el) => sum + Number(el.getAttribute("aria-label")!.match(/^(\d+)/)![1]), 0);
+    expect(pillTotal).toBe(2);
+
+    // Needs Attention lists exactly those two under the Overdue group.
+    await user.click(screen.getByRole("tab", { name: /needs attention/i }));
+    await screen.findByRole("heading", { name: /^Overdue$/ });
+    expect(screen.getAllByText("Overdue One").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Overdue Two").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Lost Lead")).toBeNull();
+    expect(screen.queryByText("Passed Lead")).toBeNull();
+  });
+
+  it("keeps Overdue and Due soon stats meaningful while their own filter is active", async () => {
+    const user = userEvent.setup();
+    mockGets([
+      baseLead({ id: "o1", listingTitle: "Overdue One", nextAction: "a", nextActionAt: pastDue }),
+      baseLead({ id: "ds", listingTitle: "Due Soon One", nextAction: "c", nextActionAt: dueSoon }),
+      baseLead({ id: "plain", listingTitle: "Plain Lead" }),
+    ]);
+    render(<DashboardPage />);
+    await screen.findByRole("button", { name: /^Overdue: \d+/ });
+    expect(statValue("Overdue")).toBe("1");
+    expect(statValue("Due soon")).toBe("1");
+    expect(statValue("Watching")).toBe("0");
+
+    // Regression: turning Overdue on used to collapse Due soon to 0, because
+    // the stats read the fully-filtered set instead of the shared active set.
+    await user.click(screen.getByRole("button", { name: /^Overdue: \d+/ }));
+    // Default view here is Needs Attention, which now reports its own rendered
+    // entry count rather than the visible-lead total.
+    await waitFor(() => expect(screen.getByText(/1 lead needs attention/)).toBeTruthy());
+    expect(statValue("Overdue")).toBe("1");
+    expect(statValue("Due soon")).toBe("1");
+  });
+
+  it("narrows the shared stats when an explicit non-follow-up filter is applied", async () => {
+    const user = userEvent.setup();
+    mockGets([
+      baseLead({ id: "o1", listingTitle: "Overdue One", stage: "Contacted", nextAction: "a", nextActionAt: pastDue }),
+      baseLead({ id: "o2", listingTitle: "Overdue Two", stage: "Appraisal", nextAction: "b", nextActionAt: pastDue }),
+    ]);
+    render(<DashboardPage />);
+    await screen.findByRole("button", { name: /^Overdue: \d+/ });
+    expect(statValue("Overdue")).toBe("2");
+
+    // Stage is an explicit non-follow-up filter, so it DOES move the stats.
+    await user.selectOptions(screen.getByLabelText(/filter by stage/i), "Appraisal");
+    await waitFor(() => expect(statValue("Overdue")).toBe("1"));
+    const badge = within(screen.getByRole("button", { name: /needs follow-up/i })).getByText("1");
+    expect(badge).toBeTruthy();
+  });
+
+  it("does not change the stats when only the view is switched", async () => {
+    const user = userEvent.setup();
+    mockGets([
+      baseLead({ id: "o1", listingTitle: "Overdue One", nextAction: "a", nextActionAt: pastDue }),
+      baseLead({ id: "plain", listingTitle: "Plain Lead" }),
+    ]);
+    render(<DashboardPage />);
+    await screen.findByRole("button", { name: /^Overdue: \d+/ });
+    const before = [statValue("Overdue"), statValue("Due soon"), statValue("Watching")];
+
+    await user.click(screen.getByRole("tab", { name: /^Board$/ }));
+    await waitFor(() => expect(screen.getAllByText("Plain Lead").length).toBeGreaterThan(0));
+    expect([statValue("Overdue"), statValue("Due soon"), statValue("Watching")]).toEqual(before);
   });
 });
 

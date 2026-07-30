@@ -8,7 +8,7 @@ import {
   type LeadRecord,
 } from "@/lib/vehicleAnalytics";
 import type { Recommendation } from "@/lib/opportunity";
-import { buildNeedsAttention, type AttentionGroup } from "@/lib/pipeline";
+import type { AttentionEntry, AttentionGroup } from "@/lib/pipeline";
 
 const RECOMMENDATION_COLORS: Record<Recommendation, string> = {
   BUY: "#34d399",
@@ -55,30 +55,31 @@ const rowButtonStyle: React.CSSProperties = {
 
 /**
  * Needs Attention view: active, non-terminal, non-passed leads that want a
- * buyer's attention, grouped Overdue → Due soon → No next action. Ordering and
- * membership come entirely from buildNeedsAttention (shared helper) so this
- * component never re-derives terminal/overdue logic. Only two safe actions are
- * exposed per row: Open dossier and, when an active follow-up exists, Mark done.
+ * buyer's attention, grouped Overdue → Due soon → No next action.
+ *
+ * Membership and ordering come entirely from buildNeedsAttention, which the
+ * page now calls — it passes the resulting entries straight in, so the count it
+ * shows in the result summary and the rows rendered here are the same array and
+ * cannot disagree. This component never re-derives terminal/overdue logic.
+ * Only two safe actions are exposed per row: Open dossier and, when an active
+ * follow-up exists, Mark done.
  */
 export default function NeedsAttentionList({
-  leads,
+  entries,
   now,
   recommendationOf,
-  scoreOf,
   onOpen,
   onCompleteNextAction,
   busyLeadId,
 }: {
-  leads: LeadRecord[];
+  entries: AttentionEntry[];
   now?: Date;
   recommendationOf: (lead: LeadRecord) => Recommendation | undefined;
-  scoreOf: (lead: LeadRecord) => number;
   onOpen: (lead: LeadRecord) => void;
   onCompleteNextAction: (lead: LeadRecord) => void;
   busyLeadId?: string | null;
 }) {
   const clock = now ?? new Date();
-  const entries = buildNeedsAttention(leads, scoreOf, clock);
   // Precompute which rows start a new group so the render map stays pure (no
   // mid-render mutation, which the React Compiler rejects).
   const rows = entries.map((entry, index) => ({
@@ -179,7 +180,7 @@ export default function NeedsAttentionList({
                   </span>
                   {rec && (
                     <span
-                      title="Spotr heuristic recommendation"
+                      title="Spotr heuristic recommendation — an estimate, not market data"
                       style={{
                         fontSize: 10,
                         fontWeight: 800,

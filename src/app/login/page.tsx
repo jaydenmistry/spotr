@@ -9,7 +9,10 @@ import Link from "next/link";
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("demo@spotrcars.com");
-  const [password, setPassword] = useState("password");
+  // No password prefill: a hardcoded value drifts out of sync with the seeded
+  // ADMIN_PASSWORD and silently breaks sign-in. The real secret must never
+  // reach the client bundle, so the field starts empty.
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -25,7 +28,7 @@ export default function LoginPage() {
     });
 
     if (res?.error) {
-      setError("Invalid credentials. Try demo@spotrcars.com / password");
+      setError("Invalid credentials. Please check your email and password.");
       setLoading(false);
     } else {
       router.push("/dashboard");
@@ -254,7 +257,7 @@ export default function LoginPage() {
                   }}
                   onFocus={(e) => (e.target.style.borderColor = "#ff7a1a")}
                   onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.1)")}
-                  placeholder="••••••••"
+                  placeholder="Enter password"
                 />
               </div>
             </div>
@@ -319,7 +322,7 @@ export default function LoginPage() {
             }}
           >
             <span style={{ fontWeight: 700, color: "#ff9147" }}>Demo access: </span>
-            demo@spotrcars.com · password
+            demo@spotrcars.com · use the seeded demo password
           </div>
         </div>
       </div>
