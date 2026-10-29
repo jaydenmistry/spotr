@@ -56,7 +56,7 @@ export default function LoginPage() {
     >
       <div aria-hidden="true" className="lp-hero-glow" style={{ inset: "-30% -20% auto" }} />
 
-      <div style={{ position: "absolute", top: 16, right: 16, width: 64 }}>
+      <div style={{ position: "absolute", top: "calc(16px + env(safe-area-inset-top))", right: 16, width: 64 }}>
         <ThemeToggle label={false} />
       </div>
 

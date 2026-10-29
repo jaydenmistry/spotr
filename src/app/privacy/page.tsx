@@ -58,11 +58,15 @@ export default function PrivacyPage() {
         <li>
           <strong>Our hosting provider</strong> stores the application database.
         </li>
+        <li>
+          <strong>Sentry</strong>, if error monitoring is enabled, receives crash reports: the error, the page it happened
+          on, and browser and device details. Request contents, cookies, IP addresses, and signed-in user details are not
+          sent, and email addresses and VINs are removed from error text. Performance tracing is off.
+        </li>
       </ul>
       <p>
         If privacy-friendly, cookieless analytics are enabled, they record aggregate page views without identifying
-        you. If error monitoring is enabled, crash reports are sent to Sentry with personal data such as IP addresses
-        and cookies excluded.
+        you.
       </p>
 
       <h2>How long we keep it</h2>

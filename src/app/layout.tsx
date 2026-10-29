@@ -25,6 +25,13 @@ export const metadata: Metadata = {
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
   },
+  // iOS "Add to Home Screen": launch full-screen with the content running
+  // under a translucent status bar (safe-area insets are handled in CSS).
+  appleWebApp: {
+    capable: true,
+    title: SITE_NAME,
+    statusBarStyle: "black-translucent",
+  },
   robots: {
     index: true,
     follow: true,

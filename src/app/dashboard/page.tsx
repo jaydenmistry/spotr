@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { SetupChecklist } from "@/components/dashboard/SetupChecklist";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { spring } from "@/lib/motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -88,6 +89,7 @@ export default function DashboardPage() {
   const [leads, setLeads] = useState<LeadRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [buyBox, setBuyBox] = useState<BuyBoxConfig>(DEFAULT_BUY_BOX);
+  const [buyBoxSaved, setBuyBoxSaved] = useState(false);
   const [fetchingLeads, setFetchingLeads] = useState(false);
   const [selectedLead, setSelectedLead] = useState<LeadRecord | null>(null);
 
@@ -133,12 +135,13 @@ export default function DashboardPage() {
         const [leadsRes, buyBoxRes] = await Promise.all([
           axios.get<LeadRecord[]>("/api/leads"),
           axios
-            .get<{ config: BuyBoxConfig }>("/api/buybox")
+            .get<{ config: BuyBoxConfig; persisted?: boolean }>("/api/buybox")
             .catch(() => ({ data: { config: DEFAULT_BUY_BOX } })),
         ]);
         if (!isActive) return;
         setLeads(leadsRes.data);
         setBuyBox(buyBoxRes.data.config ?? DEFAULT_BUY_BOX);
+        setBuyBoxSaved(Boolean((buyBoxRes.data as { persisted?: boolean }).persisted));
       } catch (error) {
         console.error("Failed to load leads", error);
         if (isActive) setActionError("Couldn't load the pipeline. Check your connection and reload the page.");
@@ -411,6 +414,7 @@ export default function DashboardPage() {
           </label>
           <button
             type="button"
+            id="pull-listings"
             onClick={handleFindNewLeads}
             disabled={fetchingLeads}
             className="btn btn-primary pressable"
@@ -420,6 +424,22 @@ export default function DashboardPage() {
           </button>
         </div>
         }
+      />
+
+      <SetupChecklist
+        steps={[
+          { id: "buybox", title: "Save your buy box", detail: "Tell Spotr what your desk buys", done: buyBoxSaved, href: "/dashboard/buybox" },
+          {
+            id: "pull",
+            title: "Pull listings",
+            detail: "Set ZIP and radius, then pull",
+            done: leads.length > 0,
+            // Pulls are metered, so this only points at the button — never auto-pulls.
+            onAction: () => document.getElementById("pull-listings")?.focus(),
+          },
+          { id: "shortlist", title: "Shortlist a car", detail: "Watch or assign one in the feed", done: leads.some((lead) => lead.watchedAt || lead.assignedTo), href: "/dashboard/feed" },
+          { id: "followup", title: "Schedule a follow-up", detail: "Set a next action in a dossier", done: leads.some((lead) => lead.nextAction), href: "/dashboard/feed" },
+        ]}
       />
 
       <TopStats

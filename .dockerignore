@@ -7,3 +7,8 @@ node_modules
 npm_output.log
 .DS_Store
 prisma/dev.db
+.env.*
+prisma/e2e.db*
+tests
+test-results
+playwright-report

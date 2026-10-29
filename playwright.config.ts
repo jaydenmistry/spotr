@@ -15,7 +15,7 @@ export default defineConfig<{ theme: "dark" | "light" }>({
     toHaveScreenshot: { maxDiffPixelRatio: 0.01, animations: "disabled", caret: "hide" },
   },
   use: {
-    baseURL: "http://localhost:3200",
+    baseURL: "http://127.0.0.1:3200",
     reducedMotion: "reduce",
     trace: "retain-on-failure",
   },
@@ -39,7 +39,7 @@ export default defineConfig<{ theme: "dark" | "light" }>({
   ],
   webServer: {
     command: "bash scripts/e2e-server.sh",
-    url: "http://localhost:3200/api/health",
+    url: "http://127.0.0.1:3200/api/health",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },

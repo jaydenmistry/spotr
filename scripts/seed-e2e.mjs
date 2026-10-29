@@ -4,8 +4,12 @@
 // must never touch a real database.
 import { PrismaClient } from "@prisma/client";
 
-if (process.env.E2E !== "1" || !/e2e/i.test(process.env.DATABASE_URL ?? "")) {
-  console.error("seed-e2e: refusing to run (needs E2E=1 and an e2e DATABASE_URL).");
+// Only the throwaway file e2e-server.sh creates: file:./e2e.db (prisma/e2e.db).
+const dbUrl = process.env.DATABASE_URL ?? "";
+const dbFile = dbUrl.replace(/^file:/, "");
+const isThrowawayDb = dbUrl.startsWith("file:") && /(^|\/)e2e\.db$/.test(dbFile) && !dbFile.startsWith("/app/data");
+if (process.env.E2E !== "1" || !isThrowawayDb) {
+  console.error("seed-e2e: refusing to run (needs E2E=1 and DATABASE_URL=file:./e2e.db).");
   process.exit(1);
 }
 

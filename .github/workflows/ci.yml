@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
 
+# Read-only token for every job; nothing here needs to write to the repo.
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -15,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -37,9 +43,11 @@ jobs:
       # Build-time env so next build succeeds; the e2e server overrides these.
       DATABASE_URL: file:./e2e.db
       NEXTAUTH_SECRET: ci-build-only
-      NEXTAUTH_URL: http://localhost:3200
+      NEXTAUTH_URL: http://127.0.0.1:3200
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - run: npm ci
       - run: npx prisma generate
       - run: npm run build

@@ -7,7 +7,7 @@ cd "$(dirname "$0")/.."
 export E2E=1
 export DATABASE_URL="file:./e2e.db"
 export NEXTAUTH_SECRET="e2e-only-secret"
-export NEXTAUTH_URL="http://localhost:3200"
+export NEXTAUTH_URL="http://127.0.0.1:3200"
 export ADMIN_EMAIL="e2e@spotr.test"
 export ADMIN_PASSWORD="e2e-password-123"
 
@@ -15,4 +15,5 @@ rm -f prisma/e2e.db prisma/e2e.db-journal
 npx prisma db push --skip-generate >/dev/null
 node prisma/seed.js
 node scripts/seed-e2e.mjs
-exec npx next start -p 3200
+# Loopback only: this server has a known admin password.
+exec npx next start -H 127.0.0.1 -p 3200
