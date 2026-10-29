@@ -19,30 +19,6 @@ const STATUS_META: Record<FollowUpStatus, { label: string; color: string }> = {
   "not-applicable": { label: "Not applicable", color: "var(--label-secondary)" },
 };
 
-const inputStyle: React.CSSProperties = {
-  background: "var(--fill)",
-  border: "1px solid var(--separator-strong)",
-  borderRadius: "var(--radius-sm)",
-  padding: "8px 12px",
-  fontSize: 13,
-  color: "var(--label)",
-  width: "100%",
-  boxSizing: "border-box",
-};
-
-const smallButtonStyle: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  padding: "7px 12px",
-  borderRadius: "var(--radius-sm)",
-  fontSize: 12,
-  fontWeight: 600,
-  cursor: "pointer",
-  border: "1px solid var(--separator-strong)",
-  background: "var(--fill)",
-  color: "var(--label)",
-};
 
 const dueFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -100,31 +76,34 @@ export default function FollowUpPanel({
   const meta = STATUS_META[status];
 
   return (
-    <div
+    <section
       style={{
-        borderRadius: "var(--radius-md)",
+        borderRadius: "var(--radius-lg)",
         border: "1px solid var(--separator)",
-        background: "rgba(var(--base-rgb), 0.5)",
-        padding: "14px 16px",
+        background: "var(--bg-card)",
+        padding: "18px 20px",
         display: "flex",
         flexDirection: "column",
-        gap: 10,
+        gap: 12,
       }}
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-        <p style={{ fontSize: 12, fontWeight: 700, color: "var(--label-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", display: "inline-flex", alignItems: "center", gap: 6 }}>
-          <CalendarClock style={{ width: 14, height: 14 }} aria-hidden="true" />
+        <h3 className="t-headline" style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "var(--label)" }}>
+          <span aria-hidden="true" style={{ width: 28, height: 28, borderRadius: 9, display: "grid", placeItems: "center", color: "var(--orange)", background: "rgba(var(--orange-rgb), 0.14)" }}>
+            <CalendarClock style={{ width: 15, height: 15 }} />
+          </span>
           Follow-up
-        </p>
+        </h3>
         <span
+          key={meta.label}
+          className="pop-in"
           style={{
-            padding: "2px 9px",
-            borderRadius: "var(--radius-xs)",
-            fontSize: 11,
-            fontWeight: 700,
+            padding: "3px 10px",
+            borderRadius: 999,
+            fontSize: 12,
+            fontWeight: 600,
             color: meta.color,
-            background: `color-mix(in srgb, ${meta.color} 10%, transparent)`,
-            border: `1px solid color-mix(in srgb, ${meta.color} 27%, transparent)`,
+            background: `color-mix(in srgb, ${meta.color} 13%, transparent)`,
           }}
         >
           {meta.label}
@@ -132,65 +111,62 @@ export default function FollowUpPanel({
       </div>
 
       {terminal ? (
-        <p style={{ fontSize: 12, color: "var(--label-secondary)" }}>
+        <p className="t-footnote" style={{ color: "var(--label-secondary)" }}>
           This lead is {lead.passedAt ? "passed" : "closed out"} — follow-up tracking doesn&apos;t
           apply. Restore or re-open it to schedule next actions.
         </p>
       ) : editing ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11, fontWeight: 600, color: "var(--label-secondary)" }}>
+        <div className="pop-in" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, fontWeight: 600, color: "var(--label-secondary)" }}>
             What&apos;s the next step?
             <input
               value={text}
               onChange={(event) => setText(event.target.value.slice(0, NEXT_ACTION_MAX_LENGTH))}
               placeholder='e.g. "Call seller about service records"'
-              style={inputStyle}
+              className="field"
             />
           </label>
-          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11, fontWeight: 600, color: "var(--label-secondary)" }}>
+          <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, fontWeight: 600, color: "var(--label-secondary)" }}>
             Due
             <input
               type="datetime-local"
               value={dueAt}
               onChange={(event) => setDueAt(event.target.value)}
-              style={{ ...inputStyle, colorScheme: "dark" }}
+              className="field tabular"
             />
           </label>
-          {error && <p style={{ fontSize: 12, color: "var(--red)" }}>{error}</p>}
+          {error && <p role="alert" className="pop-in" style={{ fontSize: 12, color: "var(--red)" }}>{error}</p>}
           <div style={{ display: "flex", gap: 8 }}>
             <button
+              type="button"
               disabled={busy || !text.trim() || !dueAt}
               onClick={() => void post({ op: "set-next-action", nextAction: text, dueAt })}
-              style={{
-                ...smallButtonStyle,
-                background: "rgba(var(--tint-rgb), 0.12)",
-                borderColor: "rgba(var(--tint-rgb), 0.4)",
-                color: "var(--tint-text)",
-                opacity: busy || !text.trim() || !dueAt ? 0.5 : 1,
-              }}
+              className="btn btn-sm btn-primary pressable"
             >
               {busy ? "Saving…" : "Save next action"}
             </button>
-            <button disabled={busy} onClick={() => setEditing(false)} style={{ ...smallButtonStyle, color: "var(--label-secondary)" }}>
+            <button type="button" disabled={busy} onClick={() => setEditing(false)} className="btn btn-sm btn-secondary pressable">
               Cancel
             </button>
           </div>
         </div>
       ) : lead.nextAction && lead.nextActionAt ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <p style={{ fontSize: 13, color: "var(--label)", fontWeight: 600 }}>{lead.nextAction}</p>
-          <p style={{ fontSize: 12, color: "var(--label-secondary)" }}>
+          <p style={{ fontSize: 14, color: "var(--label)", fontWeight: 600 }}>{lead.nextAction}</p>
+          <p className="t-footnote tabular" style={{ color: "var(--label-secondary)" }}>
             Due {dueFormatter.format(new Date(lead.nextActionAt))}
             {lead.nextActionCompletedAt &&
               ` · completed ${dueFormatter.format(new Date(lead.nextActionCompletedAt))}`}
           </p>
-          {error && <p style={{ fontSize: 12, color: "var(--red)" }}>{error}</p>}
+          {error && <p role="alert" className="pop-in" style={{ fontSize: 12, color: "var(--red)" }}>{error}</p>}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {!lead.nextActionCompletedAt && (
               <button
+                type="button"
                 disabled={busy}
                 onClick={() => void post({ op: "complete-next-action" })}
-                style={{ ...smallButtonStyle, background: "rgba(var(--green-rgb), 0.1)", borderColor: "rgba(var(--green-rgb), 0.4)", color: "var(--green)" }}
+                className="btn btn-sm pressable"
+                style={{ background: "rgba(var(--green-rgb), 0.14)", color: "var(--green)" }}
               >
                 <Check style={{ width: 13, height: 13 }} aria-hidden="true" />
                 Mark done
@@ -203,7 +179,7 @@ export default function FollowUpPanel({
                 setDueAt(toLocalInputValue(lead.nextActionAt));
                 setEditing(true);
               }}
-              style={smallButtonStyle}
+              className="btn btn-sm btn-secondary pressable"
             >
               <Pencil style={{ width: 13, height: 13 }} aria-hidden="true" />
               Edit
@@ -211,7 +187,8 @@ export default function FollowUpPanel({
             <button
               disabled={busy}
               onClick={() => void post({ op: "clear-next-action" })}
-              style={{ ...smallButtonStyle, color: "var(--label-secondary)" }}
+              className="btn btn-sm pressable hover-danger"
+              style={{ color: "var(--label-secondary)" }}
             >
               <Trash2 style={{ width: 13, height: 13 }} aria-hidden="true" />
               Clear
@@ -220,7 +197,7 @@ export default function FollowUpPanel({
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <p style={{ fontSize: 12, color: "var(--label-secondary)" }}>
+          <p className="t-footnote" style={{ color: "var(--label-secondary)" }}>
             No next action scheduled. Keep momentum by writing down the next concrete step.
           </p>
           <button
@@ -229,13 +206,15 @@ export default function FollowUpPanel({
               setDueAt("");
               setEditing(true);
             }}
-            style={{ ...smallButtonStyle, alignSelf: "flex-start" }}
+            type="button"
+            className="btn btn-sm btn-secondary pressable"
+            style={{ alignSelf: "flex-start" }}
           >
             <CalendarClock style={{ width: 13, height: 13 }} aria-hidden="true" />
             Set next action
           </button>
         </div>
       )}
-    </div>
+    </section>
   );
 }

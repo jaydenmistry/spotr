@@ -17,8 +17,10 @@ interface BuyBoxResponse {
   updatedAt: string | null;
 }
 
+// backgroundColor (not the `background` shorthand) so selects keep the
+// global chevron background-image.
 const inputStyle: React.CSSProperties = {
-  background: "var(--fill)",
+  backgroundColor: "var(--fill)",
   border: "1px solid var(--separator-strong)",
   borderRadius: "var(--radius-sm)",
   padding: "8px 12px",
@@ -342,14 +344,15 @@ export default function BuyBoxPage() {
             style={{ ...inputStyle, width: 150, cursor: "pointer" }}
           >
             {BUY_BOX_PRIORITIES.map((priority) => (
-              <option key={priority} value={priority} style={{ background: "var(--bg-surface)" }}>
+              <option key={priority} value={priority}>
                 {priority}
               </option>
             ))}
           </select>
           <button
+            type="button"
             onClick={addMakeRule}
-            style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: "var(--radius-sm)", fontSize: 13, fontWeight: 600, border: "1px solid rgba(var(--tint-rgb), 0.4)", background: "rgba(var(--tint-rgb), 0.1)", color: "var(--tint-text)", cursor: "pointer" }}
+            className="btn btn-secondary pressable"
           >
             <Plus style={{ width: 14, height: 14 }} />
             Add
@@ -388,7 +391,8 @@ export default function BuyBoxPage() {
                         setForm((prev) => ({ ...prev, makeRules: prev.makeRules.filter((r) => r.make !== rule.make) }));
                         setSaveMessage(null);
                       }}
-                      style={{ display: "grid", placeItems: "center", width: 16, height: 16, borderRadius: 4, background: "none", border: "none", color: "var(--label-secondary)", cursor: "pointer" }}
+                      className="pressable hover-fill"
+                      style={{ display: "grid", placeItems: "center", width: 24, height: 24, margin: "-4px -6px -4px 0", borderRadius: 999, background: "none", border: "none", color: "var(--label-secondary)", cursor: "pointer" }}
                     >
                       <X style={{ width: 11, height: 11 }} />
                     </button>
@@ -459,7 +463,8 @@ export default function BuyBoxPage() {
                         setForm((prev) => ({ ...prev, excludedKeywords: prev.excludedKeywords.filter((k) => k !== keyword) }));
                         setSaveMessage(null);
                       }}
-                      style={{ display: "grid", placeItems: "center", width: 16, height: 16, borderRadius: 4, background: "none", border: "none", color: "var(--label-secondary)", cursor: "pointer" }}
+                      className="pressable hover-fill"
+                      style={{ display: "grid", placeItems: "center", width: 24, height: 24, margin: "-4px -6px -4px 0", borderRadius: 999, background: "none", border: "none", color: "var(--label-secondary)", cursor: "pointer" }}
                     >
                       <X style={{ width: 11, height: 11 }} />
                     </button>

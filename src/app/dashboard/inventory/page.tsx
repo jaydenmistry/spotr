@@ -6,7 +6,8 @@ import axios from "axios";
 import LeadCard from "@/components/dashboard/LeadCard";
 import { PageHeader } from "@/components/ui/PageHeader";
 import LeadModal from "@/components/dashboard/modal/LeadModal";
-import { ArrowUpDown, ChevronLeft, ChevronRight, Search, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, Check, RefreshCw } from "lucide-react";
+import { EmptyState } from "@/components/ui/EmptyState";
 import {
   EXOTIC_MAKES,
   filterLeads,
@@ -20,8 +21,10 @@ import {
 const PAGE_SIZE_OPTIONS = [12, 24, 48, 96] as const;
 const DEFAULT_PAGE_SIZE = 24;
 
+// backgroundColor (not the `background` shorthand) so selects keep the
+// global chevron background-image.
 const inputStyle: React.CSSProperties = {
-  background: "var(--fill)",
+  backgroundColor: "var(--fill)",
   border: "1px solid var(--separator-strong)",
   borderRadius: "var(--radius-sm)",
   padding: "10px 14px",
@@ -91,20 +94,34 @@ function InventoryContent() {
     window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
   };
 
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [retrying, setRetrying] = useState(false);
+
   useEffect(() => {
+    let active = true;
     const fetchLeads = async () => {
       try {
         const res = await axios.get<LeadRecord[]>("/api/leads");
+        if (!active) return;
         setLeads(res.data);
+        setLoadError(false);
       } catch (error) {
         console.error("Failed to load inventory leads", error);
+        if (active) setLoadError(true);
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+          setRetrying(false);
+        }
       }
     };
 
     void fetchLeads();
-  }, []);
+    return () => {
+      active = false;
+    };
+  }, [reloadKey]);
 
   // Reset to page 1 whenever any filter/sort/pageSize changes
   const isFirstMount = useRef(true);
@@ -183,7 +200,7 @@ function InventoryContent() {
 
         {/* Action bar: Result count + Per Page + Sort dropdown */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, paddingBottom: 16, borderBottom: "1px solid var(--separator)", flexWrap: "wrap", gap: 16 }}>
-          <p className="tabular" style={{ fontSize: 13, color: "var(--label-secondary)" }}>
+          <p className="tabular" style={{ fontSize: 13, color: "var(--label-secondary)", visibility: loadError ? "hidden" : undefined }}>
             Showing <span style={{ fontWeight: 600, color: "var(--label)" }}>{(safePage - 1) * pageSize + (filteredAndSortedLeads.length > 0 ? 1 : 0)}–{Math.min(safePage * pageSize, filteredAndSortedLeads.length)}</span> of <span style={{ fontWeight: 600, color: "var(--label)" }}>{filteredAndSortedLeads.length}</span> results
           </p>
 
@@ -210,7 +227,7 @@ function InventoryContent() {
                     color: "var(--label)",
                     border: "1px solid var(--separator)",
                     borderRadius: 999,
-                    background: "var(--fill)",
+                    backgroundColor: "var(--fill)",
                   }}
                 >
                   {PAGE_SIZE_OPTIONS.map((size) => (
@@ -219,7 +236,6 @@ function InventoryContent() {
                     </option>
                   ))}
                 </select>
-                <ArrowUpDown style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, color: "var(--label-secondary)", pointerEvents: "none" }} />
               </div>
             </div>
 
@@ -240,7 +256,7 @@ function InventoryContent() {
                     color: "var(--label)",
                     border: "1px solid var(--separator)",
                     borderRadius: 999,
-                    background: "var(--fill)",
+                    backgroundColor: "var(--fill)",
                   }}
                 >
                   {SORT_OPTIONS.map((option) => (
@@ -249,7 +265,6 @@ function InventoryContent() {
                     </option>
                   ))}
                 </select>
-                <ArrowUpDown style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, color: "var(--label-secondary)", pointerEvents: "none" }} />
               </div>
             </div>
           </div>
@@ -264,7 +279,30 @@ function InventoryContent() {
           ))}
         </div>
 
-        {filteredAndSortedLeads.length === 0 && (
+        {loadError && (
+          <EmptyState
+            icon={RefreshCw}
+            tone="var(--red)"
+            title="Couldn't load inventory"
+            body="Check your connection and try again."
+            action={
+              <button
+                type="button"
+                className="btn btn-secondary pressable"
+                disabled={retrying}
+                onClick={() => {
+                  setRetrying(true);
+                  setReloadKey((key) => key + 1);
+                }}
+              >
+                <RefreshCw style={{ width: 14, height: 14, animation: retrying ? "spin 0.8s linear infinite" : "none" }} />
+                {retrying ? "Retrying…" : "Retry"}
+              </button>
+            }
+          />
+        )}
+
+        {!loadError && filteredAndSortedLeads.length === 0 && (
           <div className="pop-in" style={{ padding: "64px 20px", textAlign: "center", color: "var(--label-secondary)", fontSize: 14, background: "var(--bg-card)", borderRadius: "var(--radius-lg)", border: "1px solid var(--separator)" }}>
             No vehicles found matching your specific filters.
           </div>

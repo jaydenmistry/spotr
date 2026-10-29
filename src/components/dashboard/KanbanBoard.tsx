@@ -65,6 +65,7 @@ export default function KanbanBoard({
     } catch (error) {
       console.error("Failed to update lead status:", error);
       onLeadUpdate(previousLeads);
+      setDropNotice(`Couldn't move that lead to ${newStage} — it's back where it was. Please try again.`);
     }
   };
 
@@ -120,7 +121,7 @@ export default function KanbanBoard({
       )}
     {dropNotice && (
       <div
-        role="status"
+        role="alert"
         style={{
           display: "flex",
           alignItems: "center",
@@ -128,12 +129,12 @@ export default function KanbanBoard({
           gap: 10,
           marginBottom: 10,
           borderRadius: "var(--radius-md)",
-          boxShadow: "inset 0 0 0 1px rgba(var(--yellow-rgb), 0.3)",
-          background: "rgba(var(--yellow-rgb), 0.1)",
+          boxShadow: "inset 0 0 0 1px rgba(var(--red-rgb), 0.28)",
+          background: "rgba(var(--red-rgb), 0.1)",
           padding: "9px 14px",
           fontSize: 13,
           fontWeight: 500,
-          color: "var(--yellow)",
+          color: "var(--red)",
         }}
         className="pop-in"
       >
@@ -145,7 +146,7 @@ export default function KanbanBoard({
             background: "none",
             border: "none",
             cursor: "pointer",
-            color: "var(--yellow)",
+            color: "var(--red)",
             fontSize: 14,
             fontWeight: 600,
             lineHeight: 1,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { useId, useRef } from "react";
 import { motion } from "motion/react";
 import { spring } from "@/lib/motion";
 
@@ -19,6 +19,8 @@ interface SegmentedControlProps<T extends string> {
   /** "tabs" gives tab semantics (for switching views); "radio" for a setting. */
   role?: "tabs" | "radio";
   size?: "sm" | "md";
+  /** Tabs only: buttons get id `${idPrefix}-${value}` and control `${idPrefix}-panel`. */
+  idPrefix?: string;
 }
 
 /**
@@ -32,15 +34,41 @@ export function SegmentedControl<T extends string>({
   ariaLabel,
   role = "radio",
   size = "md",
+  idPrefix,
 }: SegmentedControlProps<T>) {
   const id = useId();
   const height = size === "sm" ? 30 : 34;
   const isTabs = role === "tabs";
+  // If nothing matches the value, the first segment keeps the tab stop.
+  const hasSelection = segments.some((segment) => segment.value === value);
+  const buttonsRef = useRef<(HTMLButtonElement | null)[]>([]);
+
+  // Roving focus: one tab stop for the whole control; arrows/Home/End move
+  // the selection (automatic activation, like native tabs and radios).
+  const onKeyDown = (event: React.KeyboardEvent) => {
+    const current = segments.findIndex((segment) => segment.value === value);
+    const last = segments.length - 1;
+    const next =
+      event.key === "ArrowRight" || event.key === "ArrowDown"
+        ? (current + 1) % segments.length
+        : event.key === "ArrowLeft" || event.key === "ArrowUp"
+        ? (current - 1 + segments.length) % segments.length
+        : event.key === "Home"
+        ? 0
+        : event.key === "End"
+        ? last
+        : -1;
+    if (next < 0) return;
+    event.preventDefault();
+    onChange(segments[next].value);
+    buttonsRef.current[next]?.focus();
+  };
 
   return (
     <div
       role={isTabs ? "tablist" : "radiogroup"}
       aria-label={ariaLabel}
+      onKeyDown={onKeyDown}
       style={{
         display: "inline-flex",
         padding: 3,
@@ -50,12 +78,18 @@ export function SegmentedControl<T extends string>({
         boxShadow: "inset 0 0 0 1px var(--separator)",
       }}
     >
-      {segments.map((segment) => {
+      {segments.map((segment, index) => {
         const selected = segment.value === value;
         return (
           <button
             key={segment.value}
+            ref={(el) => {
+              buttonsRef.current[index] = el;
+            }}
             type="button"
+            tabIndex={selected || (!hasSelection && index === 0) ? 0 : -1}
+            id={isTabs && idPrefix ? `${idPrefix}-${segment.value}` : undefined}
+            aria-controls={isTabs && idPrefix ? `${idPrefix}-panel` : undefined}
             role={isTabs ? "tab" : "radio"}
             aria-selected={isTabs ? selected : undefined}
             aria-checked={isTabs ? undefined : selected}

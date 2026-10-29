@@ -36,6 +36,7 @@ export function PageHeader({ title, subtitle, actions }: PageHeaderProps) {
         {collapsed && (
           <motion.div
             key="bar"
+            aria-hidden="true"
             className="hide-compact material"
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}

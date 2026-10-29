@@ -52,11 +52,14 @@ export function hasActiveFilters(f: PipelineFilterState): boolean {
 
 const RECOMMENDATIONS: RecommendationFilter[] = ["All", "BUY", "INVESTIGATE", "WATCH", "PASS"];
 
+// backgroundColor (not the `background` shorthand) so selects keep the
+// global chevron background-image.
 const inputStyle: React.CSSProperties = {
-  background: "var(--fill)",
-  border: "1px solid var(--separator-strong)",
-  borderRadius: "var(--radius-sm)",
-  padding: "8px 12px",
+  backgroundColor: "var(--fill)",
+  border: "1px solid var(--separator)",
+  borderRadius: 999,
+  height: 36,
+  padding: "0 14px",
   fontSize: 13,
   color: "var(--label)",
   width: "100%",
@@ -67,15 +70,17 @@ const toggleStyle = (active: boolean): React.CSSProperties => ({
   display: "inline-flex",
   alignItems: "center",
   gap: 6,
-  padding: "8px 12px",
-  borderRadius: "var(--radius-sm)",
+  height: 36,
+  padding: "0 14px",
+  borderRadius: 999,
   fontSize: 13,
   fontWeight: 600,
   cursor: "pointer",
   whiteSpace: "nowrap",
-  border: `1px solid ${active ? "rgba(var(--tint-rgb), 0.5)" : "rgba(var(--ink-rgb), 0.12)"}`,
-  background: active ? "rgba(var(--tint-rgb), 0.12)" : "rgba(var(--ink-rgb), 0.04)",
+  border: `1px solid ${active ? "transparent" : "var(--separator)"}`,
+  background: active ? "rgba(var(--tint-rgb), 0.16)" : "var(--fill)",
   color: active ? "var(--tint-text)" : "var(--label-secondary)",
+  transition: "background-color 180ms ease, color 180ms ease, transform var(--spring-bouncy-duration) var(--spring-bouncy)",
 });
 
 export default function PipelineControls({
@@ -171,7 +176,7 @@ export default function PipelineControls({
           type="button"
           aria-pressed={filters.watchedOnly}
           onClick={() => onChange({ watchedOnly: !filters.watchedOnly })}
-          style={toggleStyle(filters.watchedOnly)}
+          className="pressable" style={toggleStyle(filters.watchedOnly)}
         >
           <Eye style={{ width: 13, height: 13 }} aria-hidden="true" />
           Watched
@@ -181,7 +186,7 @@ export default function PipelineControls({
           type="button"
           aria-pressed={filters.followUp !== "all"}
           onClick={() => onChange({ followUp: filters.followUp === "overdue" ? "all" : "overdue" })}
-          style={toggleStyle(filters.followUp !== "all")}
+          className="pressable" style={toggleStyle(filters.followUp !== "all")}
         >
           <CalendarClock style={{ width: 13, height: 13 }} aria-hidden="true" />
           Needs follow-up
@@ -202,7 +207,7 @@ export default function PipelineControls({
           type="button"
           aria-expanded={showMore}
           onClick={() => setShowMore((v) => !v)}
-          style={toggleStyle(false)}
+          className="pressable" style={toggleStyle(false)}
         >
           <SlidersHorizontal style={{ width: 13, height: 13 }} aria-hidden="true" />
           More filters

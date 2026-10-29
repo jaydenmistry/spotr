@@ -6,8 +6,17 @@ import { useEffect, useRef } from "react";
 // prompt opened over the dossier sheet closes alone and keeps focus inside it.
 const stack: symbol[] = [];
 
-const FOCUSABLE =
-  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+// Excludes tabindex="-1" (e.g. non-selected tabs in a roving-tabindex group).
+const FOCUSABLE = [
+  "a[href]",
+  "button:not([disabled])",
+  "input:not([disabled])",
+  "select:not([disabled])",
+  "textarea:not([disabled])",
+  "[tabindex]",
+]
+  .map((selector) => `${selector}:not([tabindex="-1"])`)
+  .join(", ");
 
 /**
  * Modal focus behaviour: focus moves in on open, Tab cycles within the

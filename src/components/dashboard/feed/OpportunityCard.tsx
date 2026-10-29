@@ -99,7 +99,7 @@ export default function OpportunityCard({
       <button
         type="button"
         onClick={() => onOpenDossier(lead)}
-        aria-label={`Open dossier for ${title}`}
+        aria-label={`Open dossier for ${title}${isSample ? " (sample data)" : ""}`}
         className="card-photo"
         style={{
           position: "relative",

@@ -9,13 +9,9 @@ import {
 } from "@/lib/vehicleAnalytics";
 import type { Recommendation } from "@/lib/opportunity";
 import { buildNeedsAttention, type AttentionGroup } from "@/lib/pipeline";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { RECOMMENDATION_COLORS } from "@/lib/ui/colors";
 
-const RECOMMENDATION_COLORS: Record<Recommendation, string> = {
-  BUY: "var(--green)",
-  INVESTIGATE: "var(--yellow)",
-  WATCH: "var(--blue)",
-  PASS: "var(--label-secondary)",
-};
 
 const GROUP_META: Record<AttentionGroup, { label: string; color: string; blurb: string }> = {
   overdue: { label: "Overdue", color: "var(--red)", blurb: "Past due — follow up now" },
@@ -38,20 +34,6 @@ function dueLabel(iso: string | null | undefined, now: Date) {
   return deltaMs >= 0 ? `due in ${unit}` : `${unit} overdue`;
 }
 
-const rowButtonStyle: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 5,
-  padding: "6px 11px",
-  borderRadius: "var(--radius-sm)",
-  fontSize: 12,
-  fontWeight: 600,
-  cursor: "pointer",
-  border: "1px solid var(--separator-strong)",
-  background: "var(--fill)",
-  color: "var(--label)",
-  whiteSpace: "nowrap",
-};
 
 /**
  * Needs Attention view: active, non-terminal, non-passed leads that want a
@@ -88,33 +70,18 @@ export default function NeedsAttentionList({
 
   if (entries.length === 0) {
     return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 10,
-          padding: "60px 20px",
-          borderRadius: "var(--radius-lg)",
-          border: "1px dashed rgba(var(--ink-rgb), 0.12)",
-          background: "rgba(var(--ink-rgb), 0.02)",
-          textAlign: "center",
-        }}
-      >
-        <CheckCircle2 style={{ width: 30, height: 30, color: "var(--green)" }} aria-hidden="true" />
-        <p style={{ fontSize: 15, fontWeight: 700, color: "var(--label)" }}>Nothing needs attention</p>
-        <p style={{ fontSize: 13, color: "var(--label-secondary)", maxWidth: 380 }}>
-          No overdue or due-soon follow-ups, and every watched or assigned lead has a next step.
-          Switch to Board to keep working the pipeline.
-        </p>
-      </div>
+      <EmptyState
+        icon={CheckCircle2}
+        tone="var(--green)"
+        title="Nothing needs attention"
+        body="No overdue or due-soon follow-ups, and every watched or assigned lead has a next step. Switch to Board to keep working the pipeline."
+      />
     );
   }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      {rows.map(({ lead, group, showHeader }) => {
+      {rows.map(({ lead, group, showHeader }, index) => {
         const meta = GROUP_META[group];
         const rec = recommendationOf(lead);
         const hasActiveFollowUp =
@@ -122,7 +89,7 @@ export default function NeedsAttentionList({
         const busy = busyLeadId === lead.id;
 
         return (
-          <div key={lead.id}>
+          <div key={lead.id} className="rise-in" style={{ animationDelay: `${Math.min(index, 12) * 35}ms` }}>
             {showHeader && (
               <div
                 style={{
@@ -139,31 +106,33 @@ export default function NeedsAttentionList({
                 ) : (
                   <ListChecks style={{ width: 14, height: 14, color: meta.color }} aria-hidden="true" />
                 )}
-                <h3 style={{ fontSize: 12, fontWeight: 700, color: meta.color, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                <h3 className="t-eyebrow" style={{ color: meta.color }}>
                   {meta.label}
                 </h3>
-                <span style={{ fontSize: 11.5, color: "var(--label-secondary)" }}>· {meta.blurb}</span>
+                <span style={{ fontSize: 12, color: "var(--label-secondary)" }}>· {meta.blurb}</span>
               </div>
             )}
 
             <div
+              className="hover-lift attention-row"
               style={{
                 display: "flex",
+                flexWrap: "wrap",
                 alignItems: "center",
                 gap: 14,
-                padding: "12px 14px",
-                borderRadius: "var(--radius-md)",
+                padding: "12px 16px",
+                borderRadius: "var(--radius-lg)",
                 background: "var(--bg-card)",
                 border: "1px solid var(--separator)",
-                borderLeft: `3px solid ${meta.color}`,
+                boxShadow: `inset 3px 0 0 ${meta.color}, var(--shadow-sm)`,
               }}
             >
-              <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ minWidth: 0, flex: "1 1 260px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   <span
                     title={getVehicleTitle(lead)}
                     style={{
-                      fontSize: 13.5,
+                      fontSize: 14,
                       fontWeight: 600,
                       color: "var(--label)",
                       overflow: "hidden",
@@ -174,20 +143,19 @@ export default function NeedsAttentionList({
                   >
                     {getVehicleTitle(lead)}
                   </span>
-                  <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--label-body)" }}>
-                    {lead.price ? formatCurrency(lead.price) : "No asking price"}
+                  <span className="tabular" style={{ fontSize: 13, fontWeight: 600, color: "var(--label-body)" }}>
+                    {lead.price ? <><span style={{ fontWeight: 500, color: "var(--label-secondary)" }}>Asking </span>{formatCurrency(lead.price)}</> : "No asking price"}
                   </span>
                   {rec && (
                     <span
                       title="Spotr heuristic recommendation"
                       style={{
                         fontSize: 11,
-                        fontWeight: 700,
-                        borderRadius: "var(--radius-xs)",
-                        padding: "1px 7px",
+                        fontWeight: 600,
+                        borderRadius: 999,
+                        padding: "2px 8px",
                         color: RECOMMENDATION_COLORS[rec],
-                        background: `color-mix(in srgb, ${RECOMMENDATION_COLORS[rec]} 10%, transparent)`,
-                        border: `1px solid color-mix(in srgb, ${RECOMMENDATION_COLORS[rec]} 27%, transparent)`,
+                        background: `color-mix(in srgb, ${RECOMMENDATION_COLORS[rec]} 13%, transparent)`,
                       }}
                     >
                       {rec}
@@ -195,18 +163,18 @@ export default function NeedsAttentionList({
                   )}
                   <span
                     style={{
-                      fontSize: 11.5,
+                      fontSize: 11,
                       fontWeight: 600,
                       color: "var(--label-secondary)",
-                      borderRadius: "var(--radius-xs)",
-                      padding: "1px 7px",
-                      background: "rgba(var(--ink-rgb), 0.05)",
+                      borderRadius: 999,
+                      padding: "2px 8px",
+                      background: "var(--fill)",
                     }}
                   >
                     {lead.stage}
                   </span>
                 </div>
-                <p style={{ fontSize: 11.5, color: "var(--label-secondary)", marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <p style={{ fontSize: 12, color: "var(--label-secondary)", marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {hasActiveFollowUp ? (
                     <>
                       <span style={{ color: meta.color, fontWeight: 600 }}>
@@ -230,19 +198,14 @@ export default function NeedsAttentionList({
                     type="button"
                     disabled={busy}
                     onClick={() => onCompleteNextAction(lead)}
-                    style={{
-                      ...rowButtonStyle,
-                      background: "rgba(var(--green-rgb), 0.1)",
-                      borderColor: "rgba(var(--green-rgb), 0.4)",
-                      color: "var(--green)",
-                      opacity: busy ? 0.5 : 1,
-                    }}
+                    className="btn btn-sm pressable"
+                    style={{ background: "rgba(var(--green-rgb), 0.14)", color: "var(--green)" }}
                   >
                     <CheckCircle2 style={{ width: 13, height: 13 }} aria-hidden="true" />
                     {busy ? "Saving…" : "Mark done"}
                   </button>
                 )}
-                <button type="button" onClick={() => onOpen(lead)} style={rowButtonStyle}>
+                <button type="button" onClick={() => onOpen(lead)} className="btn btn-sm btn-secondary pressable">
                   Open dossier
                 </button>
               </div>

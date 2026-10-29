@@ -120,6 +120,7 @@ export default function DashboardPage() {
       setLeads(res.data);
     } catch (error) {
       console.error("Failed to load leads", error);
+      setActionError("Couldn't refresh the pipeline. Showing the last loaded leads.");
     } finally {
       setLoading(false);
     }
@@ -140,6 +141,7 @@ export default function DashboardPage() {
         setBuyBox(buyBoxRes.data.config ?? DEFAULT_BUY_BOX);
       } catch (error) {
         console.error("Failed to load leads", error);
+        if (isActive) setActionError("Couldn't load the pipeline. Check your connection and reload the page.");
       } finally {
         if (isActive) setLoading(false);
       }
@@ -166,7 +168,8 @@ export default function DashboardPage() {
       await fetchLocalLeads();
     } catch (error) {
       console.error("Failed to fetch new leads from API", error);
-      setFetchMessage("Failed to fetch leads. Please try again.");
+      setFetchMessage("");
+      setActionError("Couldn't pull new listings. Please try again.");
     } finally {
       setFetchingLeads(false);
     }

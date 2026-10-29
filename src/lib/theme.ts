@@ -7,4 +7,4 @@ export const THEME_STORAGE_KEY = "spotr-theme";
  * never sees a dark flash. Dark is the default, so only "light" is applied.
  * Lives outside the "use client" provider so the server layout can import it.
  */
-export const THEME_INIT_SCRIPT = `try{if(localStorage.getItem("${THEME_STORAGE_KEY}")==="light")document.documentElement.dataset.theme="light"}catch(e){}`;
+export const THEME_INIT_SCRIPT = `try{if(localStorage.getItem("${THEME_STORAGE_KEY}")==="light"){document.documentElement.dataset.theme="light";var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content","#f5f5f7")}}catch(e){}`;

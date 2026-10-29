@@ -29,6 +29,8 @@ function applyTheme(theme: Theme) {
   const root = document.documentElement;
   if (theme === "light") root.dataset.theme = "light";
   else delete root.dataset.theme;
+  // Keep browser chrome (mobile address bar) in step with the page.
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "light" ? "#f5f5f7" : "#09090c");
   try {
     localStorage.setItem(THEME_STORAGE_KEY, theme);
   } catch {

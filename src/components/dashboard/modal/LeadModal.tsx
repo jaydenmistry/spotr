@@ -53,7 +53,7 @@ type DossierTab = "decision" | "activity" | "chat" | "history";
 const TABS: { value: DossierTab; label: string }[] = [
   { value: "decision", label: "Decision" },
   { value: "activity", label: "Activity" },
-  { value: "chat", label: "Seller chat" },
+  { value: "chat", label: "Practice chat" },
   { value: "history", label: "History" },
 ];
 
@@ -337,6 +337,7 @@ export default function LeadModal({
           <SegmentedControl
             role="tabs"
             ariaLabel="Dossier sections"
+            idPrefix="dossier-tab"
             segments={TABS}
             value={activeTab}
             onChange={selectTab}
@@ -357,6 +358,9 @@ export default function LeadModal({
           animate="center"
           exit="exit"
           transition={{ ...spring.snappy, opacity: { duration: 0.16 } }}
+          role="tabpanel"
+          id="dossier-tab-panel"
+          aria-labelledby={`dossier-tab-${activeTab}`}
           style={{ padding: 24 }}
         >
           {activeTab === "decision" && (
@@ -796,7 +800,7 @@ export default function LeadModal({
               <ActivityTimeline leadId={lead.id} reloadKey={activityReload} />
             </div>
           )}
-          {activeTab === "chat" && <ChatMock leadId={lead.id} sellerName={lead.sellerName} />}
+          {activeTab === "chat" && <ChatMock key={lead.id} leadId={lead.id} sellerName={lead.sellerName} />}
           {activeTab === "history" && <CarfaxMock vdpUrl={lead.vdp_url} source={lead.source} />}
         </motion.div>
       </AnimatePresence>
