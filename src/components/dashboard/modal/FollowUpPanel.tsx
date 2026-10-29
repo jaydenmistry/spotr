@@ -12,20 +12,20 @@ import {
 import type { LeadRecord } from "@/lib/vehicleAnalytics";
 
 const STATUS_META: Record<FollowUpStatus, { label: string; color: string }> = {
-  none: { label: "No next action", color: "#8b9ab8" },
-  "due-soon": { label: "Due soon", color: "#fbbf24" },
-  overdue: { label: "Overdue", color: "#f87171" },
-  completed: { label: "Completed", color: "#34d399" },
-  "not-applicable": { label: "Not applicable", color: "#8b9ab8" },
+  none: { label: "No next action", color: "var(--label-secondary)" },
+  "due-soon": { label: "Due soon", color: "var(--yellow)" },
+  overdue: { label: "Overdue", color: "var(--red)" },
+  completed: { label: "Completed", color: "var(--green)" },
+  "not-applicable": { label: "Not applicable", color: "var(--label-secondary)" },
 };
 
 const inputStyle: React.CSSProperties = {
-  background: "rgba(255,255,255,0.04)",
-  border: "1px solid rgba(255,255,255,0.12)",
-  borderRadius: 8,
+  background: "var(--fill)",
+  border: "1px solid var(--separator-strong)",
+  borderRadius: "var(--radius-sm)",
   padding: "8px 12px",
   fontSize: 13,
-  color: "#f0f4ff",
+  color: "var(--label)",
   width: "100%",
   boxSizing: "border-box",
 };
@@ -35,13 +35,13 @@ const smallButtonStyle: React.CSSProperties = {
   alignItems: "center",
   gap: 6,
   padding: "7px 12px",
-  borderRadius: 8,
+  borderRadius: "var(--radius-sm)",
   fontSize: 12,
-  fontWeight: 700,
+  fontWeight: 600,
   cursor: "pointer",
-  border: "1px solid rgba(255,255,255,0.12)",
-  background: "rgba(255,255,255,0.04)",
-  color: "#f0f4ff",
+  border: "1px solid var(--separator-strong)",
+  background: "var(--fill)",
+  color: "var(--label)",
 };
 
 const dueFormatter = new Intl.DateTimeFormat("en-US", {
@@ -102,9 +102,9 @@ export default function FollowUpPanel({
   return (
     <div
       style={{
-        borderRadius: 12,
-        border: "1px solid rgba(255,255,255,0.08)",
-        background: "rgba(8,12,20,0.5)",
+        borderRadius: "var(--radius-md)",
+        border: "1px solid var(--separator)",
+        background: "rgba(var(--base-rgb), 0.5)",
         padding: "14px 16px",
         display: "flex",
         flexDirection: "column",
@@ -112,19 +112,19 @@ export default function FollowUpPanel({
       }}
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-        <p style={{ fontSize: 12, fontWeight: 800, color: "#8b9ab8", textTransform: "uppercase", letterSpacing: "0.05em", display: "inline-flex", alignItems: "center", gap: 6 }}>
+        <p style={{ fontSize: 12, fontWeight: 700, color: "var(--label-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", display: "inline-flex", alignItems: "center", gap: 6 }}>
           <CalendarClock style={{ width: 14, height: 14 }} aria-hidden="true" />
           Follow-up
         </p>
         <span
           style={{
             padding: "2px 9px",
-            borderRadius: 6,
+            borderRadius: "var(--radius-xs)",
             fontSize: 11,
-            fontWeight: 800,
+            fontWeight: 700,
             color: meta.color,
-            background: `${meta.color}1a`,
-            border: `1px solid ${meta.color}44`,
+            background: `color-mix(in srgb, ${meta.color} 10%, transparent)`,
+            border: `1px solid color-mix(in srgb, ${meta.color} 27%, transparent)`,
           }}
         >
           {meta.label}
@@ -132,13 +132,13 @@ export default function FollowUpPanel({
       </div>
 
       {terminal ? (
-        <p style={{ fontSize: 12, color: "#8b9ab8" }}>
+        <p style={{ fontSize: 12, color: "var(--label-secondary)" }}>
           This lead is {lead.passedAt ? "passed" : "closed out"} — follow-up tracking doesn&apos;t
           apply. Restore or re-open it to schedule next actions.
         </p>
       ) : editing ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11, fontWeight: 700, color: "#8b9ab8" }}>
+          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11, fontWeight: 600, color: "var(--label-secondary)" }}>
             What&apos;s the next step?
             <input
               value={text}
@@ -147,7 +147,7 @@ export default function FollowUpPanel({
               style={inputStyle}
             />
           </label>
-          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11, fontWeight: 700, color: "#8b9ab8" }}>
+          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11, fontWeight: 600, color: "var(--label-secondary)" }}>
             Due
             <input
               type="datetime-local"
@@ -156,41 +156,41 @@ export default function FollowUpPanel({
               style={{ ...inputStyle, colorScheme: "dark" }}
             />
           </label>
-          {error && <p style={{ fontSize: 12, color: "#f87171" }}>{error}</p>}
+          {error && <p style={{ fontSize: 12, color: "var(--red)" }}>{error}</p>}
           <div style={{ display: "flex", gap: 8 }}>
             <button
               disabled={busy || !text.trim() || !dueAt}
               onClick={() => void post({ op: "set-next-action", nextAction: text, dueAt })}
               style={{
                 ...smallButtonStyle,
-                background: "rgba(255,122,26,0.12)",
-                borderColor: "rgba(255,122,26,0.4)",
-                color: "#ff9147",
+                background: "rgba(var(--tint-rgb), 0.12)",
+                borderColor: "rgba(var(--tint-rgb), 0.4)",
+                color: "var(--tint-text)",
                 opacity: busy || !text.trim() || !dueAt ? 0.5 : 1,
               }}
             >
               {busy ? "Saving…" : "Save next action"}
             </button>
-            <button disabled={busy} onClick={() => setEditing(false)} style={{ ...smallButtonStyle, color: "#8b9ab8" }}>
+            <button disabled={busy} onClick={() => setEditing(false)} style={{ ...smallButtonStyle, color: "var(--label-secondary)" }}>
               Cancel
             </button>
           </div>
         </div>
       ) : lead.nextAction && lead.nextActionAt ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <p style={{ fontSize: 13, color: "#f0f4ff", fontWeight: 600 }}>{lead.nextAction}</p>
-          <p style={{ fontSize: 12, color: "#8b9ab8" }}>
+          <p style={{ fontSize: 13, color: "var(--label)", fontWeight: 600 }}>{lead.nextAction}</p>
+          <p style={{ fontSize: 12, color: "var(--label-secondary)" }}>
             Due {dueFormatter.format(new Date(lead.nextActionAt))}
             {lead.nextActionCompletedAt &&
               ` · completed ${dueFormatter.format(new Date(lead.nextActionCompletedAt))}`}
           </p>
-          {error && <p style={{ fontSize: 12, color: "#f87171" }}>{error}</p>}
+          {error && <p style={{ fontSize: 12, color: "var(--red)" }}>{error}</p>}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {!lead.nextActionCompletedAt && (
               <button
                 disabled={busy}
                 onClick={() => void post({ op: "complete-next-action" })}
-                style={{ ...smallButtonStyle, background: "rgba(52,211,153,0.1)", borderColor: "rgba(52,211,153,0.4)", color: "#34d399" }}
+                style={{ ...smallButtonStyle, background: "rgba(var(--green-rgb), 0.1)", borderColor: "rgba(var(--green-rgb), 0.4)", color: "var(--green)" }}
               >
                 <Check style={{ width: 13, height: 13 }} aria-hidden="true" />
                 Mark done
@@ -211,7 +211,7 @@ export default function FollowUpPanel({
             <button
               disabled={busy}
               onClick={() => void post({ op: "clear-next-action" })}
-              style={{ ...smallButtonStyle, color: "#8b9ab8" }}
+              style={{ ...smallButtonStyle, color: "var(--label-secondary)" }}
             >
               <Trash2 style={{ width: 13, height: 13 }} aria-hidden="true" />
               Clear
@@ -220,7 +220,7 @@ export default function FollowUpPanel({
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <p style={{ fontSize: 12, color: "#8b9ab8" }}>
+          <p style={{ fontSize: 12, color: "var(--label-secondary)" }}>
             No next action scheduled. Keep momentum by writing down the next concrete step.
           </p>
           <button

@@ -6,12 +6,12 @@ import { DollarSign } from "lucide-react";
 import { NOTE_MAX_LENGTH, OFFER_MAX_USD } from "@/lib/followUp";
 
 const inputStyle: React.CSSProperties = {
-  background: "rgba(255,255,255,0.04)",
-  border: "1px solid rgba(255,255,255,0.12)",
-  borderRadius: 8,
+  background: "var(--fill)",
+  border: "1px solid var(--separator-strong)",
+  borderRadius: "var(--radius-sm)",
   padding: "8px 12px",
   fontSize: 13,
-  color: "#f0f4ff",
+  color: "var(--label)",
   width: "100%",
   boxSizing: "border-box",
 };
@@ -70,20 +70,20 @@ export default function RecordOfferForm({
   return (
     <div
       style={{
-        borderRadius: 12,
-        border: "1px solid rgba(255,255,255,0.08)",
-        background: "rgba(8,12,20,0.5)",
+        borderRadius: "var(--radius-md)",
+        border: "1px solid var(--separator)",
+        background: "rgba(var(--base-rgb), 0.5)",
         padding: "14px 16px",
         display: "flex",
         flexDirection: "column",
         gap: 10,
       }}
     >
-      <p style={{ fontSize: 12, fontWeight: 800, color: "#8b9ab8", textTransform: "uppercase", letterSpacing: "0.05em", display: "inline-flex", alignItems: "center", gap: 6 }}>
+      <p style={{ fontSize: 12, fontWeight: 700, color: "var(--label-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", display: "inline-flex", alignItems: "center", gap: 6 }}>
         <DollarSign style={{ width: 14, height: 14 }} aria-hidden="true" />
         Record your offer
       </p>
-      <p style={{ fontSize: 11, color: "#8b9ab8" }}>
+      <p style={{ fontSize: 11, color: "var(--label-secondary)" }}>
         This logs the offer you actually made to the seller.
         {recommendedMaxOfferLabel
           ? ` Spotr's heuristic max offer (${recommendedMaxOfferLabel}) is a separate planning estimate, not a record of this offer.`
@@ -91,7 +91,7 @@ export default function RecordOfferForm({
       </p>
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11, fontWeight: 700, color: "#8b9ab8", flex: "0 1 160px" }}>
+        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11, fontWeight: 600, color: "var(--label-secondary)", flex: "0 1 160px" }}>
           Amount (USD)
           <input
             type="number"
@@ -105,7 +105,7 @@ export default function RecordOfferForm({
             style={inputStyle}
           />
         </label>
-        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11, fontWeight: 700, color: "#8b9ab8", flex: "1 1 200px" }}>
+        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11, fontWeight: 600, color: "var(--label-secondary)", flex: "1 1 200px" }}>
           Note (optional — no seller contact info)
           <input
             value={note}
@@ -117,12 +117,12 @@ export default function RecordOfferForm({
       </div>
 
       {amount && !amountValid && (
-        <p style={{ fontSize: 12, color: "#fbbf24" }}>
+        <p style={{ fontSize: 12, color: "var(--yellow)" }}>
           Whole dollars only, between $1 and ${OFFER_MAX_USD.toLocaleString("en-US")}.
         </p>
       )}
-      {error && <p style={{ fontSize: 12, color: "#f87171" }}>{error}</p>}
-      {savedLabel && !error && <p style={{ fontSize: 12, color: "#34d399" }}>{savedLabel}</p>}
+      {error && <p style={{ fontSize: 12, color: "var(--red)" }}>{error}</p>}
+      {savedLabel && !error && <p style={{ fontSize: 12, color: "var(--green)" }}>{savedLabel}</p>}
 
       <button
         disabled={busy || !amountValid}
@@ -133,13 +133,13 @@ export default function RecordOfferForm({
           alignItems: "center",
           gap: 6,
           padding: "8px 14px",
-          borderRadius: 8,
+          borderRadius: "var(--radius-sm)",
           fontSize: 12,
-          fontWeight: 700,
+          fontWeight: 600,
           cursor: busy || !amountValid ? "default" : "pointer",
-          border: "1px solid rgba(52,211,153,0.4)",
-          background: "rgba(52,211,153,0.1)",
-          color: "#34d399",
+          border: "1px solid rgba(var(--green-rgb), 0.4)",
+          background: "rgba(var(--green-rgb), 0.1)",
+          color: "var(--green)",
           opacity: busy || !amountValid ? 0.5 : 1,
         }}
       >

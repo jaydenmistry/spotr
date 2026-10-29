@@ -1,5 +1,9 @@
 "use client";
 
+import { AnimatePresence, motion } from "motion/react";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { spring } from "@/lib/motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import TopStats from "@/components/dashboard/TopStats";
@@ -39,6 +43,46 @@ interface FetchResponse {
 }
 
 type ViewMode = "attention" | "board";
+
+const toolbarFieldStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 7,
+  height: 36,
+  padding: "0 6px 0 12px",
+  borderRadius: 999,
+  background: "var(--fill)",
+  border: "1px solid var(--separator)",
+  fontSize: 13,
+  fontWeight: 500,
+  color: "var(--label-secondary)",
+};
+
+const toolbarInputStyle: React.CSSProperties = {
+  height: 26,
+  background: "var(--bg-card)",
+  border: "1px solid var(--separator)",
+  borderRadius: 999,
+  padding: "0 9px",
+  fontSize: 13,
+  color: "var(--label)",
+};
+
+const bannerStyle: React.CSSProperties = {
+  marginBottom: 14,
+  padding: "11px 16px",
+  borderRadius: "var(--radius-md)",
+  fontSize: 13,
+  fontWeight: 500,
+  overflow: "hidden",
+};
+
+const bannerMotion = {
+  initial: { opacity: 0, y: -6, scale: 0.98 },
+  animate: { opacity: 1, y: 0, scale: 1 },
+  exit: { opacity: 0, y: -6, scale: 0.98 },
+  transition: spring.snappy,
+} as const;
 
 export default function DashboardPage() {
   const [leads, setLeads] = useState<LeadRecord[]>([]);
@@ -276,9 +320,19 @@ export default function DashboardPage() {
 
   if (loading || viewMode === null) {
     return (
-      <div style={{ display: "flex", height: "60vh", alignItems: "center", justifyContent: "center", color: "#8b9ab8", fontSize: 15, gap: 10 }}>
-        <div style={{ width: 20, height: 20, borderRadius: "50%", border: "2px solid rgba(255,122,26,0.2)", borderTopColor: "#ff7a1a", animation: "spin 0.8s linear infinite" }} />
-        Loading pipeline…
+      <div className="page" aria-busy="true">
+        <div className="skeleton" style={{ width: 180, height: 36, marginBottom: 10 }} />
+        <p className="t-footnote" style={{ color: "var(--label-secondary)", marginBottom: 28 }}>Loading pipeline…</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 24 }}>
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div key={i} className="skeleton" style={{ height: 88, borderRadius: "var(--radius-lg)" }} />
+          ))}
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="skeleton" style={{ height: 320, borderRadius: "var(--radius-lg)" }} />
+          ))}
+        </div>
       </div>
     );
   }
@@ -287,7 +341,7 @@ export default function DashboardPage() {
   const priceFilterActive = filters.minPrice !== "" || filters.maxPrice !== "";
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "calc(100vh - 40px)", padding: "28px 28px 20px" }}>
+    <div className="page" style={{ display: "flex", flexDirection: "column", minHeight: "calc(100vh - 40px)", maxWidth: "none" }}>
       {/* Pass requires a standardized reason */}
       {pendingPass && (
         <OutcomeReasonDialog
@@ -303,20 +357,13 @@ export default function DashboardPage() {
         />
       )}
 
-      {/* Header */}
-      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 20 }}>
-        <div>
-          <h1 style={{ fontSize: 26, fontWeight: 900, letterSpacing: "-0.02em", color: "#f0f4ff", marginBottom: 4 }}>
-            Pipeline
-          </h1>
-          <p style={{ fontSize: 13, color: "#8b9ab8" }}>
-            Your acquisition command center — what needs action, what&apos;s worth pursuing, and what happened last.
-          </p>
-        </div>
-
+      <PageHeader
+        title="Pipeline"
+        subtitle="Your acquisition command center — what needs action, what's worth pursuing, and what happened last."
+        actions={
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 12px", borderRadius: 10, background: "var(--bg-card)", border: "1px solid rgba(255,255,255,0.08)", fontSize: 13, fontWeight: 600, color: "#8b9ab8" }}>
-            <MapPin style={{ width: 14, height: 14, color: "#ff7a1a", flexShrink: 0 }} aria-hidden="true" />
+          <label style={toolbarFieldStyle}>
+            <MapPin style={{ width: 14, height: 14, color: "var(--tint)", flexShrink: 0 }} aria-hidden="true" />
             ZIP
             <input
               type="text"
@@ -325,11 +372,11 @@ export default function DashboardPage() {
               aria-label="ZIP code"
               value={zipCode}
               onChange={(e) => setZipCode(e.target.value.replace(/\D/g, "").slice(0, 5))}
-              style={{ width: 56, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, padding: "4px 8px", fontSize: 13, color: "#f0f4ff", outline: "none" }}
+              className="tabular" style={{ ...toolbarInputStyle, width: 66 }}
               placeholder="30043"
             />
           </label>
-          <label style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 12px", borderRadius: 10, background: "var(--bg-card)", border: "1px solid rgba(255,255,255,0.08)", fontSize: 13, fontWeight: 600, color: "#8b9ab8" }}>
+          <label style={toolbarFieldStyle}>
             {/* Ingestion radius for Pull Listings only — it does NOT filter the
                 board/attention views (every eligible lead is always shown). */}
             Radius
@@ -341,12 +388,12 @@ export default function DashboardPage() {
               aria-label="Pull radius in miles"
               value={radiusMiles}
               onChange={(e) => setRadiusMiles(Math.max(10, Math.min(100, Number(e.target.value) || 100)))}
-              style={{ width: 52, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, padding: "4px 8px", fontSize: 13, color: "#f0f4ff", outline: "none" }}
+              className="tabular" style={{ ...toolbarInputStyle, width: 58 }}
             />
             mi
           </label>
-          <label style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 12px", borderRadius: 10, background: "var(--bg-card)", border: "1px solid rgba(255,255,255,0.08)", fontSize: 13, fontWeight: 600, color: "#8b9ab8" }}>
-            <Database style={{ width: 14, height: 14, color: "#ff7a1a", flexShrink: 0 }} aria-hidden="true" />
+          <label style={toolbarFieldStyle}>
+            <Database style={{ width: 14, height: 14, color: "var(--tint)", flexShrink: 0 }} aria-hidden="true" />
             Pull
             <input
               type="number"
@@ -356,19 +403,21 @@ export default function DashboardPage() {
               aria-label="Number of listings to pull"
               value={fetchLimit}
               onChange={(e) => setFetchLimit(Math.max(100, Math.min(1500, Number(e.target.value) || 1000)))}
-              style={{ width: 60, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, padding: "4px 8px", fontSize: 13, color: "#f0f4ff", outline: "none" }}
+              className="tabular" style={{ ...toolbarInputStyle, width: 70 }}
             />
           </label>
           <button
+            type="button"
             onClick={handleFindNewLeads}
             disabled={fetchingLeads}
-            style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 18px", borderRadius: 10, border: "none", cursor: fetchingLeads ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 700, color: "#fff", background: fetchingLeads ? "rgba(255,122,26,0.4)" : "linear-gradient(135deg, #ff7a1a, #f59e0b)", boxShadow: fetchingLeads ? "none" : "0 4px 16px rgba(255,122,26,0.35)" }}
+            className="btn btn-primary pressable"
           >
             <RefreshCw style={{ width: 14, height: 14, animation: fetchingLeads ? "spin 0.8s linear infinite" : "none" }} aria-hidden="true" />
-            Pull Listings
+            {fetchingLeads ? "Pulling…" : "Pull listings"}
           </button>
         </div>
-      </div>
+        }
+      />
 
       <TopStats
         leads={filteredLeads}
@@ -388,34 +437,24 @@ export default function DashboardPage() {
 
       {/* View toggle + result summary */}
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
-        <div role="tablist" aria-label="Pipeline view" style={{ display: "inline-flex", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.03)", padding: 3, gap: 3 }}>
-          {([
-            { key: "attention", label: "Needs attention", icon: ListChecks },
-            { key: "board", label: "Board", icon: LayoutGrid },
-          ] as const).map((tab) => {
-            const active = viewMode === tab.key;
-            return (
-              <button
-                key={tab.key}
-                role="tab"
-                aria-selected={active}
-                onClick={() => setViewMode(tab.key)}
-                style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none", background: active ? "rgba(255,122,26,0.15)" : "transparent", color: active ? "#ff9147" : "#8b9ab8" }}
-              >
-                <tab.icon style={{ width: 14, height: 14 }} aria-hidden="true" />
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
+        <SegmentedControl
+          role="tabs"
+          ariaLabel="Pipeline view"
+          value={viewMode}
+          onChange={setViewMode}
+          segments={[
+            { value: "attention", label: <><ListChecks style={{ width: 14, height: 14 }} aria-hidden="true" />Needs attention</> },
+            { value: "board", label: <><LayoutGrid style={{ width: 14, height: 14 }} aria-hidden="true" />Board</> },
+          ]}
+        />
 
-        <div aria-live="polite" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, fontSize: 12, color: "#4a5670" }}>
-          <span style={{ fontWeight: 700, color: "#ff9147" }}>{filteredLeads.length}</span>
+        <div aria-live="polite" className="tabular" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, fontSize: 12, color: "var(--label-secondary)" }}>
+          <span style={{ fontWeight: 600, color: "var(--label)" }}>{filteredLeads.length}</span>
           <span>of {leads.length} shown</span>
           {filtersActive && (
             <>
-              <span style={{ color: "#1e2a3a" }}>·</span>
-              <span style={{ color: "#fbbf24", fontWeight: 700 }}>
+              <span style={{ color: "var(--label-tertiary)" }}>·</span>
+              <span style={{ color: "var(--yellow)", fontWeight: 600 }}>
                 filtered{priceFilterActive ? " (price filter active)" : ""}
               </span>
             </>
@@ -423,17 +462,18 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {actionError && (
-        <div role="alert" style={{ marginBottom: 14, padding: "10px 14px", borderRadius: 10, background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.3)", fontSize: 13, fontWeight: 600, color: "#f87171" }}>
-          {actionError}
-        </div>
-      )}
-
-      {fetchMessage && (
-        <div style={{ marginBottom: 14, padding: "10px 14px", borderRadius: 10, background: "rgba(255,122,26,0.1)", border: "1px solid rgba(255,122,26,0.2)", fontSize: 13, fontWeight: 600, color: "#ff9147" }}>
-          {fetchMessage}
-        </div>
-      )}
+      <AnimatePresence initial={false}>
+        {actionError && (
+          <motion.div key="error" role="alert" {...bannerMotion} style={{ ...bannerStyle, background: "rgba(var(--red-rgb), 0.1)", boxShadow: "inset 0 0 0 1px rgba(var(--red-rgb), 0.28)", color: "var(--red)" }}>
+            {actionError}
+          </motion.div>
+        )}
+        {fetchMessage && (
+          <motion.div key="fetch" role="status" {...bannerMotion} style={{ ...bannerStyle, background: "rgba(var(--tint-rgb), 0.1)", boxShadow: "inset 0 0 0 1px rgba(var(--tint-rgb), 0.22)", color: "var(--tint-text)" }}>
+            {fetchMessage}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {viewMode === "attention" ? (
         <NeedsAttentionList

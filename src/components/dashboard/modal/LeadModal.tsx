@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import axios from "axios";
 import {
   AlertTriangle,
@@ -13,7 +14,7 @@ import {
   MapPin,
   ShieldCheck,
   UserPlus,
-  X,
+  type LucideIcon,
 } from "lucide-react";
 import Image from "next/image";
 import ChatMock from "./ChatMock";
@@ -41,34 +42,20 @@ import { outcomeReasonLabel, parseActivityDetail, type ActivityRecord } from "@/
 import ActivityTimeline from "./ActivityTimeline";
 import FollowUpPanel from "./FollowUpPanel";
 import RecordOfferForm from "./RecordOfferForm";
+import { Sheet } from "@/components/ui/Sheet";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
+import { RECOMMENDATION_COLORS, RISK_COLORS, scoreColor, tone } from "@/lib/ui/colors";
+import { listContainer, listItem, spring } from "@/lib/motion";
 
-const RECOMMENDATION_COLORS: Record<Recommendation, string> = {
-  BUY: "#34d399",
-  INVESTIGATE: "#fbbf24",
-  WATCH: "#60a5fa",
-  PASS: "#8b9ab8",
-};
+type DossierTab = "decision" | "activity" | "chat" | "history";
 
-const RISK_COLORS: Record<string, string> = {
-  Low: "#34d399",
-  Medium: "#fbbf24",
-  High: "#f87171",
-};
-
-const actionButtonStyle: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  padding: "7px 12px",
-  borderRadius: 8,
-  fontSize: 12,
-  fontWeight: 700,
-  cursor: "pointer",
-  border: "1px solid rgba(255,255,255,0.12)",
-  background: "rgba(255,255,255,0.04)",
-  color: "#f0f4ff",
-  transition: "background 0.15s, border-color 0.15s, color 0.15s",
-};
+const TABS: { value: DossierTab; label: string }[] = [
+  { value: "decision", label: "Decision" },
+  { value: "activity", label: "Activity" },
+  { value: "chat", label: "Seller chat" },
+  { value: "history", label: "History" },
+];
 
 /* Reusable row for detail tables */
 function DetailRow({
@@ -86,8 +73,9 @@ function DetailRow({
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        padding: "9px 0",
-        borderBottom: "1px solid rgba(255,255,255,0.05)",
+        minHeight: 42,
+        padding: "10px 0",
+        borderBottom: "1px solid var(--separator)",
         gap: 12,
       }}
     >
@@ -97,14 +85,14 @@ function DetailRow({
           alignItems: "center",
           gap: 7,
           fontSize: 13,
-          color: "#8b9ab8",
+          color: "var(--label-secondary)",
           flexShrink: 0,
         }}
       >
-        {Icon && <Icon style={{ width: 14, height: 14, color: "#8b9ab8" }} />}
+        {Icon && <Icon style={{ width: 15, height: 15, color: "var(--label-tertiary)" }} />}
         {label}
       </span>
-      <span style={{ fontSize: 13, fontWeight: 600, color: "#f0f4ff", textAlign: "right" }}>
+      <span className="tabular" style={{ fontSize: 13, fontWeight: 500, color: "var(--label)", textAlign: "right" }}>
         {value}
       </span>
     </div>
@@ -126,10 +114,10 @@ function SourceTag({
   onToggle: () => void;
 }) {
   const colors: Record<string, string> = {
-    provider: "#60a5fa",
-    heuristic: "#a78bfa",
-    "fixture-assumption": "#fbbf24",
-    unavailable: "#8b9ab8",
+    provider: "var(--blue)",
+    heuristic: "var(--purple)",
+    "fixture-assumption": "var(--yellow)",
+    unavailable: "var(--label-secondary)",
   };
   const color = colors[sourced.source];
   return (
@@ -138,17 +126,18 @@ function SourceTag({
       onClick={onToggle}
       aria-expanded={expanded}
       title={sourced.note}
+      className="pressable"
       style={{
         display: "inline-flex",
         alignItems: "center",
-        borderRadius: 5,
-        padding: "1px 6px",
-        fontSize: 10,
-        fontWeight: 700,
+        borderRadius: 999,
+        padding: "1px 8px",
+        fontSize: 11,
+        fontWeight: 600,
         letterSpacing: "0.04em",
         color,
-        background: `${color}14`,
-        border: `1px solid ${color}40`,
+        background: `color-mix(in srgb, ${color} 8%, transparent)`,
+        border: `1px solid color-mix(in srgb, ${color} 25%, transparent)`,
         cursor: "pointer",
         whiteSpace: "nowrap",
       }}
@@ -172,19 +161,27 @@ function MoneyRow({ label, sourced, strong }: { label: string; sourced: SourcedV
         }
         value={
           sourced.value === null ? (
-            <span style={{ color: "#8b9ab8" }}>Unavailable</span>
+            <span style={{ color: "var(--label-secondary)" }}>Unavailable</span>
           ) : (
-            <span style={{ fontSize: strong ? 15 : 13, fontWeight: strong ? 900 : 600 }}>
+            <span style={{ fontSize: strong ? 15 : 13, fontWeight: strong ? 700 : 500 }}>
               {formatCurrency(sourced.value)}
             </span>
           )
         }
       />
-      {showNote && (
-        <p style={{ padding: "6px 0 8px", fontSize: 11.5, color: "#8b9ab8", lineHeight: 1.5, borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-          {sourced.note}
-        </p>
-      )}
+      <AnimatePresence initial={false}>
+        {showNote && (
+          <motion.p
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={spring.snappy}
+            style={{ overflow: "hidden", fontSize: 12, color: "var(--label-secondary)", lineHeight: 1.5, borderBottom: "1px solid var(--separator)" }}
+          >
+            <span style={{ display: "block", padding: "6px 0 10px" }}>{sourced.note}</span>
+          </motion.p>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -210,7 +207,7 @@ export default function LeadModal({
   /** Notifies the parent when follow-up edits change the lead. */
   onLeadUpdated?: (lead: LeadRecord) => void;
 }) {
-  const [activeTab, setActiveTab] = useState<"decision" | "activity" | "chat" | "carfax">("decision");
+  const [activeTab, setActiveTab] = useState<DossierTab>("decision");
   // Local overlay so follow-up edits render immediately; re-synced whenever
   // the parent hands down a fresh lead (adjust-during-render pattern).
   const [lead, setLead] = useState(leadProp);
@@ -229,23 +226,13 @@ export default function LeadModal({
     onLeadUpdated?.(updated);
   };
 
-  const panelRef = useRef<HTMLDivElement>(null);
-
-  // Dialog semantics: focus the panel on open, close on Escape. When a
-  // nested dialog (e.g. the pass-reason prompt) has focus, Escape belongs
-  // to it — the dossier stays open.
-  useEffect(() => {
-    panelRef.current?.focus();
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      const target = event.target instanceof Element ? event.target : null;
-      const enclosingDialog = target?.closest('[role="dialog"]');
-      if (enclosingDialog && enclosingDialog !== panelRef.current?.parentElement) return;
-      onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  // Tab content slides in from the side of the tab you moved toward.
+  const [tabDirection, setTabDirection] = useState(1);
+  const selectTab = (next: DossierTab) => {
+    const order = TABS.map((t) => t.value);
+    setTabDirection(order.indexOf(next) >= order.indexOf(activeTab) ? 1 : -1);
+    setActiveTab(next);
+  };
 
   // The buyer's most recent recorded offer (a real buyer action, distinct
   // from Spotr's heuristic max offer) — read from the activity trail so it
@@ -313,432 +300,288 @@ export default function LeadModal({
 
   const verified = isVerifiedListing(lead);
   const fixture = isFixtureLead(lead);
-  const recColor = assessment ? RECOMMENDATION_COLORS[assessment.recommendation] : "#8b9ab8";
+  const recColor = assessment ? RECOMMENDATION_COLORS[assessment.recommendation] : "var(--label-secondary)";
   const isWatched = Boolean(lead.watchedAt);
   const isAssigned = Boolean(lead.assignedTo);
 
+  const title = getVehicleTitle(lead);
+  const maxOfferOk = assessment?.maxOffer.status === "ok";
+
   return (
-    /* Backdrop */
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={`${getVehicleTitle(lead)} dossier`}
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 50,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "rgba(0,0,0,0.7)",
-        backdropFilter: "blur(6px)",
-        padding: 16,
-      }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      {/* Modal panel */}
-      <div
-        ref={panelRef}
-        tabIndex={-1}
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          height: "90vh",
-          width: "100%",
-          maxWidth: 900,
-          borderRadius: 20,
-          overflow: "hidden",
-          background: "var(--bg-surface)",
-          border: "1px solid rgba(255,255,255,0.1)",
-          boxShadow: "0 32px 80px rgba(0,0,0,0.7)",
-          outline: "none",
-        }}
-      >
-        {/* ── Header ─────────────────────────────────────────── */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "18px 24px",
-            borderBottom: "1px solid rgba(255,255,255,0.07)",
-            flexShrink: 0,
-          }}
-        >
-          <div>
-            <h2
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                fontSize: 18,
-                fontWeight: 900,
-                letterSpacing: "-0.01em",
-                color: "#f0f4ff",
-              }}
-            >
-              {getVehicleTitle(lead)}
-              {fixture && (
-                <span
-                  style={{
-                    borderRadius: 6,
-                    padding: "2px 7px",
-                    fontSize: 10,
-                    fontWeight: 800,
-                    letterSpacing: "0.06em",
-                    color: "#fbbf24",
-                    background: "rgba(251,191,36,0.15)",
-                    border: "1px solid rgba(251,191,36,0.5)",
-                  }}
-                >
-                  SAMPLE DATA
-                </span>
-              )}
-            </h2>
-            <p style={{ fontSize: 13, color: "#8b9ab8", marginTop: 2 }}>
-              {[lead.city, lead.state].filter(Boolean).join(", ") || "Location unknown"} · {formatDistance(lead.distanceMiles)}
+    <Sheet
+      onClose={onClose}
+      ariaLabel={`${title} dossier`}
+      closeLabel="Close dossier"
+      header={
+        <>
+          <div style={{ padding: "8px 72px 14px 24px" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+              <h2 className="t-title2" style={{ color: "var(--label)" }}>
+                {title}
+              </h2>
+              {fixture && <SampleBadge />}
+            </div>
+            <p className="t-footnote" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, color: "var(--label-secondary)", marginTop: 4 }}>
+              <MapPin style={{ width: 13, height: 13 }} aria-hidden="true" />
+              {[lead.city, lead.state].filter(Boolean).join(", ") || "Location unknown"}
+              <Dot />
+              {formatDistance(lead.distanceMiles)}
+              <Dot />
+              {fixture ? "Synthetic fixture" : lead.source || "Unknown source"}
             </p>
           </div>
-          <button
-            onClick={onClose}
-            aria-label="Close dossier"
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: "50%",
-              display: "grid",
-              placeItems: "center",
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              cursor: "pointer",
-              color: "#8b9ab8",
-              flexShrink: 0,
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "rgba(239,68,68,0.15)";
-              e.currentTarget.style.color = "#f87171";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "rgba(255,255,255,0.06)";
-              e.currentTarget.style.color = "#8b9ab8";
-            }}
-          >
-            <X style={{ width: 16, height: 16 }} />
-          </button>
+        </>
+      }
+      toolbar={
+        <div style={{ padding: "0 24px 14px", overflowX: "auto" }}>
+          <SegmentedControl
+            role="tabs"
+            ariaLabel="Dossier sections"
+            segments={TABS}
+            value={activeTab}
+            onChange={selectTab}
+          />
         </div>
-
-        {/* ── Tabs ───────────────────────────────────────────── */}
-        <div
-          style={{
-            display: "flex",
-            padding: "0 24px",
-            borderBottom: "1px solid rgba(255,255,255,0.07)",
-            flexShrink: 0,
+      }
+    >
+      <AnimatePresence mode="wait" initial={false} custom={tabDirection}>
+        <motion.div
+          key={activeTab}
+          custom={tabDirection}
+          variants={{
+            enter: (dir: number) => ({ opacity: 0, x: dir * 28 }),
+            center: { opacity: 1, x: 0 },
+            exit: (dir: number) => ({ opacity: 0, x: dir * -28 }),
           }}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          transition={{ ...spring.snappy, opacity: { duration: 0.16 } }}
+          style={{ padding: 24 }}
         >
-          {(["decision", "activity", "chat", "carfax"] as const).map((tab) => {
-            const active = activeTab === tab;
-            return (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                style={{
-                  padding: "13px 16px",
-                  fontSize: 13,
-                  fontWeight: 700,
-                  textTransform: "capitalize",
-                  color: active ? "#ff9147" : "#8b9ab8",
-                  background: "none",
-                  border: "none",
-                  borderBottom: `2px solid ${active ? "#ff7a1a" : "transparent"}`,
-                  cursor: "pointer",
-                  transition: "color 0.15s",
-                  marginBottom: -1,
-                }}
-              >
-                {tab === "decision" ? "Decision" : tab}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* ── Content ────────────────────────────────────────── */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
           {activeTab === "decision" && (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-                gap: 20,
-              }}
+            <motion.div
+              variants={listContainer}
+              initial="hidden"
+              animate="show"
+              style={{ display: "flex", flexDirection: "column", gap: 16 }}
             >
-              {/* ── A. Decision header ─────────────────────── */}
-              <div
-                style={{
-                  gridColumn: "1 / -1",
-                  background: "var(--bg-card)",
-                  borderRadius: 14,
-                  padding: "18px 20px",
-                  border: `1px solid ${assessment ? `${recColor}40` : "rgba(255,255,255,0.07)"}`,
-                }}
+              {/* ── Photo + decision ─────────────────────────── */}
+              <motion.div
+                variants={listItem}
+                style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}
               >
-                {!assessment ? (
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, color: "#8b9ab8", fontSize: 13, minHeight: 96 }}>
-                    <div style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(255,122,26,0.2)", borderTopColor: "#ff7a1a", animation: "spin 0.8s linear infinite" }} />
-                    Assessing against your buy box…
-                  </div>
-                ) : (
-                  <>
-                    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 14 }}>
-                      <div style={{ minWidth: 0, flex: "1 1 300px" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-                          <span
-                            style={{
-                              borderRadius: 8,
-                              padding: "4px 12px",
-                              fontSize: 14,
-                              fontWeight: 900,
-                              letterSpacing: "0.05em",
-                              color: recColor,
-                              background: `${recColor}1a`,
-                              border: `1px solid ${recColor}55`,
-                            }}
-                          >
-                            {assessment.recommendation}
-                          </span>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: "#8b9ab8", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                            Spotr heuristic recommendation
-                          </span>
-                        </div>
-                        <p style={{ fontSize: 13.5, color: "#c6d0e2", lineHeight: 1.55 }}>{assessment.recommendationReason}</p>
-                        {buyBoxNote && (
-                          <p style={{ fontSize: 12, color: "#fbbf24", marginTop: 6 }}>{buyBoxNote}</p>
-                        )}
-                        {onAction && (
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
-                            <button
-                              disabled={actionBusy}
-                              onClick={() => onAction(lead.id, isWatched ? "unwatch" : "watch")}
-                              style={{
-                                ...actionButtonStyle,
-                                ...(isWatched
-                                  ? { background: "rgba(255,122,26,0.15)", borderColor: "rgba(255,122,26,0.5)", color: "#ff9147" }
-                                  : {}),
-                              }}
-                            >
-                              <Eye style={{ width: 14, height: 14 }} />
-                              {isWatched ? "Watching" : "Watch"}
-                            </button>
-                            <button
-                              disabled={actionBusy}
-                              onClick={() => onAction(lead.id, isAssigned ? "unassign" : "assign")}
-                              style={{
-                                ...actionButtonStyle,
-                                ...(isAssigned
-                                  ? { background: "rgba(96,165,250,0.12)", borderColor: "rgba(96,165,250,0.45)", color: "#60a5fa" }
-                                  : {}),
-                              }}
-                            >
-                              <UserPlus style={{ width: 14, height: 14 }} />
-                              {isAssigned ? "Unassign" : "Assign to me"}
-                            </button>
-                            <button
-                              disabled={actionBusy}
-                              onClick={() => onAction(lead.id, "pass")}
-                              style={{ ...actionButtonStyle, color: "#f87171", borderColor: "rgba(248,113,113,0.35)" }}
-                            >
-                              <Ban style={{ width: 14, height: 14 }} />
-                              Pass
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, flexShrink: 0 }}>
-                        {[
-                          {
-                            label: "Asking",
-                            value: lead.price ? formatCurrency(lead.price) : "—",
-                            sub: fixture ? "demo listing" : "provider data",
-                            color: "#f0f4ff",
-                          },
-                          {
-                            label: "Max offer",
-                            value:
-                              assessment.maxOffer.status === "ok"
-                                ? formatCurrency(assessment.maxOffer.amount)
-                                : assessment.maxOffer.status === "below-acquisition-range"
-                                ? "Below min"
-                                : "—",
-                            sub: "Spotr heuristic",
-                            color: assessment.maxOffer.status === "ok" ? "#ff9147" : "#fbbf24",
-                          },
-                          {
-                            label: "Your last offer",
-                            value: lastOffer ? formatCurrency(lastOffer.amountUsd) : "—",
-                            sub: lastOffer
-                              ? `buyer-recorded · ${new Date(lastOffer.at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
-                              : "none recorded",
-                            color: lastOffer ? "#34d399" : "#8b9ab8",
-                          },
-                          {
-                            label: "Score",
-                            value: String(assessment.finalOpportunityScore),
-                            sub: `raw ${assessment.rawScoreBeforeRisk} − risk ${assessment.riskPenalty}`,
-                            color: "#f0f4ff",
-                          },
-                          {
-                            label: "Confidence",
-                            value: `${assessment.confidencePercent}%`,
-                            sub: `${assessment.confidenceTier} · completeness`,
-                            color: "#f0f4ff",
-                          },
-                          {
-                            label: "Risk",
-                            value: assessment.riskLevel,
-                            sub: assessment.riskFactors.length > 0 ? `${assessment.riskFactors.length} flag${assessment.riskFactors.length === 1 ? "" : "s"}` : "no flags",
-                            color: RISK_COLORS[assessment.riskLevel],
-                          },
-                        ].map(({ label, value, sub, color }) => (
-                          <div key={label} style={{ textAlign: "center", borderRadius: 10, padding: "10px 14px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                            <p style={{ fontSize: 10, fontWeight: 700, color: "#8b9ab8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 3 }}>{label}</p>
-                            <p style={{ fontSize: 18, fontWeight: 900, color }}>{value}</p>
-                            <p style={{ fontSize: 10, color: "#8b9ab8", marginTop: 2 }}>{sub}</p>
-                          </div>
-                        ))}
-                      </div>
+                <div
+                  style={{
+                    position: "relative",
+                    minHeight: 240,
+                    borderRadius: "var(--radius-lg)",
+                    overflow: "hidden",
+                    background: "var(--bg-card)",
+                    border: "1px solid var(--separator)",
+                  }}
+                >
+                  {lead.photo_url ? (
+                    <motion.div
+                      initial={{ scale: 1.08, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ ...spring.smooth, duration: 0.8 }}
+                      style={{ position: "absolute", inset: 0 }}
+                    >
+                      <Image src={lead.photo_url} alt={title} fill unoptimized sizes="500px" style={{ objectFit: "cover" }} />
+                    </motion.div>
+                  ) : (
+                    <div style={{ display: "grid", placeItems: "center", height: "100%", minHeight: 240, color: "var(--label-secondary)", fontSize: 13, fontWeight: 500 }}>
+                      No photo available
                     </div>
-                  </>
-                )}
-              </div>
+                  )}
+                </div>
+
+                <SectionCard accent={assessment ? recColor : undefined}>
+                  {!assessment ? (
+                    <div aria-busy="true" style={{ display: "flex", flexDirection: "column", gap: 10, minHeight: 180 }}>
+                      <span className="t-footnote" style={{ color: "var(--label-secondary)" }}>Assessing against your buy box…</span>
+                      <div className="skeleton" style={{ width: 120, height: 30, borderRadius: 999 }} />
+                      <div className="skeleton" style={{ height: 14 }} />
+                      <div className="skeleton" style={{ width: "70%", height: 14 }} />
+                    </div>
+                  ) : (
+                    <>
+                      <p className="t-eyebrow" style={{ color: "var(--label-secondary)", marginBottom: 10 }}>
+                        Spotr heuristic recommendation
+                      </p>
+                      <motion.span
+                        initial={{ scale: 0.6, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ ...spring.bouncy, delay: 0.12 }}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 8,
+                          borderRadius: 999,
+                          padding: "6px 14px 6px 10px",
+                          fontSize: 15,
+                          fontWeight: 700,
+                          letterSpacing: "0.04em",
+                          color: recColor,
+                          background: tone(recColor, 14),
+                          boxShadow: `inset 0 0 0 1px ${tone(recColor, 30)}`,
+                        }}
+                      >
+                        <span style={{ width: 8, height: 8, borderRadius: 999, background: recColor, boxShadow: `0 0 0 4px ${tone(recColor, 20)}` }} />
+                        {assessment.recommendation}
+                      </motion.span>
+                      <p style={{ fontSize: 14, color: "var(--label-body)", lineHeight: 1.55, marginTop: 12 }}>{assessment.recommendationReason}</p>
+                      {buyBoxNote && (
+                        <p className="t-footnote" style={{ color: "var(--yellow)", marginTop: 8 }}>{buyBoxNote}</p>
+                      )}
+                      {onAction && (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 16 }}>
+                          <button
+                            type="button"
+                            disabled={actionBusy}
+                            onClick={() => onAction(lead.id, isWatched ? "unwatch" : "watch")}
+                            className={`btn btn-sm pressable ${isWatched ? "btn-plain" : "btn-secondary"}`}
+                            style={isWatched ? { background: "rgba(var(--tint-rgb), 0.14)" } : undefined}
+                          >
+                            <Eye style={{ width: 14, height: 14 }} />
+                            {isWatched ? "Watching" : "Watch"}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={actionBusy}
+                            onClick={() => onAction(lead.id, isAssigned ? "unassign" : "assign")}
+                            className="btn btn-sm btn-secondary pressable"
+                            style={isAssigned ? { color: "var(--blue)", background: "rgba(var(--blue-rgb), 0.12)", borderColor: "transparent" } : undefined}
+                          >
+                            <UserPlus style={{ width: 14, height: 14 }} />
+                            {isAssigned ? "Unassign" : "Assign to me"}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={actionBusy}
+                            onClick={() => onAction(lead.id, "pass")}
+                            className="btn btn-sm btn-destructive pressable"
+                          >
+                            <Ban style={{ width: 14, height: 14 }} />
+                            Pass
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </SectionCard>
+              </motion.div>
+
+              {/* ── Key figures ──────────────────────────────── */}
+              {assessment && (
+                <motion.div
+                  variants={listItem}
+                  style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}
+                >
+                  <MetricTile
+                    label="Asking price"
+                    sub={fixture ? "Demo listing" : "Listing · provider data"}
+                    value={lead.price ? formatCurrency(lead.price) : "—"}
+                  />
+                  <MetricTile
+                    label="Max offer"
+                    sub="Spotr estimate"
+                    color={maxOfferOk ? "var(--tint-text)" : "var(--yellow)"}
+                    value={
+                      assessment.maxOffer.status === "ok" ? (
+                        <AnimatedNumber countUp value={assessment.maxOffer.amount ?? 0} format={(n) => formatCurrency(Math.round(n))} />
+                      ) : assessment.maxOffer.status === "below-acquisition-range" ? (
+                        "Below min"
+                      ) : (
+                        "—"
+                      )
+                    }
+                  />
+                  <MetricTile
+                    label="Your last offer"
+                    sub={
+                      lastOffer
+                        ? `Buyer-recorded · ${new Date(lastOffer.at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+                        : "None recorded"
+                    }
+                    color={lastOffer ? "var(--green)" : "var(--label-secondary)"}
+                    value={lastOffer ? formatCurrency(lastOffer.amountUsd) : "—"}
+                  />
+                  <MetricTile
+                    label="Score"
+                    sub={`Raw ${assessment.rawScoreBeforeRisk} − risk ${assessment.riskPenalty}`}
+                    value={<AnimatedNumber countUp value={assessment.finalOpportunityScore} />}
+                    adornment={<ScoreRing score={assessment.finalOpportunityScore} />}
+                  />
+                  <MetricTile
+                    label="Confidence"
+                    sub={`${assessment.confidenceTier} · data completeness`}
+                    value={<AnimatedNumber countUp value={assessment.confidencePercent} format={(n) => `${Math.round(n)}%`} />}
+                    footer={<Meter percent={assessment.confidencePercent} />}
+                  />
+                  <MetricTile
+                    label="Risk"
+                    sub={
+                      assessment.riskFactors.length > 0
+                        ? `${assessment.riskFactors.length} flag${assessment.riskFactors.length === 1 ? "" : "s"}`
+                        : "No flags"
+                    }
+                    color={RISK_COLORS[assessment.riskLevel]}
+                    value={assessment.riskLevel}
+                  />
+                </motion.div>
+              )}
 
               {/* Outcome banner: why this lead was Passed / marked Lost */}
               {lead.outcomeReason && (lead.passedAt || lead.stage === "Lost") && (
-                <div
+                <motion.div
+                  variants={listItem}
                   style={{
-                    gridColumn: "1 / -1",
-                    borderRadius: 12,
-                    border: "1px solid rgba(248,113,113,0.3)",
-                    background: "rgba(248,113,113,0.07)",
+                    borderRadius: "var(--radius-md)",
+                    background: "rgba(var(--red-rgb), 0.1)",
+                    boxShadow: "inset 0 0 0 1px rgba(var(--red-rgb), 0.25)",
                     padding: "12px 16px",
                   }}
                 >
-                  <p style={{ fontSize: 13, fontWeight: 700, color: "#f87171" }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: "var(--red)" }}>
                     {lead.passedAt ? "Passed" : "Lost"} — {outcomeReasonLabel(lead.outcomeReason)}
                   </p>
                   {lead.outcomeNote && (
-                    <p style={{ fontSize: 12, color: "#c6d0e2", marginTop: 4 }}>“{lead.outcomeNote}”</p>
+                    <p style={{ fontSize: 12, color: "var(--label-body)", marginTop: 4 }}>“{lead.outcomeNote}”</p>
                   )}
-                </div>
+                </motion.div>
               )}
 
-              {/* Follow-up + offer logging */}
-              <div style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
+              {/* ── Follow-up + offer logging ────────────────── */}
+              <motion.div
+                variants={listItem}
+                style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}
+              >
                 <FollowUpPanel lead={lead} onLeadUpdated={handleLeadUpdated} />
                 <RecordOfferForm
                   leadId={lead.id}
-                  recommendedMaxOfferLabel={
-                    assessment?.maxOffer.status === "ok" ? formatCurrency(assessment.maxOffer.amount) : null
-                  }
+                  recommendedMaxOfferLabel={maxOfferOk && assessment ? formatCurrency(assessment.maxOffer.amount) : null}
                   onRecorded={() => setActivityReload((value) => value + 1)}
                 />
-              </div>
+              </motion.div>
 
-              {/* Photo */}
-              <div
-                style={{
-                  borderRadius: 14,
-                  overflow: "hidden",
-                  position: "relative",
-                  height: 220,
-                  background: "#0f1520",
-                }}
+              {/* ── Vehicle + provenance ─────────────────────── */}
+              <motion.div
+                variants={listItem}
+                style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}
               >
-                {lead.photo_url ? (
-                  <Image
-                    src={lead.photo_url}
-                    alt={getVehicleTitle(lead)}
-                    fill
-                    unoptimized
-                    sizes="450px"
-                    style={{ objectFit: "cover" }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      display: "flex",
-                      height: "100%",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: "#8b9ab8",
-                    }}
-                  >
-                    No photo available
-                  </div>
-                )}
-              </div>
+                <SectionCard title="Vehicle">
+                  <DetailRow label="Listing" value={title} />
+                  <DetailRow label="VIN" value={lead.vin || "Not supplied"} icon={Hash} />
+                  <DetailRow label="Trim" value={lead.trim || "Unknown"} />
+                  <DetailRow label="Mileage" value={formatMiles(lead.miles)} icon={Gauge} />
+                  <DetailRow label="Location" value={[lead.city, lead.state].filter(Boolean).join(", ") || "Unknown"} icon={MapPin} />
+                  <DetailRow label="Distance" value={formatDistance(lead.distanceMiles)} />
+                </SectionCard>
 
-              {/* Vehicle info panel */}
-              <div
-                style={{
-                  background: "var(--bg-card)",
-                  borderRadius: 14,
-                  padding: "16px 18px",
-                  border: "1px solid rgba(255,255,255,0.07)",
-                }}
-              >
-                <h3
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 700,
-                    color: "#ff9147",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.06em",
-                    marginBottom: 4,
-                  }}
-                >
-                  Vehicle
-                </h3>
-                <DetailRow label="Listing" value={getVehicleTitle(lead)} />
-                <DetailRow label="VIN" value={lead.vin || "Not supplied"} icon={Hash} />
-                <DetailRow label="Trim" value={lead.trim || "Unknown"} />
-                <DetailRow label="Mileage" value={formatMiles(lead.miles)} icon={Gauge} />
-                <DetailRow
-                  label="Location"
-                  value={[lead.city, lead.state].filter(Boolean).join(", ") || "Unknown"}
-                  icon={MapPin}
-                />
-                <DetailRow label="Distance" value={formatDistance(lead.distanceMiles)} />
-              </div>
-
-              {/* Source & freshness panel */}
-              <div
-                style={{
-                  gridColumn: "1 / -1",
-                  background: "var(--bg-card)",
-                  borderRadius: 14,
-                  padding: "16px 18px",
-                  border: "1px solid rgba(255,255,255,0.07)",
-                }}
-              >
-                <h3
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 700,
-                    color: "#ff9147",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.06em",
-                    marginBottom: 4,
-                  }}
-                >
-                  Source & freshness
-                </h3>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", columnGap: 24 }}>
-                  <DetailRow
-                    label="Source"
-                    value={fixture ? "Synthetic fixture (demo)" : lead.source || "Unknown"}
-                  />
+                <SectionCard title="Source & freshness">
+                  <DetailRow label="Source" value={fixture ? "Synthetic fixture (demo)" : lead.source || "Unknown"} />
                   <DetailRow
                     label="Verification"
                     value={
@@ -747,15 +590,15 @@ export default function LeadModal({
                           display: "inline-flex",
                           alignItems: "center",
                           gap: 5,
-                          borderRadius: 100,
+                          borderRadius: 999,
                           padding: "3px 10px",
-                          fontSize: 11,
-                          fontWeight: 700,
-                          background: verified ? "rgba(52,211,153,0.15)" : "rgba(255,122,26,0.12)",
-                          color: verified ? "#34d399" : "#ff9147",
+                          fontSize: 12,
+                          fontWeight: 600,
+                          background: verified ? "rgba(var(--green-rgb), 0.14)" : "rgba(var(--yellow-rgb), 0.14)",
+                          color: verified ? "var(--green)" : "var(--yellow)",
                         }}
                       >
-                        <ShieldCheck style={{ width: 11, height: 11 }} />
+                        <ShieldCheck style={{ width: 12, height: 12 }} />
                         {verified ? "Live link + VIN" : "Needs source check"}
                       </span>
                     }
@@ -772,225 +615,180 @@ export default function LeadModal({
                     }
                   />
                   <DetailRow label="Seller" value={lead.sellerName || "Private Party"} />
-                </div>
-                {isSafeHttpUrl(lead.vdp_url) && (
-                  <div style={{ paddingTop: 10 }}>
+                  {isSafeHttpUrl(lead.vdp_url) && (
                     <a
                       href={lead.vdp_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 6,
-                        fontSize: 13,
-                        fontWeight: 700,
-                        color: "#ff9147",
-                        textDecoration: "none",
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
-                      onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
+                      className="btn btn-sm btn-plain pressable"
+                      style={{ marginTop: 12, paddingLeft: 10 }}
                     >
-                      View Original Listing <ExternalLink style={{ width: 13, height: 13 }} />
+                      View original listing <ExternalLink style={{ width: 13, height: 13 }} />
                     </a>
-                  </div>
-                )}
-              </div>
+                  )}
+                </SectionCard>
+              </motion.div>
 
-              {/* ── B. Acquisition economics ───────────────── */}
-              {!assessment ? (
-                <div
-                  style={{
-                    gridColumn: "1 / -1",
-                    background: "var(--bg-card)",
-                    borderRadius: 14,
-                    padding: "18px 20px",
-                    border: "1px solid rgba(255,255,255,0.07)",
-                    minHeight: 320,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "#8b9ab8",
-                    fontSize: 13,
-                  }}
-                >
-                  Economics and risk assessment load once the buy box is available…
-                </div>
-              ) : (
-                <div
-                  style={{
-                    gridColumn: "1 / -1",
-                    background: "var(--bg-card)",
-                    borderRadius: 14,
-                    padding: "18px 20px",
-                    border: "1px solid rgba(255,255,255,0.07)",
-                  }}
-                >
-                  <h3 style={{ fontSize: 15, fontWeight: 800, color: "#f0f4ff", marginBottom: 2 }}>
-                    Acquisition economics
-                  </h3>
-                  <p style={{ fontSize: 12, color: "#8b9ab8", marginBottom: 12 }}>
-                    Planning figures from stated assumptions — not guarantees. Click any source tag for the assumption behind the number.
-                  </p>
-
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
-                    {/* Offer math */}
-                    <div>
-                      <MoneyRow label="Asking price" sourced={assessment.askingPrice} strong />
-                      {assessment.estimatedRange ? (
-                        <MoneyRow
-                          label="Est. retail (low end)"
-                          sourced={{
-                            value: assessment.estimatedRange.low,
-                            source: assessment.estimatedRange.source,
-                            note: `${assessment.estimatedRange.note} Full band: ${formatCurrency(assessment.estimatedRange.low)} – ${formatCurrency(assessment.estimatedRange.high)} (midpoint ${formatCurrency(assessment.estimatedRange.mid)}).`,
-                          }}
-                        />
-                      ) : (
-                        <DetailRow label="Est. retail range" value={<span style={{ color: "#8b9ab8" }}>Unavailable — no asking price</span>} />
-                      )}
-                      <MoneyRow label="Reconditioning" sourced={assessment.maxOffer.inputs.recon} />
-                      <MoneyRow label="Transport / fees" sourced={assessment.maxOffer.inputs.transport} />
-                      <MoneyRow label="Uncertainty buffer" sourced={assessment.maxOffer.inputs.uncertaintyBuffer} />
-                      <MoneyRow label="Target gross (planning)" sourced={assessment.maxOffer.inputs.targetGross} />
-
-                      {/* Max offer callout */}
-                      <div
-                        style={{
-                          marginTop: 12,
-                          borderRadius: 10,
-                          padding: "12px 14px",
-                          background:
-                            assessment.maxOffer.status === "ok"
-                              ? "rgba(255,122,26,0.08)"
-                              : assessment.maxOffer.status === "below-acquisition-range"
-                              ? "rgba(251,191,36,0.08)"
-                              : "rgba(255,255,255,0.03)",
-                          border: `1px solid ${
-                            assessment.maxOffer.status === "ok"
-                              ? "rgba(255,122,26,0.3)"
-                              : assessment.maxOffer.status === "below-acquisition-range"
-                              ? "rgba(251,191,36,0.35)"
-                              : "rgba(255,255,255,0.08)"
-                          }`,
-                        }}
-                      >
-                        <p style={{ fontSize: 11, fontWeight: 700, color: "#8b9ab8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>
-                          Recommended max offer · Spotr heuristic
-                        </p>
-                        {assessment.maxOffer.status === "unavailable" ? (
-                          <p style={{ fontSize: 12.5, color: "#8b9ab8", lineHeight: 1.5 }}>{assessment.maxOffer.reason}</p>
-                        ) : assessment.maxOffer.status === "below-acquisition-range" ? (
-                          <>
-                            <p style={{ fontSize: 14, fontWeight: 800, color: "#fbbf24" }}>
-                              Offer ceiling below your minimum acquisition price — investigate only
-                            </p>
-                            <p style={{ fontSize: 12, color: "#8b9ab8", marginTop: 3 }}>
-                              Internal estimate of the ceiling: {formatCurrency(assessment.maxOffer.amount)} (under your configured minimum).
-                            </p>
-                          </>
+              {/* ── Acquisition economics ────────────────────── */}
+              <motion.div variants={listItem}>
+                {!assessment ? (
+                  <SectionCard title="Acquisition economics">
+                    <div aria-busy="true" style={{ display: "flex", flexDirection: "column", gap: 10, minHeight: 200 }}>
+                      <span className="t-footnote" style={{ color: "var(--label-secondary)" }}>
+                        Economics and risk assessment load once the buy box is available…
+                      </span>
+                      {[0, 1, 2, 3].map((i) => (
+                        <div key={i} className="skeleton" style={{ height: 18, width: `${90 - i * 12}%` }} />
+                      ))}
+                    </div>
+                  </SectionCard>
+                ) : (
+                  <SectionCard
+                    title="Acquisition economics"
+                    caption="Planning figures from stated assumptions — not guarantees. Tap any source tag for the assumption behind the number."
+                  >
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 24 }}>
+                      <div>
+                        <MoneyRow label="Asking price" sourced={assessment.askingPrice} strong />
+                        {assessment.estimatedRange ? (
+                          <MoneyRow
+                            label="Est. retail (low end)"
+                            sourced={{
+                              value: assessment.estimatedRange.low,
+                              source: assessment.estimatedRange.source,
+                              note: `${assessment.estimatedRange.note} Full band: ${formatCurrency(assessment.estimatedRange.low)} – ${formatCurrency(assessment.estimatedRange.high)} (midpoint ${formatCurrency(assessment.estimatedRange.mid)}).`,
+                            }}
+                          />
                         ) : (
-                          <>
-                            <p style={{ fontSize: 22, fontWeight: 900, color: "#ff9147" }}>
-                              {formatCurrency(assessment.maxOffer.amount)}
-                              {assessment.maxOffer.cappedByAcquisitionMax && (
-                                <span style={{ fontSize: 11, fontWeight: 700, color: "#8b9ab8", marginLeft: 8 }}>capped at your configured max</span>
-                              )}
-                            </p>
-                            <p style={{ fontSize: 11.5, color: "#8b9ab8", marginTop: 3, lineHeight: 1.5 }}>
-                              Conservative retail (low end) − target gross − recon − transport − buffer. Built to protect the gross target under the stated assumptions.
-                            </p>
-                          </>
+                          <DetailRow label="Est. retail range" value={<span style={{ color: "var(--label-secondary)" }}>Unavailable — no asking price</span>} />
+                        )}
+                        <MoneyRow label="Reconditioning" sourced={assessment.maxOffer.inputs.recon} />
+                        <MoneyRow label="Transport / fees" sourced={assessment.maxOffer.inputs.transport} />
+                        <MoneyRow label="Uncertainty buffer" sourced={assessment.maxOffer.inputs.uncertaintyBuffer} />
+                        <MoneyRow label="Target gross (planning)" sourced={assessment.maxOffer.inputs.targetGross} />
+
+                        {/* Max offer callout */}
+                        <div
+                          style={{
+                            marginTop: 14,
+                            borderRadius: "var(--radius-md)",
+                            padding: "14px 16px",
+                            background:
+                              assessment.maxOffer.status === "ok"
+                                ? "rgba(var(--tint-rgb), 0.1)"
+                                : assessment.maxOffer.status === "below-acquisition-range"
+                                ? "rgba(var(--yellow-rgb), 0.1)"
+                                : "var(--fill)",
+                            boxShadow: `inset 0 0 0 1px ${
+                              assessment.maxOffer.status === "ok"
+                                ? "rgba(var(--tint-rgb), 0.28)"
+                                : assessment.maxOffer.status === "below-acquisition-range"
+                                ? "rgba(var(--yellow-rgb), 0.3)"
+                                : "var(--separator)"
+                            }`,
+                          }}
+                        >
+                          <p className="t-eyebrow" style={{ color: "var(--label-secondary)", marginBottom: 6 }}>
+                            Recommended max offer · Spotr estimate
+                          </p>
+                          {assessment.maxOffer.status === "unavailable" ? (
+                            <p style={{ fontSize: 13, color: "var(--label-secondary)", lineHeight: 1.5 }}>{assessment.maxOffer.reason}</p>
+                          ) : assessment.maxOffer.status === "below-acquisition-range" ? (
+                            <>
+                              <p style={{ fontSize: 14, fontWeight: 600, color: "var(--yellow)" }}>
+                                Offer ceiling below your minimum acquisition price — investigate only
+                              </p>
+                              <p style={{ fontSize: 12, color: "var(--label-secondary)", marginTop: 3 }}>
+                                Internal estimate of the ceiling: {formatCurrency(assessment.maxOffer.amount)} (under your configured minimum).
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="t-title2 tabular" style={{ color: "var(--tint-text)" }}>
+                                {formatCurrency(assessment.maxOffer.amount)}
+                                {assessment.maxOffer.cappedByAcquisitionMax && (
+                                  <span style={{ fontSize: 12, fontWeight: 500, color: "var(--label-secondary)", marginLeft: 8, letterSpacing: 0 }}>
+                                    capped at your configured max
+                                  </span>
+                                )}
+                              </p>
+                              <p style={{ fontSize: 12, color: "var(--label-secondary)", marginTop: 4, lineHeight: 1.5 }}>
+                                Conservative retail (low end) − target gross − recon − transport − buffer. Built to protect the gross target under the stated assumptions.
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="t-eyebrow" style={{ color: "var(--label-secondary)", marginBottom: 10 }}>
+                          Scenarios (buying at asking)
+                        </p>
+                        {assessment.scenarios.length === 0 ? (
+                          <p style={{ fontSize: 13, color: "var(--label-secondary)" }}>Scenario projections need an asking price.</p>
+                        ) : (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            {assessment.scenarios.map((scenario) => {
+                              const gross = scenario.projectedGross.value ?? 0;
+                              return (
+                                <div
+                                  key={scenario.name}
+                                  style={{ borderRadius: "var(--radius-md)", padding: "12px 14px", background: "var(--fill)" }}
+                                >
+                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+                                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--label)" }}>{scenario.name}</span>
+                                    <span className="tabular" style={{ fontSize: 15, fontWeight: 700, color: gross >= 0 ? "var(--green)" : "var(--red)" }}>
+                                      {gross >= 0 ? "+" : "−"}{formatCurrency(Math.abs(gross))} gross
+                                    </span>
+                                  </div>
+                                  <p style={{ fontSize: 12, color: "var(--label-secondary)", marginTop: 4 }}>
+                                    Retail {formatCurrency(scenario.retail.value)} · all-in {formatCurrency(scenario.allIn.value)}
+                                  </p>
+                                  <p style={{ fontSize: 12, color: "var(--label-secondary)", marginTop: 2 }}>{scenario.description}</p>
+                                </div>
+                              );
+                            })}
+                          </div>
                         )}
                       </div>
                     </div>
+                  </SectionCard>
+                )}
+              </motion.div>
 
-                    {/* Scenarios */}
-                    <div>
-                      <p style={{ fontSize: 11, fontWeight: 700, color: "#8b9ab8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>
-                        Scenarios (buying at asking)
-                      </p>
-                      {assessment.scenarios.length === 0 ? (
-                        <p style={{ fontSize: 12.5, color: "#8b9ab8" }}>
-                          Scenario projections need an asking price.
-                        </p>
-                      ) : (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          {assessment.scenarios.map((scenario) => {
-                            const gross = scenario.projectedGross.value ?? 0;
-                            return (
-                              <div
-                                key={scenario.name}
-                                style={{
-                                  borderRadius: 10,
-                                  padding: "10px 14px",
-                                  background: "rgba(255,255,255,0.03)",
-                                  border: "1px solid rgba(255,255,255,0.07)",
-                                }}
-                              >
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
-                                  <span style={{ fontSize: 13, fontWeight: 800, color: "#f0f4ff" }}>{scenario.name}</span>
-                                  <span style={{ fontSize: 15, fontWeight: 900, color: gross >= 0 ? "#34d399" : "#f87171" }}>
-                                    {gross >= 0 ? "+" : "−"}{formatCurrency(Math.abs(gross))} gross
-                                  </span>
-                                </div>
-                                <p style={{ fontSize: 11.5, color: "#8b9ab8", marginTop: 3 }}>
-                                  Retail {formatCurrency(scenario.retail.value)} · all-in {formatCurrency(scenario.allIn.value)}
-                                </p>
-                                <p style={{ fontSize: 10.5, color: "#8b9ab8", marginTop: 2 }}>{scenario.description}</p>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* ── E. Risks & data gaps ───────────────────── */}
+              {/* ── Risks & data gaps ────────────────────────── */}
               {assessment && (
-                <div
-                  style={{
-                    gridColumn: "1 / -1",
-                    background: "var(--bg-card)",
-                    borderRadius: 14,
-                    padding: "18px 20px",
-                    border: "1px solid rgba(255,255,255,0.07)",
-                  }}
-                >
-                  <h3 style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 15, fontWeight: 800, color: "#f0f4ff", marginBottom: 10 }}>
-                    <AlertTriangle style={{ width: 15, height: 15, color: "#fbbf24" }} />
-                    Risks & data gaps
-                  </h3>
-                  {assessment.riskFactors.length === 0 && assessment.completeness.missing.length === 0 ? (
-                    <p style={{ fontSize: 13, color: "#c6d0e2" }}>
-                      No risk flags and no missing key fields. Condition and title status still require inspection — Spotr has no data for either.
-                    </p>
-                  ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      {assessment.riskFactors.map((risk) => (
-                        <div key={risk.label} style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 13 }}>
-                          <span style={{ color: "#c6d0e2" }}>
-                            <span style={{ fontWeight: 700, color: "#f87171" }}>{risk.label}.</span> {risk.detail}
-                          </span>
-                          <span style={{ fontWeight: 800, flexShrink: 0, color: "#f87171" }}>−{risk.points} pts</span>
-                        </div>
-                      ))}
-                      {assessment.completeness.missing.length > 0 && (
-                        <p style={{ fontSize: 13, color: "#c6d0e2" }}>
-                          <span style={{ fontWeight: 700, color: "#fbbf24" }}>Missing data.</span>{" "}
-                          {assessment.completeness.missing.join(", ")} — treated as uncertainty, lowering confidence to {assessment.confidencePercent}%.
-                        </p>
-                      )}
-                      <p style={{ fontSize: 12.5, fontWeight: 600, color: "#8b9ab8" }}>
-                        Condition and title status are never inferred — verify by inspection and history report before an offer.
+                <motion.div variants={listItem}>
+                  <SectionCard title="Risks & data gaps" icon={AlertTriangle} iconColor="var(--yellow)">
+                    {assessment.riskFactors.length === 0 && assessment.completeness.missing.length === 0 ? (
+                      <p style={{ fontSize: 13, color: "var(--label-body)" }}>
+                        No risk flags and no missing key fields. Condition and title status still require inspection — Spotr has no data for either.
                       </p>
-                    </div>
-                  )}
-                </div>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        {assessment.riskFactors.map((risk) => (
+                          <div key={risk.label} style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 13 }}>
+                            <span style={{ color: "var(--label-body)" }}>
+                              <span style={{ fontWeight: 600, color: "var(--red)" }}>{risk.label}.</span> {risk.detail}
+                            </span>
+                            <span className="tabular" style={{ fontWeight: 600, flexShrink: 0, color: "var(--red)" }}>−{risk.points} pts</span>
+                          </div>
+                        ))}
+                        {assessment.completeness.missing.length > 0 && (
+                          <p style={{ fontSize: 13, color: "var(--label-body)" }}>
+                            <span style={{ fontWeight: 600, color: "var(--yellow)" }}>Missing data.</span>{" "}
+                            {assessment.completeness.missing.join(", ")} — treated as uncertainty, lowering confidence to {assessment.confidencePercent}%.
+                          </p>
+                        )}
+                        <p style={{ fontSize: 13, fontWeight: 500, color: "var(--label-secondary)" }}>
+                          Condition and title status are never inferred — verify by inspection and history report before an offer.
+                        </p>
+                      </div>
+                    )}
+                  </SectionCard>
+                </motion.div>
               )}
-            </div>
+            </motion.div>
           )}
 
           {activeTab === "activity" && (
@@ -999,9 +797,149 @@ export default function LeadModal({
             </div>
           )}
           {activeTab === "chat" && <ChatMock leadId={lead.id} sellerName={lead.sellerName} />}
-          {activeTab === "carfax" && <CarfaxMock vdpUrl={lead.vdp_url} source={lead.source} />}
+          {activeTab === "history" && <CarfaxMock vdpUrl={lead.vdp_url} source={lead.source} />}
+        </motion.div>
+      </AnimatePresence>
+    </Sheet>
+  );
+}
+
+function Dot() {
+  return <span aria-hidden="true" style={{ color: "var(--label-tertiary)" }}>·</span>;
+}
+
+function SampleBadge() {
+  return (
+    <span
+      style={{
+        borderRadius: 999,
+        padding: "3px 9px",
+        fontSize: 11,
+        fontWeight: 700,
+        letterSpacing: "0.06em",
+        color: "var(--yellow)",
+        background: "rgba(var(--yellow-rgb), 0.14)",
+        boxShadow: "inset 0 0 0 1px rgba(var(--yellow-rgb), 0.35)",
+      }}
+    >
+      SAMPLE DATA
+    </span>
+  );
+}
+
+function SectionCard({
+  title,
+  caption,
+  icon: Icon,
+  iconColor,
+  accent,
+  children,
+}: {
+  title?: string;
+  caption?: string;
+  icon?: LucideIcon;
+  iconColor?: string;
+  /** Tints the card edge with a semantic color (e.g. the recommendation). */
+  accent?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section
+      style={{
+        background: accent ? `linear-gradient(160deg, ${tone(accent, 9)}, transparent 55%), var(--bg-card)` : "var(--bg-card)",
+        borderRadius: "var(--radius-lg)",
+        padding: "18px 20px",
+        border: `1px solid ${accent ? tone(accent, 24) : "var(--separator)"}`,
+      }}
+    >
+      {title && (
+        <h3 className="t-headline" style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--label)", marginBottom: caption ? 2 : 6 }}>
+          {Icon && <Icon style={{ width: 16, height: 16, color: iconColor }} />}
+          {title}
+        </h3>
+      )}
+      {caption && (
+        <p className="t-footnote" style={{ color: "var(--label-secondary)", marginBottom: 12 }}>
+          {caption}
+        </p>
+      )}
+      {children}
+    </section>
+  );
+}
+
+function MetricTile({
+  label,
+  value,
+  sub,
+  color = "var(--label)",
+  adornment,
+  footer,
+}: {
+  label: string;
+  value: React.ReactNode;
+  sub: string;
+  color?: string;
+  adornment?: React.ReactNode;
+  footer?: React.ReactNode;
+}) {
+  return (
+    <div
+      style={{
+        position: "relative",
+        borderRadius: "var(--radius-md)",
+        padding: "12px 14px",
+        background: "var(--bg-card)",
+        border: "1px solid var(--separator)",
+        minWidth: 0,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+        <div style={{ minWidth: 0 }}>
+          <p className="t-eyebrow" style={{ color: "var(--label-secondary)", marginBottom: 6 }}>{label}</p>
+          <p className="t-title3 tabular" style={{ color, whiteSpace: "nowrap" }}>{value}</p>
         </div>
+        {adornment}
       </div>
+      <p style={{ fontSize: 12, color: "var(--label-secondary)", marginTop: 4 }}>{sub}</p>
+      {footer}
+    </div>
+  );
+}
+
+/** Score out of 100 as a ring that draws itself in. */
+function ScoreRing({ score }: { score: number }) {
+  const color = scoreColor(score);
+  const clamped = Math.max(0, Math.min(score, 100)) / 100;
+  return (
+    <svg width="34" height="34" viewBox="0 0 36 36" aria-hidden="true" style={{ flexShrink: 0, transform: "rotate(-90deg)" }}>
+      <circle cx="18" cy="18" r="14" fill="none" stroke="rgba(var(--ink-rgb), 0.1)" strokeWidth="4" />
+      <motion.circle
+        cx="18"
+        cy="18"
+        r="14"
+        fill="none"
+        stroke={color}
+        strokeWidth="4"
+        strokeLinecap="round"
+        initial={{ pathLength: 0 }}
+        animate={{ pathLength: clamped }}
+        transition={{ ...spring.smooth, duration: 1, delay: 0.15 }}
+      />
+    </svg>
+  );
+}
+
+function Meter({ percent }: { percent: number }) {
+  const color = percent >= 75 ? "var(--green)" : percent >= 50 ? "var(--yellow)" : "var(--red)";
+  return (
+    <div aria-hidden="true" style={{ height: 4, borderRadius: 999, background: "rgba(var(--ink-rgb), 0.08)", marginTop: 10, overflow: "hidden" }}>
+      <motion.div
+        initial={{ scaleX: 0 }}
+        animate={{ scaleX: Math.max(0, Math.min(percent, 100)) / 100 }}
+        transition={{ ...spring.smooth, duration: 0.9, delay: 0.2 }}
+        style={{ height: "100%", background: color, borderRadius: 999, transformOrigin: "left" }}
+      />
     </div>
   );
 }

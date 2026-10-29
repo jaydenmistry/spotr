@@ -1,5 +1,6 @@
 "use client";
 
+import { tone } from "@/lib/ui/colors";
 import { CalendarClock, Clock, Eye, Layers } from "lucide-react";
 import type { LeadRecord } from "@/lib/vehicleAnalytics";
 import { isTerminalStage } from "@/lib/stages";
@@ -57,7 +58,7 @@ export default function TopStats({
       name: "Active pipeline",
       value: activeLeads.length,
       icon: Layers,
-      color: "#60a5fa",
+      color: "var(--blue)",
       subtext: "Open, non-terminal leads",
     },
     {
@@ -65,7 +66,7 @@ export default function TopStats({
       name: "Overdue",
       value: overdue,
       icon: Clock,
-      color: "#f87171",
+      color: "var(--red)",
       subtext: overdue ? "Follow up now" : "Nothing overdue",
       pressed: followUp === "overdue",
       onClick: () => onToggleFollowUp(followUp === "overdue" ? "all" : "overdue"),
@@ -75,7 +76,7 @@ export default function TopStats({
       name: "Due soon",
       value: dueSoon,
       icon: CalendarClock,
-      color: "#fbbf24",
+      color: "var(--yellow)",
       subtext: "Due within 48h",
       pressed: followUp === "due-soon",
       onClick: () => onToggleFollowUp(followUp === "due-soon" ? "all" : "due-soon"),
@@ -85,7 +86,7 @@ export default function TopStats({
       name: "Watching",
       value: watching,
       icon: Eye,
-      color: "#ff9147",
+      color: "var(--tint-text)",
       subtext: "Shortlisted opportunities",
       pressed: watchedOnly,
       onClick: () => onToggleWatched(!watchedOnly),
@@ -93,7 +94,7 @@ export default function TopStats({
   ];
 
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginBottom: 20 }}>
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
       {stats.map((item) => {
         const interactive = Boolean(item.onClick);
         const content = (
@@ -101,36 +102,41 @@ export default function TopStats({
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
               <div
                 style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 9,
+                  width: 32,
+                  height: 32,
+                  borderRadius: "var(--radius-sm)",
                   display: "grid",
                   placeItems: "center",
                   flexShrink: 0,
-                  background: `${item.color}1a`,
+                  background: `color-mix(in srgb, ${item.color} 10%, transparent)`,
                 }}
               >
                 <item.icon style={{ width: 17, height: 17, color: item.color }} aria-hidden="true" />
               </div>
-              <p style={{ fontSize: 11.5, fontWeight: 700, color: "#8b9ab8", letterSpacing: "0.03em", textTransform: "uppercase" }}>
+              <p className="t-eyebrow" style={{ color: "var(--label-secondary)" }}>
                 {item.name}
               </p>
             </div>
-            <p style={{ fontSize: 26, fontWeight: 900, color: "#f0f4ff", letterSpacing: "-0.02em", marginBottom: 3 }}>
+            {/* Re-keyed on value: a changed count pops in on a spring. */}
+            <p
+              key={String(item.value)}
+              className="t-title1 tabular pop-in"
+              style={{ color: "var(--label)", marginBottom: 3, transformOrigin: "left bottom" }}
+            >
               {item.value}
             </p>
-            <p style={{ fontSize: 11.5, color: "#4a5670" }}>{item.subtext}</p>
+            <p style={{ fontSize: 12, color: "var(--label-secondary)" }}>{item.subtext}</p>
           </>
         );
 
         const baseStyle: React.CSSProperties = {
-          flex: "1 1 200px",
+          flex: "1 1 180px",
           textAlign: "left",
-          background: "var(--bg-card)",
-          borderRadius: 14,
+          background: item.pressed ? `linear-gradient(160deg, ${tone(item.color, 12)}, transparent 60%), var(--bg-card)` : "var(--bg-card)",
+          borderRadius: "var(--radius-lg)",
           padding: "16px 18px",
-          border: `1px solid ${item.pressed ? `${item.color}80` : "rgba(255,255,255,0.08)"}`,
-          boxShadow: item.pressed ? `inset 0 0 0 1px ${item.color}40` : "none",
+          border: `1px solid ${item.pressed ? tone(item.color, 50) : "var(--separator)"}`,
+          boxShadow: item.pressed ? `0 0 0 3px ${tone(item.color, 14)}` : "var(--shadow-sm)",
         };
 
         if (!interactive) {
@@ -148,7 +154,8 @@ export default function TopStats({
             aria-pressed={item.pressed}
             aria-label={`${item.name}: ${item.value}. ${item.pressed ? "Filter active" : "Click to filter"}`}
             onClick={item.onClick}
-            style={{ ...baseStyle, cursor: "pointer", transition: "border-color 0.15s" }}
+            className="pressable hover-lift"
+            style={{ ...baseStyle, cursor: "pointer" }}
           >
             {content}
           </button>

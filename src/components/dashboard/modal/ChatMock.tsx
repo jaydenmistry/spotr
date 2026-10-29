@@ -126,8 +126,8 @@ export default function ChatMock({
         display: "flex",
         flexDirection: "column",
         height: 480,
-        borderRadius: 14,
-        border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: "var(--radius-lg)",
+        border: "1px solid var(--separator)",
         overflow: "hidden",
         background: "var(--bg-card)",
       }}
@@ -136,24 +136,24 @@ export default function ChatMock({
       <div
         style={{
           padding: "13px 16px",
-          borderBottom: "1px solid rgba(255,255,255,0.07)",
-          background: "rgba(255,255,255,0.02)",
+          borderBottom: "1px solid var(--separator)",
+          background: "rgba(var(--ink-rgb), 0.02)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
         }}
       >
         <div>
-          <h4 style={{ fontSize: 14, fontWeight: 700, color: "#f0f4ff", display: "flex", alignItems: "center", gap: 6 }}>
+          <h4 style={{ fontSize: 14, fontWeight: 600, color: "var(--label)", display: "flex", alignItems: "center", gap: 6 }}>
             <span>Chat with {displayName}</span>
           </h4>
-          <p style={{ fontSize: 11, color: "#8b9ab8", marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
-            <Sparkles style={{ width: 11, height: 11, color: "#ff9147" }} />
+          <p style={{ fontSize: 11, color: "var(--label-secondary)", marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
+            <Sparkles style={{ width: 11, height: 11, color: "var(--tint-text)" }} />
             Powered by Gemini AI Seller Simulation
           </p>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 8px", borderRadius: 6, background: "rgba(52,211,153,0.1)", border: "1px solid rgba(52,211,153,0.2)", fontSize: 11, color: "#34d399", fontWeight: 600 }}>
-          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#34d399" }} />
+        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 8px", borderRadius: "var(--radius-xs)", background: "rgba(var(--green-rgb), 0.1)", border: "1px solid rgba(var(--green-rgb), 0.2)", fontSize: 11, color: "var(--green)", fontWeight: 600 }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--green)" }} />
           Online
         </div>
       </div>
@@ -170,8 +170,8 @@ export default function ChatMock({
         }}
       >
         {loading ? (
-          <div style={{ display: "flex", height: "100%", alignItems: "center", justifyContent: "center", color: "#8b9ab8", fontSize: 13, gap: 8 }}>
-            <div style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(255,122,26,0.2)", borderTopColor: "#ff7a1a", animation: "spin 0.8s linear infinite" }} />
+          <div style={{ display: "flex", height: "100%", alignItems: "center", justifyContent: "center", color: "var(--label-secondary)", fontSize: 13, gap: 8 }}>
+            <div style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(var(--tint-rgb), 0.2)", borderTopColor: "var(--tint)", animation: "spin 0.8s linear infinite" }} />
             Loading seller chat history…
           </div>
         ) : (
@@ -192,27 +192,27 @@ export default function ChatMock({
                 <div
                   style={{
                     maxWidth: "80%",
-                    borderRadius: 12,
+                    borderRadius: "var(--radius-md)",
                     padding: "10px 14px",
                     fontSize: 13,
                     lineHeight: 1.5,
                     ...(msg.role === "user"
                       ? {
-                          background: "linear-gradient(135deg, #ff7a1a, #f59e0b)",
+                          background: "linear-gradient(135deg, var(--tint), var(--tint-2))",
                           color: "#fff",
                           fontWeight: 600,
                         }
                       : msg.role === "system"
                       ? {
-                          background: "rgba(255,255,255,0.04)",
-                          color: "#8b9ab8",
+                          background: "var(--fill)",
+                          color: "var(--label-secondary)",
                           fontSize: 11,
-                          border: "1px solid rgba(255,255,255,0.06)",
+                          border: "1px solid var(--separator)",
                         }
                       : {
-                          background: "rgba(255,255,255,0.08)",
-                          color: "#f0f4ff",
-                          border: "1px solid rgba(255,255,255,0.1)",
+                          background: "rgba(var(--ink-rgb), 0.08)",
+                          color: "var(--label)",
+                          border: "1px solid var(--separator-strong)",
                         }),
                   }}
                 >
@@ -226,25 +226,25 @@ export default function ChatMock({
               <div style={{ display: "flex", justifyContent: "flex-start" }}>
                 <div
                   style={{
-                    background: "rgba(255,255,255,0.06)",
-                    borderRadius: 12,
+                    background: "rgba(var(--ink-rgb), 0.06)",
+                    borderRadius: "var(--radius-md)",
                     padding: "8px 14px",
                     fontSize: 12,
-                    color: "#ff9147",
+                    color: "var(--tint-text)",
                     display: "flex",
                     alignItems: "center",
                     gap: 6,
-                    border: "1px solid rgba(255,122,26,0.2)",
+                    border: "1px solid rgba(var(--tint-rgb), 0.2)",
                   }}
                 >
-                  <div style={{ width: 12, height: 12, borderRadius: "50%", border: "2px solid rgba(255,122,26,0.3)", borderTopColor: "#ff7a1a", animation: "spin 0.8s linear infinite" }} />
+                  <div style={{ width: 12, height: 12, borderRadius: "50%", border: "2px solid rgba(var(--tint-rgb), 0.3)", borderTopColor: "var(--tint)", animation: "spin 0.8s linear infinite" }} />
                   {displayName} is typing…
                 </div>
               </div>
             )}
 
             {error && (
-              <div style={{ textAlign: "center", color: "#f87171", fontSize: 12, padding: "4px 8px" }}>
+              <div style={{ textAlign: "center", color: "var(--red)", fontSize: 12, padding: "4px 8px" }}>
                 {error}
               </div>
             )}
@@ -258,10 +258,10 @@ export default function ChatMock({
         onSubmit={handleSend}
         style={{
           padding: "12px 14px",
-          borderTop: "1px solid rgba(255,255,255,0.07)",
+          borderTop: "1px solid var(--separator)",
           display: "flex",
           gap: 10,
-          background: "rgba(255,255,255,0.01)",
+          background: "rgba(var(--ink-rgb), 0.01)",
         }}
       >
         <input
@@ -272,17 +272,16 @@ export default function ChatMock({
           disabled={loading || sending}
           style={{
             flex: 1,
-            background: "rgba(255,255,255,0.05)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: 10,
+            background: "rgba(var(--ink-rgb), 0.05)",
+            border: "1px solid var(--separator-strong)",
+            borderRadius: "var(--radius-sm)",
             padding: "10px 14px",
             fontSize: 13,
-            color: "#f0f4ff",
-            outline: "none",
+            color: "var(--label)",
             opacity: loading || sending ? 0.6 : 1,
           }}
-          onFocus={(e) => (e.target.style.borderColor = "#ff7a1a")}
-          onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.1)")}
+          onFocus={(e) => (e.target.style.borderColor = "var(--tint)")}
+          onBlur={(e) => (e.target.style.borderColor = "rgba(var(--ink-rgb), 0.1)")}
         />
         <button
           type="submit"
@@ -290,10 +289,10 @@ export default function ChatMock({
           style={{
             width: 40,
             height: 40,
-            borderRadius: 10,
+            borderRadius: "var(--radius-sm)",
             display: "grid",
             placeItems: "center",
-            background: loading || sending || !input.trim() ? "rgba(255,122,26,0.3)" : "linear-gradient(135deg, #ff7a1a, #f59e0b)",
+            background: loading || sending || !input.trim() ? "rgba(var(--tint-rgb), 0.3)" : "linear-gradient(135deg, var(--tint), var(--tint-2))",
             border: "none",
             cursor: loading || sending || !input.trim() ? "not-allowed" : "pointer",
             flexShrink: 0,

@@ -1,5 +1,6 @@
 "use client";
 
+import { SpotrLogo as BrandLogo } from "@/components/ui/SpotrLogo";
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
@@ -42,21 +43,21 @@ const workflow = [
     eyebrow: "Step 1 — Discover",
     title: "Every private listing, zero tab-hopping",
     copy: "Spotr automatically pulls fresh local private-seller listings from Facebook Marketplace, Craigslist, and Autotrader into one clean workspace — updated in real time.",
-    color: "#ff7a1a",
+    color: "var(--tint)",
   },
   {
     icon: MessageSquare,
     eyebrow: "Step 2 — Engage",
     title: "Call, text, and email from one buying desk",
     copy: "Reach sellers the moment a car hits the market. Log notes, track every reply, and move deals through your pipeline without switching apps.",
-    color: "#f59e0b",
+    color: "var(--tint-2)",
   },
   {
     icon: Gauge,
     eyebrow: "Step 3 — Acquire",
     title: "Transparent scoring ranks every opportunity",
     copy: "Spotr's deterministic heuristic scores each listing on asking price vs. its estimated range, mileage, freshness, and data completeness — with the full point breakdown, source, and a confidence level on every card. No black-box AI.",
-    color: "#a78bfa",
+    color: "var(--purple)",
   },
 ];
 
@@ -110,7 +111,7 @@ const previewListings = [
     score: 92,
     image: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=700&q=80",
     badge: "Hot lead",
-    badgeColor: "#ef4444",
+    badgeColor: "var(--red)",
   },
   {
     name: "2021 Ford F-150",
@@ -120,7 +121,7 @@ const previewListings = [
     score: 87,
     image: "https://images.unsplash.com/photo-1609521263047-f8f205293f24?auto=format&fit=crop&w=700&q=80",
     badge: "New today",
-    badgeColor: "#10b981",
+    badgeColor: "var(--green)",
   },
 ];
 
@@ -129,7 +130,7 @@ const previewListings = [
 const S = {
   card: {
     background: "var(--bg-card)",
-    border: "1px solid rgba(255,255,255,0.08)",
+    border: "1px solid rgba(var(--ink-rgb), 0.08)",
     borderRadius: 16,
   } as React.CSSProperties,
   section: {
@@ -141,16 +142,8 @@ const S = {
 
 function SpotrLogo() {
   return (
-    <Link href="/" className="flex items-center gap-2.5" aria-label="Spotr home">
-      <span
-        className="grid h-9 w-9 shrink-0 place-items-center rounded-xl"
-        style={{ background: "linear-gradient(135deg, #ff7a1a, #f59e0b)" }}
-      >
-        <Car className="h-5 w-5 text-white" />
-      </span>
-      <span className="text-xl font-black tracking-tight" style={{ color: "#f0f4ff" }}>
-        SPOT<span style={{ color: "#ff7a1a" }}>R</span>
-      </span>
+    <Link href="/" className="flex items-center" aria-label="Spotr home" style={{ textDecoration: "none" }}>
+      <BrandLogo size={34} />
     </Link>
   );
 }
@@ -164,10 +157,10 @@ function NavBar() {
         left: 0,
         right: 0,
         zIndex: 100,
-        background: "rgba(8,12,20,0.85)",
+        background: "rgba(var(--base-rgb), 0.85)",
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
-        borderBottom: "1px solid rgba(255,255,255,0.07)",
+        borderBottom: "1px solid rgba(var(--ink-rgb), 0.07)",
       }}
     >
       <div
@@ -191,7 +184,7 @@ function NavBar() {
             gap: 32,
             fontSize: 14,
             fontWeight: 500,
-            color: "#8b9ab8",
+            color: "var(--label-secondary)",
           }}
           className="hidden lg:flex"
         >
@@ -200,8 +193,8 @@ function NavBar() {
               key={item}
               href={`#${item.toLowerCase().replaceAll(" ", "-")}`}
               style={{ transition: "color 0.15s" }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = "#f0f4ff")}
-              onMouseLeave={(e) => (e.currentTarget.style.color = "#8b9ab8")}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "var(--label)")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "var(--label-secondary)")}
             >
               {item}
             </a>
@@ -215,7 +208,7 @@ function NavBar() {
               padding: "8px 16px",
               fontSize: 14,
               fontWeight: 600,
-              color: "#8b9ab8",
+              color: "var(--label-secondary)",
               borderRadius: 10,
               transition: "color 0.15s",
             }}
@@ -230,11 +223,11 @@ function NavBar() {
               gap: 6,
               padding: "9px 20px",
               fontSize: 14,
-              fontWeight: 700,
+              fontWeight: 600,
               color: "#fff",
               borderRadius: 10,
-              background: "linear-gradient(135deg, #ff7a1a, #f59e0b)",
-              boxShadow: "0 4px 20px rgba(255,122,26,0.4)",
+              background: "linear-gradient(135deg, var(--tint), var(--tint-2))",
+              boxShadow: "0 4px 20px rgba(var(--tint-rgb), 0.4)",
               transition: "opacity 0.15s, transform 0.15s",
               whiteSpace: "nowrap",
             }}
@@ -268,7 +261,7 @@ function HeroSection() {
           width: 600,
           height: 600,
           borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(255,122,26,0.14) 0%, transparent 70%)",
+          background: "radial-gradient(circle, rgba(var(--tint-rgb), 0.14) 0%, transparent 70%)",
           top: -100,
           left: -100,
           pointerEvents: "none",
@@ -281,7 +274,7 @@ function HeroSection() {
           width: 500,
           height: 500,
           borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(167,139,250,0.09) 0%, transparent 70%)",
+          background: "radial-gradient(circle, rgba(var(--purple-rgb), 0.09) 0%, transparent 70%)",
           bottom: 0,
           right: -80,
           pointerEvents: "none",
@@ -294,8 +287,8 @@ function HeroSection() {
         style={{
           position: "absolute",
           inset: 0,
-          backgroundImage: `linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-                           linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)`,
+          backgroundImage: `linear-gradient(rgba(var(--ink-rgb), 0.025) 1px, transparent 1px),
+                           linear-gradient(90deg, rgba(var(--ink-rgb), 0.025) 1px, transparent 1px)`,
           backgroundSize: "60px 60px",
           pointerEvents: "none",
         }}
@@ -320,9 +313,9 @@ function HeroSection() {
             gap: 8,
             padding: "6px 16px",
             borderRadius: 100,
-            border: "1px solid rgba(255,122,26,0.4)",
-            background: "rgba(255,122,26,0.1)",
-            color: "#ff9147",
+            border: "1px solid rgba(var(--tint-rgb), 0.4)",
+            background: "rgba(var(--tint-rgb), 0.1)",
+            color: "var(--tint-text)",
             fontSize: 13,
             fontWeight: 600,
             marginBottom: 28,
@@ -341,7 +334,7 @@ function HeroSection() {
                 position: "absolute",
                 inset: 0,
                 borderRadius: "50%",
-                background: "#ff7a1a",
+                background: "var(--tint)",
                 animation: "pulse-ring 1.5s ease-out infinite",
                 opacity: 0,
               }}
@@ -351,7 +344,7 @@ function HeroSection() {
                 width: 8,
                 height: 8,
                 borderRadius: "50%",
-                background: "#ff7a1a",
+                background: "var(--tint)",
                 display: "block",
               }}
             />
@@ -364,10 +357,10 @@ function HeroSection() {
           className="animate-fade-up-delay-1"
           style={{
             fontSize: "clamp(2.5rem, 6vw, 5rem)",
-            fontWeight: 900,
+            fontWeight: 700,
             lineHeight: 1.06,
             letterSpacing: "-0.02em",
-            color: "#f0f4ff",
+            color: "var(--label)",
             margin: "0 0 24px",
           }}
         >
@@ -382,14 +375,14 @@ function HeroSection() {
           style={{
             fontSize: "clamp(1rem, 2vw, 1.2rem)",
             lineHeight: 1.7,
-            color: "#8b9ab8",
+            color: "var(--label-secondary)",
             maxWidth: 680,
             margin: "0 auto 36px",
           }}
         >
           Dealers lose used-car deals because they&apos;re buried in tabs, missing
           seller replies, and buying blind.{" "}
-          <span style={{ color: "#f0f4ff", fontWeight: 600 }}>
+          <span style={{ color: "var(--label)", fontWeight: 600 }}>
             Spotr gives your buying desk one workspace to find, contact, and
             acquire private-seller inventory before anyone else does.
           </span>
@@ -416,11 +409,11 @@ function HeroSection() {
               gap: 8,
               padding: "14px 32px",
               fontSize: 16,
-              fontWeight: 700,
+              fontWeight: 600,
               color: "#fff",
               borderRadius: 12,
-              background: "linear-gradient(135deg, #ff7a1a, #f59e0b)",
-              boxShadow: "0 8px 28px rgba(255,122,26,0.45)",
+              background: "linear-gradient(135deg, var(--tint), var(--tint-2))",
+              boxShadow: "0 8px 28px rgba(var(--tint-rgb), 0.45)",
               transition: "transform 0.15s, opacity 0.15s",
             }}
           >
@@ -436,11 +429,11 @@ function HeroSection() {
               gap: 8,
               padding: "14px 32px",
               fontSize: 16,
-              fontWeight: 700,
-              color: "#f0f4ff",
+              fontWeight: 600,
+              color: "var(--label)",
               borderRadius: 12,
-              border: "1px solid rgba(255,255,255,0.14)",
-              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(var(--ink-rgb), 0.14)",
+              background: "rgba(var(--ink-rgb), 0.05)",
               transition: "border-color 0.15s",
             }}
           >
@@ -450,7 +443,7 @@ function HeroSection() {
 
         <p
           className="animate-fade-up-delay-4"
-          style={{ fontSize: 13, color: "#4a5670" }}
+          style={{ fontSize: 13, color: "var(--label-tertiary)" }}
         >
           No signup required · Demo data preloaded · Takes 30 seconds
         </p>
@@ -470,9 +463,9 @@ function HeroSection() {
           style={{
             borderRadius: 20,
             overflow: "hidden",
-            border: "1px solid rgba(255,255,255,0.1)",
-            background: "#0f1520",
-            boxShadow: "0 40px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04)",
+            border: "1px solid rgba(var(--ink-rgb), 0.1)",
+            background: "var(--bg-surface)",
+            boxShadow: "0 40px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(var(--ink-rgb), 0.04)",
           }}
         >
           {/* Title bar */}
@@ -483,17 +476,17 @@ function HeroSection() {
               alignItems: "center",
               gap: 16,
               padding: "0 20px",
-              borderBottom: "1px solid rgba(255,255,255,0.07)",
-              background: "rgba(8,12,20,0.8)",
+              borderBottom: "1px solid rgba(var(--ink-rgb), 0.07)",
+              background: "rgba(var(--base-rgb), 0.8)",
             }}
           >
             <div style={{ display: "flex", gap: 8, marginRight: 8 }}>
-              <span style={{ width: 12, height: 12, borderRadius: "50%", background: "#ef4444", display: "block" }} />
-              <span style={{ width: 12, height: 12, borderRadius: "50%", background: "#f59e0b", display: "block" }} />
-              <span style={{ width: 12, height: 12, borderRadius: "50%", background: "#10b981", display: "block" }} />
+              <span style={{ width: 12, height: 12, borderRadius: "50%", background: "var(--red)", display: "block" }} />
+              <span style={{ width: 12, height: 12, borderRadius: "50%", background: "var(--tint-2)", display: "block" }} />
+              <span style={{ width: 12, height: 12, borderRadius: "50%", background: "var(--green)", display: "block" }} />
             </div>
-            <span style={{ fontSize: 15, fontWeight: 900, color: "#f0f4ff" }}>
-              SPOT<span style={{ color: "#ff7a1a" }}>R</span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: "var(--label)" }}>
+              spotr
             </span>
             <div
               style={{
@@ -502,8 +495,8 @@ function HeroSection() {
                 gap: 6,
                 padding: "4px 12px",
                 borderRadius: 8,
-                background: "rgba(255,122,26,0.15)",
-                color: "#ff9147",
+                background: "rgba(var(--tint-rgb), 0.15)",
+                color: "var(--tint-text)",
                 fontSize: 13,
                 fontWeight: 600,
                 marginLeft: 4,
@@ -513,12 +506,12 @@ function HeroSection() {
               Fresh Listings
               <span
                 style={{
-                  background: "#ff7a1a",
+                  background: "var(--tint)",
                   color: "white",
                   borderRadius: 100,
                   padding: "1px 7px",
                   fontSize: 11,
-                  fontWeight: 700,
+                  fontWeight: 600,
                 }}
               >
                 +86
@@ -530,7 +523,7 @@ function HeroSection() {
                 alignItems: "center",
                 gap: 6,
                 fontSize: 13,
-                color: "#8b9ab8",
+                color: "var(--label-secondary)",
                 marginLeft: 8,
               }}
               className="hidden md:flex"
@@ -539,18 +532,18 @@ function HeroSection() {
               Appraisals
               <span
                 style={{
-                  background: "rgba(255,255,255,0.1)",
-                  color: "#f0f4ff",
+                  background: "rgba(var(--ink-rgb), 0.1)",
+                  color: "var(--label)",
                   borderRadius: 100,
                   padding: "1px 7px",
                   fontSize: 11,
-                  fontWeight: 700,
+                  fontWeight: 600,
                 }}
               >
                 18
               </span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginLeft: "auto", color: "#4a5670" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginLeft: "auto", color: "var(--label-tertiary)" }}>
               <MapPin style={{ width: 16, height: 16 }} />
               <Bell style={{ width: 16, height: 16 }} />
               <span
@@ -558,11 +551,11 @@ function HeroSection() {
                   width: 32,
                   height: 32,
                   borderRadius: "50%",
-                  background: "linear-gradient(135deg, #ff7a1a, #f59e0b)",
+                  background: "linear-gradient(135deg, var(--tint), var(--tint-2))",
                   display: "grid",
                   placeItems: "center",
                   fontSize: 11,
-                  fontWeight: 900,
+                  fontWeight: 700,
                   color: "white",
                 }}
               >
@@ -578,7 +571,7 @@ function HeroSection() {
               gridTemplateColumns: "repeat(3, 1fr)",
               gap: 16,
               padding: 16,
-              background: "linear-gradient(135deg, #0f1520 0%, rgba(255,122,26,0.04) 50%, #0f1520 100%)",
+              background: "linear-gradient(135deg, var(--bg-surface) 0%, rgba(var(--tint-rgb), 0.04) 50%, var(--bg-surface) 100%)",
             }}
             className="md:grid-cols-3 grid-cols-1"
           >
@@ -591,7 +584,7 @@ function HeroSection() {
                     borderRadius: 12,
                     padding: 14,
                     background: "var(--bg-card)",
-                    border: "1px solid rgba(255,255,255,0.07)",
+                    border: "1px solid rgba(var(--ink-rgb), 0.07)",
                   }}
                 >
                   <div style={{ position: "relative", marginBottom: 10, borderRadius: 8, overflow: "hidden" }}>
@@ -610,7 +603,7 @@ function HeroSection() {
                         background: badgeColor,
                         color: "white",
                         fontSize: 11,
-                        fontWeight: 700,
+                        fontWeight: 600,
                         padding: "2px 8px",
                         borderRadius: 6,
                       }}
@@ -620,15 +613,15 @@ function HeroSection() {
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                     <div>
-                      <p style={{ fontSize: 13, fontWeight: 700, color: "#f0f4ff", marginBottom: 3 }}>{name}</p>
-                      <p style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#8b9ab8" }}>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: "var(--label)", marginBottom: 3 }}>{name}</p>
+                      <p style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--label-secondary)" }}>
                         <Gauge style={{ width: 11, height: 11 }} />
                         {miles} · {source}
                       </p>
                     </div>
                     <div style={{ textAlign: "right" }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: "#ff9147" }}>{price}</span>
-                      <p style={{ fontSize: 11, color: "#8b9ab8", marginTop: 2 }}>Heuristic: {score}</p>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--tint-text)" }}>{price}</span>
+                      <p style={{ fontSize: 11, color: "var(--label-secondary)", marginTop: 2 }}>Heuristic: {score}</p>
                     </div>
                   </div>
                 </div>
@@ -641,7 +634,7 @@ function HeroSection() {
                 borderRadius: 12,
                 padding: 14,
                 background: "var(--bg-card)",
-                border: "1px solid rgba(255,122,26,0.2)",
+                border: "1px solid rgba(var(--tint-rgb), 0.2)",
               }}
             >
               <div
@@ -652,10 +645,10 @@ function HeroSection() {
                   marginBottom: 12,
                   padding: "5px 12px",
                   borderRadius: 8,
-                  background: "rgba(255,122,26,0.15)",
-                  color: "#ff9147",
+                  background: "rgba(var(--tint-rgb), 0.15)",
+                  color: "var(--tint-text)",
                   fontSize: 12,
-                  fontWeight: 700,
+                  fontWeight: 600,
                 }}
               >
                 <Gauge style={{ width: 13, height: 13 }} />
@@ -678,12 +671,12 @@ function HeroSection() {
                       borderRadius: 8,
                       padding: "10px 6px",
                       textAlign: "center",
-                      background: "rgba(255,255,255,0.04)",
-                      border: "1px solid rgba(255,255,255,0.06)",
+                      background: "rgba(var(--ink-rgb), 0.04)",
+                      border: "1px solid rgba(var(--ink-rgb), 0.06)",
                     }}
                   >
-                    <p style={{ fontSize: 16, fontWeight: 900, color: "#ff9147" }}>{value}</p>
-                    <p style={{ fontSize: 10, color: "#8b9ab8", marginTop: 2 }}>{label}</p>
+                    <p style={{ fontSize: 16, fontWeight: 700, color: "var(--tint-text)" }}>{value}</p>
+                    <p style={{ fontSize: 11, color: "var(--label-secondary)", marginTop: 2 }}>{label}</p>
                   </div>
                 ))}
               </div>
@@ -696,10 +689,10 @@ function HeroSection() {
                   borderRadius: 12,
                   padding: 14,
                   background: "var(--bg-card)",
-                  border: "1px solid rgba(255,255,255,0.07)",
+                  border: "1px solid rgba(var(--ink-rgb), 0.07)",
                 }}
               >
-                <p style={{ fontSize: 13, fontWeight: 700, color: "#f0f4ff", marginBottom: 12 }}>Buyer tasks</p>
+                <p style={{ fontSize: 13, fontWeight: 600, color: "var(--label)", marginBottom: 12 }}>Buyer tasks</p>
                 {["Send range offer", "Book inspection", "Pull history report"].map((task, index) => (
                   <div key={task} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: index < 2 ? 10 : 0 }}>
                     <span
@@ -710,25 +703,25 @@ function HeroSection() {
                         display: "grid",
                         placeItems: "center",
                         flexShrink: 0,
-                        background: index === 0 ? "rgba(255,122,26,0.2)" : "rgba(255,255,255,0.06)",
+                        background: index === 0 ? "rgba(var(--tint-rgb), 0.2)" : "rgba(var(--ink-rgb), 0.06)",
                       }}
                     >
                       <Check
                         style={{
                           width: 12,
                           height: 12,
-                          color: index === 0 ? "#ff7a1a" : "#4a5670",
+                          color: index === 0 ? "var(--tint)" : "var(--label-tertiary)",
                         }}
                       />
                     </span>
-                    <span style={{ fontSize: 12, color: index === 0 ? "#f0f4ff" : "#8b9ab8", flex: 1 }}>{task}</span>
+                    <span style={{ fontSize: 12, color: index === 0 ? "var(--label)" : "var(--label-secondary)", flex: 1 }}>{task}</span>
                     {index === 0 && (
                       <span
                         style={{
-                          background: "#ff7a1a",
+                          background: "var(--tint)",
                           color: "white",
-                          fontSize: 10,
-                          fontWeight: 700,
+                          fontSize: 11,
+                          fontWeight: 600,
                           padding: "2px 7px",
                           borderRadius: 5,
                         }}
@@ -744,17 +737,17 @@ function HeroSection() {
                 style={{
                   borderRadius: 12,
                   padding: 14,
-                  background: "linear-gradient(135deg, rgba(255,122,26,0.15), rgba(245,158,11,0.08))",
-                  border: "1px solid rgba(255,122,26,0.25)",
+                  background: "linear-gradient(135deg, rgba(var(--tint-rgb), 0.15), rgba(var(--yellow-rgb), 0.08))",
+                  border: "1px solid rgba(var(--tint-rgb), 0.25)",
                   display: "flex",
                   alignItems: "center",
                   gap: 12,
                 }}
               >
-                <Zap style={{ width: 28, height: 28, color: "#f59e0b", flexShrink: 0 }} />
+                <Zap style={{ width: 28, height: 28, color: "var(--tint-2)", flexShrink: 0 }} />
                 <div>
-                  <p style={{ fontSize: 11, color: "#8b9ab8" }}>Today&apos;s activity</p>
-                  <p style={{ fontSize: 18, fontWeight: 900, color: "#f0f4ff" }}>41 sellers contacted</p>
+                  <p style={{ fontSize: 11, color: "var(--label-secondary)" }}>Today&apos;s activity</p>
+                  <p style={{ fontSize: 18, fontWeight: 700, color: "var(--label)" }}>41 sellers contacted</p>
                 </div>
               </div>
 
@@ -763,23 +756,23 @@ function HeroSection() {
                   borderRadius: 12,
                   padding: 14,
                   background: "var(--bg-card)",
-                  border: "1px solid rgba(255,255,255,0.07)",
+                  border: "1px solid rgba(var(--ink-rgb), 0.07)",
                 }}
               >
-                <p style={{ fontSize: 13, fontWeight: 700, color: "#f0f4ff", marginBottom: 12 }}>Pipeline health</p>
+                <p style={{ fontSize: 13, fontWeight: 600, color: "var(--label)", marginBottom: 12 }}>Pipeline health</p>
                 {[["New Leads", 78], ["Contacted", 48], ["Offer Made", 32]].map(([stage, pct]) => (
                   <div key={stage as string} style={{ marginBottom: 10 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#8b9ab8", marginBottom: 4 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--label-secondary)", marginBottom: 4 }}>
                       <span>{stage}</span>
                       <span>{pct}%</span>
                     </div>
-                    <div style={{ height: 5, borderRadius: 100, background: "rgba(255,255,255,0.07)" }}>
+                    <div style={{ height: 5, borderRadius: 100, background: "rgba(var(--ink-rgb), 0.07)" }}>
                       <div
                         style={{
                           height: 5,
                           width: `${pct}%`,
                           borderRadius: 100,
-                          background: "linear-gradient(90deg, #ff7a1a, #f59e0b)",
+                          background: "linear-gradient(90deg, var(--tint), var(--tint-2))",
                         }}
                       />
                     </div>
@@ -800,7 +793,7 @@ function LogoCloud() {
   return (
     <section style={{ ...S.section, padding: "72px 24px" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto", textAlign: "center" }}>
-        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#4a5670", marginBottom: 28 }}>
+        <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--label-tertiary)", marginBottom: 28 }}>
           Trusted by growth-minded dealerships
         </p>
         <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 10 }}>
@@ -811,10 +804,10 @@ function LogoCloud() {
                 padding: "10px 20px",
                 borderRadius: 10,
                 background: "var(--bg-card)",
-                border: "1px solid rgba(255,255,255,0.07)",
+                border: "1px solid rgba(var(--ink-rgb), 0.07)",
                 fontSize: 13,
-                fontWeight: 700,
-                color: "#4a5670",
+                fontWeight: 600,
+                color: "var(--label-tertiary)",
               }}
             >
               {logo}
@@ -834,23 +827,23 @@ function ProblemSection() {
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
         {/* Header */}
         <div style={{ textAlign: "center", maxWidth: 760, margin: "0 auto 56px" }}>
-          <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#ff7a1a", marginBottom: 16 }}>
+          <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--tint)", marginBottom: 16 }}>
             The problem
           </p>
           <h2
             style={{
               fontSize: "clamp(2rem, 4.5vw, 3.25rem)",
-              fontWeight: 900,
+              fontWeight: 700,
               lineHeight: 1.1,
               letterSpacing: "-0.02em",
-              color: "#f0f4ff",
+              color: "var(--label)",
               marginBottom: 20,
             }}
           >
             Dealers are losing cars to competitors{" "}
             <span className="shimmer-text">every single day</span>
           </h2>
-          <p style={{ fontSize: 17, lineHeight: 1.7, color: "#8b9ab8" }}>
+          <p style={{ fontSize: 17, lineHeight: 1.7, color: "var(--label-secondary)" }}>
             Private-seller vehicles sell fast. The dealership that contacts the
             seller first usually wins. Right now, that&apos;s probably not you.
           </p>
@@ -863,8 +856,8 @@ function ProblemSection() {
             style={{
               borderRadius: 16,
               padding: "28px 28px 32px",
-              background: "rgba(239,68,68,0.06)",
-              border: "1px solid rgba(239,68,68,0.18)",
+              background: "rgba(var(--red-rgb), 0.06)",
+              border: "1px solid rgba(var(--red-rgb), 0.18)",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
@@ -875,16 +868,16 @@ function ProblemSection() {
                   borderRadius: 10,
                   display: "grid",
                   placeItems: "center",
-                  background: "rgba(239,68,68,0.15)",
+                  background: "rgba(var(--red-rgb), 0.15)",
                 }}
               >
-                <X style={{ width: 18, height: 18, color: "#ef4444" }} />
+                <X style={{ width: 18, height: 18, color: "var(--red)" }} />
               </span>
-              <h3 style={{ fontSize: 16, fontWeight: 700, color: "#f0f4ff" }}>Without Spotr</h3>
+              <h3 style={{ fontSize: 16, fontWeight: 600, color: "var(--label)" }}>Without Spotr</h3>
             </div>
             <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: 14 }}>
               {painPoints.map((pt) => (
-                <li key={pt.without} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14, color: "#8b9ab8", lineHeight: 1.5 }}>
+                <li key={pt.without} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14, color: "var(--label-secondary)", lineHeight: 1.5 }}>
                   <span
                     style={{
                       width: 18,
@@ -894,10 +887,10 @@ function ProblemSection() {
                       placeItems: "center",
                       flexShrink: 0,
                       marginTop: 1,
-                      background: "rgba(239,68,68,0.2)",
+                      background: "rgba(var(--red-rgb), 0.2)",
                     }}
                   >
-                    <X style={{ width: 10, height: 10, color: "#ef4444" }} />
+                    <X style={{ width: 10, height: 10, color: "var(--red)" }} />
                   </span>
                   {pt.without}
                 </li>
@@ -910,8 +903,8 @@ function ProblemSection() {
             style={{
               borderRadius: 16,
               padding: "28px 28px 32px",
-              background: "rgba(255,122,26,0.07)",
-              border: "1px solid rgba(255,122,26,0.22)",
+              background: "rgba(var(--tint-rgb), 0.07)",
+              border: "1px solid rgba(var(--tint-rgb), 0.22)",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
@@ -922,16 +915,16 @@ function ProblemSection() {
                   borderRadius: 10,
                   display: "grid",
                   placeItems: "center",
-                  background: "rgba(255,122,26,0.2)",
+                  background: "rgba(var(--tint-rgb), 0.2)",
                 }}
               >
-                <Check style={{ width: 18, height: 18, color: "#ff7a1a" }} />
+                <Check style={{ width: 18, height: 18, color: "var(--tint)" }} />
               </span>
-              <h3 style={{ fontSize: 16, fontWeight: 700, color: "#f0f4ff" }}>With Spotr</h3>
+              <h3 style={{ fontSize: 16, fontWeight: 600, color: "var(--label)" }}>With Spotr</h3>
             </div>
             <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: 14 }}>
               {painPoints.map((pt) => (
-                <li key={pt.with} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14, color: "#f0f4ff", lineHeight: 1.5 }}>
+                <li key={pt.with} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14, color: "var(--label)", lineHeight: 1.5 }}>
                   <span
                     style={{
                       width: 18,
@@ -941,10 +934,10 @@ function ProblemSection() {
                       placeItems: "center",
                       flexShrink: 0,
                       marginTop: 1,
-                      background: "rgba(255,122,26,0.2)",
+                      background: "rgba(var(--tint-rgb), 0.2)",
                     }}
                   >
-                    <Check style={{ width: 10, height: 10, color: "#ff7a1a" }} />
+                    <Check style={{ width: 10, height: 10, color: "var(--tint)" }} />
                   </span>
                   {pt.with}
                 </li>
@@ -964,16 +957,16 @@ function WorkflowSection() {
     <section id="product" style={{ ...S.section, padding: "96px 24px" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
         <div style={{ textAlign: "center", maxWidth: 600, margin: "0 auto 56px" }}>
-          <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#ff7a1a", marginBottom: 16 }}>
+          <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--tint)", marginBottom: 16 }}>
             How it works
           </p>
           <h2
             style={{
               fontSize: "clamp(2rem, 4.5vw, 3rem)",
-              fontWeight: 900,
+              fontWeight: 700,
               lineHeight: 1.1,
               letterSpacing: "-0.02em",
-              color: "#f0f4ff",
+              color: "var(--label)",
             }}
           >
             Three steps from listing to acquisition
@@ -989,7 +982,7 @@ function WorkflowSection() {
                 borderRadius: 16,
                 padding: "28px 28px 32px",
                 background: "var(--bg-card)",
-                border: "1px solid rgba(255,255,255,0.08)",
+                border: "1px solid rgba(var(--ink-rgb), 0.08)",
                 overflow: "hidden",
                 transition: "transform 0.2s, box-shadow 0.2s",
               }}
@@ -1009,8 +1002,8 @@ function WorkflowSection() {
                   right: -8,
                   top: -12,
                   fontSize: 96,
-                  fontWeight: 900,
-                  color: "rgba(255,255,255,0.02)",
+                  fontWeight: 700,
+                  color: "rgba(var(--ink-rgb), 0.02)",
                   lineHeight: 1,
                   userSelect: "none",
                 }}
@@ -1026,20 +1019,20 @@ function WorkflowSection() {
                   display: "grid",
                   placeItems: "center",
                   marginBottom: 20,
-                  background: `${item.color}1a`,
-                  border: `1px solid ${item.color}30`,
+                  background: `color-mix(in srgb, ${item.color} 10%, transparent)`,
+                  border: `1px solid color-mix(in srgb, ${item.color} 19%, transparent)`,
                 }}
               >
                 <item.icon style={{ width: 22, height: 22, color: item.color }} />
               </div>
 
-              <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: item.color, marginBottom: 10 }}>
+              <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: item.color, marginBottom: 10 }}>
                 {item.eyebrow}
               </p>
-              <h3 style={{ fontSize: 20, fontWeight: 900, lineHeight: 1.25, letterSpacing: "-0.01em", color: "#f0f4ff", marginBottom: 12 }}>
+              <h3 style={{ fontSize: 20, fontWeight: 700, lineHeight: 1.25, letterSpacing: "-0.01em", color: "var(--label)", marginBottom: 12 }}>
                 {item.title}
               </h3>
-              <p style={{ fontSize: 14, lineHeight: 1.7, color: "#8b9ab8" }}>
+              <p style={{ fontSize: 14, lineHeight: 1.7, color: "var(--label-secondary)" }}>
                 {item.copy}
               </p>
             </article>
@@ -1060,8 +1053,8 @@ function StatsSection() {
           style={{
             borderRadius: 20,
             padding: "56px 40px",
-            background: "linear-gradient(135deg, var(--bg-card) 0%, rgba(255,122,26,0.06) 50%, var(--bg-card) 100%)",
-            border: "1px solid rgba(255,255,255,0.08)",
+            background: "linear-gradient(135deg, var(--bg-card) 0%, rgba(var(--tint-rgb), 0.06) 50%, var(--bg-card) 100%)",
+            border: "1px solid rgba(var(--ink-rgb), 0.08)",
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
             gap: 40,
@@ -1077,13 +1070,13 @@ function StatsSection() {
                   display: "grid",
                   placeItems: "center",
                   margin: "0 auto 16px",
-                  background: "rgba(255,122,26,0.15)",
+                  background: "rgba(var(--tint-rgb), 0.15)",
                 }}
               >
-                <Icon style={{ width: 22, height: 22, color: "#ff7a1a" }} />
+                <Icon style={{ width: 22, height: 22, color: "var(--tint)" }} />
               </div>
-              <p style={{ fontSize: "clamp(2.5rem, 5vw, 3.5rem)", fontWeight: 900, color: "#ff9147", lineHeight: 1 }}>{value}</p>
-              <p style={{ fontSize: 13, fontWeight: 600, color: "#8b9ab8", marginTop: 8 }}>{label}</p>
+              <p style={{ fontSize: "clamp(2.5rem, 5vw, 3.5rem)", fontWeight: 700, color: "var(--tint-text)", lineHeight: 1 }}>{value}</p>
+              <p style={{ fontSize: 13, fontWeight: 600, color: "var(--label-secondary)", marginTop: 8 }}>{label}</p>
             </div>
           ))}
         </div>
@@ -1102,8 +1095,8 @@ function FeaturesBannerSection() {
           style={{
             borderRadius: 24,
             overflow: "hidden",
-            background: "linear-gradient(135deg, #0f1520 0%, #1a0a00 60%, #0f1520 100%)",
-            border: "1px solid rgba(255,122,26,0.2)",
+            background: "linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-elevated) 60%, var(--bg-surface) 100%)",
+            border: "1px solid rgba(var(--tint-rgb), 0.2)",
           }}
         >
           <div
@@ -1116,22 +1109,22 @@ function FeaturesBannerSection() {
           >
             {/* Left */}
             <div>
-              <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#ff7a1a", marginBottom: 16 }}>
+              <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--tint)", marginBottom: 16 }}>
                 Built for the buying desk
               </p>
               <h2
                 style={{
                   fontSize: "clamp(1.75rem, 3.5vw, 2.75rem)",
-                  fontWeight: 900,
+                  fontWeight: 700,
                   lineHeight: 1.15,
                   letterSpacing: "-0.02em",
-                  color: "#f0f4ff",
+                  color: "var(--label)",
                   marginBottom: 20,
                 }}
               >
                 Give one buyer the leverage of a full acquisition team.
               </h2>
-              <p style={{ fontSize: 16, lineHeight: 1.7, color: "#8b9ab8", marginBottom: 32 }}>
+              <p style={{ fontSize: 16, lineHeight: 1.7, color: "var(--label-secondary)", marginBottom: 32 }}>
                 Prioritized listings, seller messaging, appraisal tasks, and
                 pipeline status all connected. Promising cars never vanish into
                 spreadsheets.
@@ -1144,11 +1137,11 @@ function FeaturesBannerSection() {
                   gap: 8,
                   padding: "13px 24px",
                   fontSize: 14,
-                  fontWeight: 700,
+                  fontWeight: 600,
                   color: "#fff",
                   borderRadius: 12,
-                  background: "linear-gradient(135deg, #ff7a1a, #f59e0b)",
-                  boxShadow: "0 8px 24px rgba(255,122,26,0.35)",
+                  background: "linear-gradient(135deg, var(--tint), var(--tint-2))",
+                  boxShadow: "0 8px 24px rgba(var(--tint-rgb), 0.35)",
                   transition: "opacity 0.15s",
                 }}
               >
@@ -1160,10 +1153,10 @@ function FeaturesBannerSection() {
             {/* Right */}
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {[
-                [Users, "Assign buyers and track ownership", "#60a5fa"],
-                [Mail, "Centralize every seller conversation", "#a78bfa"],
-                [TrendingUp, "Measure acquisition pipeline value", "#34d399"],
-                [ShieldCheck, "Keep every deal step visible", "#f59e0b"],
+                [Users, "Assign buyers and track ownership", "var(--blue)"],
+                [Mail, "Centralize every seller conversation", "var(--purple)"],
+                [TrendingUp, "Measure acquisition pipeline value", "var(--green)"],
+                [ShieldCheck, "Keep every deal step visible", "var(--tint-2)"],
               ].map(([Icon, label, color]) => (
                 <div
                   key={label as string}
@@ -1173,8 +1166,8 @@ function FeaturesBannerSection() {
                     gap: 14,
                     padding: "14px 16px",
                     borderRadius: 12,
-                    background: "rgba(255,255,255,0.04)",
-                    border: "1px solid rgba(255,255,255,0.07)",
+                    background: "rgba(var(--ink-rgb), 0.04)",
+                    border: "1px solid rgba(var(--ink-rgb), 0.07)",
                   }}
                 >
                   <span
@@ -1185,12 +1178,12 @@ function FeaturesBannerSection() {
                       display: "grid",
                       placeItems: "center",
                       flexShrink: 0,
-                      background: `${color as string}20`,
+                      background: `color-mix(in srgb, ${color as string} 13%, transparent)`,
                     }}
                   >
                     <Icon style={{ width: 18, height: 18, color: color as string }} />
                   </span>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: "#f0f4ff" }}>{label as string}</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: "var(--label)" }}>{label as string}</span>
                 </div>
               ))}
             </div>
@@ -1219,22 +1212,22 @@ function FAQSection() {
         >
           {/* Left */}
           <div>
-            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#ff7a1a", marginBottom: 16 }}>
+            <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--tint)", marginBottom: 16 }}>
               FAQ
             </p>
             <h2
               style={{
                 fontSize: "clamp(2rem, 4vw, 2.75rem)",
-                fontWeight: 900,
+                fontWeight: 700,
                 lineHeight: 1.1,
                 letterSpacing: "-0.02em",
-                color: "#f0f4ff",
+                color: "var(--label)",
                 marginBottom: 20,
               }}
             >
               Quick answers.
             </h2>
-            <p style={{ fontSize: 16, lineHeight: 1.7, color: "#8b9ab8", marginBottom: 32 }}>
+            <p style={{ fontSize: 16, lineHeight: 1.7, color: "var(--label-secondary)", marginBottom: 32 }}>
               The demo account is already wired into the live Spotr app — your
               team can go from this page to the working product in seconds.
             </p>
@@ -1246,11 +1239,11 @@ function FAQSection() {
                 gap: 8,
                 padding: "13px 24px",
                 fontSize: 14,
-                fontWeight: 700,
-                color: "#f0f4ff",
+                fontWeight: 600,
+                color: "var(--label)",
                 borderRadius: 12,
-                border: "1px solid rgba(255,255,255,0.14)",
-                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(var(--ink-rgb), 0.14)",
+                background: "rgba(var(--ink-rgb), 0.05)",
                 transition: "border-color 0.15s",
               }}
             >
@@ -1267,8 +1260,8 @@ function FAQSection() {
                 style={{
                   borderRadius: 14,
                   overflow: "hidden",
-                  background: openIndex === i ? "rgba(255,122,26,0.07)" : "var(--bg-card)",
-                  border: `1px solid ${openIndex === i ? "rgba(255,122,26,0.25)" : "rgba(255,255,255,0.07)"}`,
+                  background: openIndex === i ? "rgba(var(--tint-rgb), 0.07)" : "var(--bg-card)",
+                  border: `1px solid ${openIndex === i ? "rgba(var(--tint-rgb), 0.25)" : "rgba(var(--ink-rgb), 0.07)"}`,
                   transition: "background 0.2s, border-color 0.2s",
                 }}
               >
@@ -1288,7 +1281,7 @@ function FAQSection() {
                     textAlign: "left",
                   }}
                 >
-                  <span style={{ fontSize: 15, fontWeight: 700, color: "#f0f4ff" }}>{q}</span>
+                  <span style={{ fontSize: 15, fontWeight: 600, color: "var(--label)" }}>{q}</span>
                   <span
                     style={{
                       width: 28,
@@ -1297,16 +1290,16 @@ function FAQSection() {
                       display: "grid",
                       placeItems: "center",
                       flexShrink: 0,
-                      background: "rgba(255,255,255,0.06)",
+                      background: "rgba(var(--ink-rgb), 0.06)",
                       transition: "transform 0.2s",
                       transform: openIndex === i ? "rotate(45deg)" : "rotate(0deg)",
                     }}
                   >
-                    <Plus style={{ width: 14, height: 14, color: "#ff7a1a" }} />
+                    <Plus style={{ width: 14, height: 14, color: "var(--tint)" }} />
                   </span>
                 </button>
                 {openIndex === i && (
-                  <p style={{ padding: "0 20px 18px", fontSize: 14, lineHeight: 1.7, color: "#8b9ab8" }}>
+                  <p style={{ padding: "0 20px 18px", fontSize: 14, lineHeight: 1.7, color: "var(--label-secondary)" }}>
                     {a}
                   </p>
                 )}
@@ -1332,21 +1325,21 @@ function CtaBanner() {
             borderRadius: 24,
             padding: "72px 40px",
             textAlign: "center",
-            background: "linear-gradient(135deg, #ff7a1a 0%, #f59e0b 100%)",
+            background: "linear-gradient(135deg, var(--tint) 0%, var(--tint-2) 100%)",
           }}
         >
           {/* Decorative circles */}
-          <div style={{ position: "absolute", width: 300, height: 300, borderRadius: "50%", background: "rgba(255,255,255,0.1)", top: -80, left: -80, pointerEvents: "none" }} />
-          <div style={{ position: "absolute", width: 200, height: 200, borderRadius: "50%", background: "rgba(255,255,255,0.06)", bottom: -60, right: -40, pointerEvents: "none" }} />
+          <div style={{ position: "absolute", width: 300, height: 300, borderRadius: "50%", background: "rgba(var(--ink-rgb), 0.1)", top: -80, left: -80, pointerEvents: "none" }} />
+          <div style={{ position: "absolute", width: 200, height: 200, borderRadius: "50%", background: "rgba(var(--ink-rgb), 0.06)", bottom: -60, right: -40, pointerEvents: "none" }} />
 
           <div style={{ position: "relative" }}>
-            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.75)", marginBottom: 16 }}>
+            <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(var(--ink-rgb), 0.75)", marginBottom: 16 }}>
               Ready to stop losing cars?
             </p>
             <h2
               style={{
                 fontSize: "clamp(2rem, 4.5vw, 3rem)",
-                fontWeight: 900,
+                fontWeight: 700,
                 lineHeight: 1.1,
                 letterSpacing: "-0.02em",
                 color: "#fff",
@@ -1358,7 +1351,7 @@ function CtaBanner() {
             >
               Start buying smarter today.
             </h2>
-            <p style={{ fontSize: 17, color: "rgba(255,255,255,0.85)", marginBottom: 32, maxWidth: 480, marginLeft: "auto", marginRight: "auto" }}>
+            <p style={{ fontSize: 17, color: "rgba(var(--ink-rgb), 0.85)", marginBottom: 32, maxWidth: 480, marginLeft: "auto", marginRight: "auto" }}>
               Jump into the demo workspace — no signup, no credit card. Your
               team can explore the full pipeline in under a minute.
             </p>
@@ -1371,8 +1364,8 @@ function CtaBanner() {
                 gap: 8,
                 padding: "16px 36px",
                 fontSize: 16,
-                fontWeight: 900,
-                color: "#c2410c",
+                fontWeight: 700,
+                color: "var(--tint-strong)",
                 borderRadius: 12,
                 background: "#fff",
                 boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
@@ -1395,7 +1388,7 @@ function Footer() {
   return (
     <footer
       style={{
-        borderTop: "1px solid rgba(255,255,255,0.07)",
+        borderTop: "1px solid rgba(var(--ink-rgb), 0.07)",
         background: "var(--bg-surface)",
         padding: "28px 24px",
       }}
@@ -1418,14 +1411,14 @@ function Footer() {
             ["Solutions", "#solutions"],
             ["FAQ", "#faq"],
           ].map(([label, href]) => (
-            <a key={label} href={href} style={{ color: "#4a5670", transition: "color 0.15s" }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = "#f0f4ff")}
-              onMouseLeave={(e) => (e.currentTarget.style.color = "#4a5670")}
+            <a key={label} href={href} style={{ color: "var(--label-tertiary)", transition: "color 0.15s" }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "var(--label)")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "var(--label-tertiary)")}
             >
               {label}
             </a>
           ))}
-          <Link href="/login" style={{ color: "#4a5670", transition: "color 0.15s" }}>Login</Link>
+          <Link href="/login" style={{ color: "var(--label-tertiary)", transition: "color 0.15s" }}>Login</Link>
         </div>
       </div>
     </footer>

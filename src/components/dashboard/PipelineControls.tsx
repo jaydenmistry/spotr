@@ -53,13 +53,12 @@ export function hasActiveFilters(f: PipelineFilterState): boolean {
 const RECOMMENDATIONS: RecommendationFilter[] = ["All", "BUY", "INVESTIGATE", "WATCH", "PASS"];
 
 const inputStyle: React.CSSProperties = {
-  background: "rgba(255,255,255,0.04)",
-  border: "1px solid rgba(255,255,255,0.1)",
-  borderRadius: 8,
+  background: "var(--fill)",
+  border: "1px solid var(--separator-strong)",
+  borderRadius: "var(--radius-sm)",
   padding: "8px 12px",
   fontSize: 13,
-  color: "#f0f4ff",
-  outline: "none",
+  color: "var(--label)",
   width: "100%",
   boxSizing: "border-box",
 };
@@ -69,14 +68,14 @@ const toggleStyle = (active: boolean): React.CSSProperties => ({
   alignItems: "center",
   gap: 6,
   padding: "8px 12px",
-  borderRadius: 8,
+  borderRadius: "var(--radius-sm)",
   fontSize: 13,
-  fontWeight: 700,
+  fontWeight: 600,
   cursor: "pointer",
   whiteSpace: "nowrap",
-  border: `1px solid ${active ? "rgba(255,122,26,0.5)" : "rgba(255,255,255,0.12)"}`,
-  background: active ? "rgba(255,122,26,0.12)" : "rgba(255,255,255,0.04)",
-  color: active ? "#ff9147" : "#8b9ab8",
+  border: `1px solid ${active ? "rgba(var(--tint-rgb), 0.5)" : "rgba(var(--ink-rgb), 0.12)"}`,
+  background: active ? "rgba(var(--tint-rgb), 0.12)" : "rgba(var(--ink-rgb), 0.04)",
+  color: active ? "var(--tint-text)" : "var(--label-secondary)",
 });
 
 export default function PipelineControls({
@@ -100,8 +99,8 @@ export default function PipelineControls({
       aria-label="Pipeline filters"
       style={{
         background: "var(--bg-card)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        borderRadius: 14,
+        border: "1px solid var(--separator)",
+        borderRadius: "var(--radius-lg)",
         padding: "14px 16px",
         marginBottom: 20,
         display: "flex",
@@ -120,7 +119,7 @@ export default function PipelineControls({
               transform: "translateY(-50%)",
               width: 14,
               height: 14,
-              color: "#4a5670",
+              color: "var(--label-secondary)",
               pointerEvents: "none",
             }}
             aria-hidden="true"
@@ -135,7 +134,7 @@ export default function PipelineControls({
           />
         </div>
 
-        <label style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 10, fontWeight: 700, color: "#4a5670", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        <label style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 11, fontWeight: 600, color: "var(--label-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
           Stage
           <select
             aria-label="Filter by stage"
@@ -143,16 +142,16 @@ export default function PipelineControls({
             onChange={(e) => onChange({ stage: e.target.value })}
             style={{ ...inputStyle, cursor: "pointer", width: "auto" }}
           >
-            <option value="All" style={{ background: "#0f1520" }}>All stages</option>
+            <option value="All" style={{ background: "var(--bg-surface)" }}>All stages</option>
             {STAGES.map((stage) => (
-              <option key={stage} value={stage} style={{ background: "#0f1520" }}>
+              <option key={stage} value={stage} style={{ background: "var(--bg-surface)" }}>
                 {stage}
               </option>
             ))}
           </select>
         </label>
 
-        <label style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 10, fontWeight: 700, color: "#4a5670", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        <label style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 11, fontWeight: 600, color: "var(--label-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
           Recommendation
           <select
             aria-label="Filter by recommendation"
@@ -161,7 +160,7 @@ export default function PipelineControls({
             style={{ ...inputStyle, cursor: "pointer", width: "auto" }}
           >
             {RECOMMENDATIONS.map((rec) => (
-              <option key={rec} value={rec} style={{ background: "#0f1520" }}>
+              <option key={rec} value={rec} style={{ background: "var(--bg-surface)" }}>
                 {rec === "All" ? "All recs" : rec}
               </option>
             ))}
@@ -188,11 +187,11 @@ export default function PipelineControls({
           Needs follow-up
           <span
             style={{
-              borderRadius: 100,
+              borderRadius: 999,
               padding: "1px 7px",
               fontSize: 11,
-              fontWeight: 800,
-              background: filters.followUp !== "all" ? "rgba(255,122,26,0.25)" : "rgba(255,255,255,0.08)",
+              fontWeight: 700,
+              background: filters.followUp !== "all" ? "rgba(var(--tint-rgb), 0.25)" : "rgba(var(--ink-rgb), 0.08)",
             }}
           >
             {overdueCount}
@@ -218,13 +217,13 @@ export default function PipelineControls({
               alignItems: "center",
               gap: 5,
               padding: "8px 12px",
-              borderRadius: 8,
+              borderRadius: "var(--radius-sm)",
               fontSize: 13,
-              fontWeight: 700,
+              fontWeight: 600,
               cursor: "pointer",
-              border: "1px solid rgba(248,113,113,0.35)",
-              background: "rgba(248,113,113,0.08)",
-              color: "#f87171",
+              border: "1px solid rgba(var(--red-rgb), 0.35)",
+              background: "rgba(var(--red-rgb), 0.08)",
+              color: "var(--red)",
               whiteSpace: "nowrap",
             }}
           >
@@ -242,10 +241,10 @@ export default function PipelineControls({
             gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
             gap: 10,
             paddingTop: 10,
-            borderTop: "1px solid rgba(255,255,255,0.06)",
+            borderTop: "1px solid var(--separator)",
           }}
         >
-          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 10, fontWeight: 700, color: "#4a5670", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11, fontWeight: 600, color: "var(--label-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
             Make
             <select
               aria-label="Filter by make"
@@ -254,13 +253,13 @@ export default function PipelineControls({
               style={{ ...inputStyle, cursor: "pointer" }}
             >
               {MAKE_FILTER_OPTIONS.map((make) => (
-                <option key={make} value={make} style={{ background: "#0f1520" }}>
+                <option key={make} value={make} style={{ background: "var(--bg-surface)" }}>
                   {make}
                 </option>
               ))}
             </select>
           </label>
-          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 10, fontWeight: 700, color: "#4a5670", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11, fontWeight: 600, color: "var(--label-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
             Min price
             <input
               type="number"
@@ -271,7 +270,7 @@ export default function PipelineControls({
               onChange={(e) => onChange({ minPrice: e.target.value })}
             />
           </label>
-          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 10, fontWeight: 700, color: "#4a5670", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11, fontWeight: 600, color: "var(--label-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
             Max price
             <input
               type="number"
@@ -282,17 +281,17 @@ export default function PipelineControls({
               onChange={(e) => onChange({ maxPrice: e.target.value })}
             />
           </label>
-          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 10, fontWeight: 700, color: "#4a5670", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-            Movement
+          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11, fontWeight: 600, color: "var(--label-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            Spotr trend estimate
             <select
               aria-label="Filter by value movement"
               value={filters.movementFilter}
               onChange={(e) => onChange({ movementFilter: e.target.value as MovementFilter })}
               style={{ ...inputStyle, cursor: "pointer" }}
             >
-              <option style={{ background: "#0f1520" }}>All</option>
-              <option style={{ background: "#0f1520" }}>Appreciating</option>
-              <option style={{ background: "#0f1520" }}>Depreciating</option>
+              <option style={{ background: "var(--bg-surface)" }}>All</option>
+              <option style={{ background: "var(--bg-surface)" }}>Appreciating</option>
+              <option style={{ background: "var(--bg-surface)" }}>Depreciating</option>
             </select>
           </label>
         </div>

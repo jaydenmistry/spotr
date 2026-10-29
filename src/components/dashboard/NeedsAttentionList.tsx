@@ -11,16 +11,16 @@ import type { Recommendation } from "@/lib/opportunity";
 import { buildNeedsAttention, type AttentionGroup } from "@/lib/pipeline";
 
 const RECOMMENDATION_COLORS: Record<Recommendation, string> = {
-  BUY: "#34d399",
-  INVESTIGATE: "#fbbf24",
-  WATCH: "#60a5fa",
-  PASS: "#8b9ab8",
+  BUY: "var(--green)",
+  INVESTIGATE: "var(--yellow)",
+  WATCH: "var(--blue)",
+  PASS: "var(--label-secondary)",
 };
 
 const GROUP_META: Record<AttentionGroup, { label: string; color: string; blurb: string }> = {
-  overdue: { label: "Overdue", color: "#f87171", blurb: "Past due — follow up now" },
-  "due-soon": { label: "Due soon", color: "#fbbf24", blurb: "Due within 48 hours" },
-  unscheduled: { label: "No next action", color: "#8b9ab8", blurb: "Watched or assigned, nothing scheduled" },
+  overdue: { label: "Overdue", color: "var(--red)", blurb: "Past due — follow up now" },
+  "due-soon": { label: "Due soon", color: "var(--yellow)", blurb: "Due within 48 hours" },
+  unscheduled: { label: "No next action", color: "var(--label-secondary)", blurb: "Watched or assigned, nothing scheduled" },
 };
 
 function dueLabel(iso: string | null | undefined, now: Date) {
@@ -43,13 +43,13 @@ const rowButtonStyle: React.CSSProperties = {
   alignItems: "center",
   gap: 5,
   padding: "6px 11px",
-  borderRadius: 8,
+  borderRadius: "var(--radius-sm)",
   fontSize: 12,
-  fontWeight: 700,
+  fontWeight: 600,
   cursor: "pointer",
-  border: "1px solid rgba(255,255,255,0.12)",
-  background: "rgba(255,255,255,0.04)",
-  color: "#f0f4ff",
+  border: "1px solid var(--separator-strong)",
+  background: "var(--fill)",
+  color: "var(--label)",
   whiteSpace: "nowrap",
 };
 
@@ -96,15 +96,15 @@ export default function NeedsAttentionList({
           justifyContent: "center",
           gap: 10,
           padding: "60px 20px",
-          borderRadius: 14,
-          border: "1px dashed rgba(255,255,255,0.12)",
-          background: "rgba(255,255,255,0.02)",
+          borderRadius: "var(--radius-lg)",
+          border: "1px dashed rgba(var(--ink-rgb), 0.12)",
+          background: "rgba(var(--ink-rgb), 0.02)",
           textAlign: "center",
         }}
       >
-        <CheckCircle2 style={{ width: 30, height: 30, color: "#34d399" }} aria-hidden="true" />
-        <p style={{ fontSize: 15, fontWeight: 800, color: "#f0f4ff" }}>Nothing needs attention</p>
-        <p style={{ fontSize: 13, color: "#8b9ab8", maxWidth: 380 }}>
+        <CheckCircle2 style={{ width: 30, height: 30, color: "var(--green)" }} aria-hidden="true" />
+        <p style={{ fontSize: 15, fontWeight: 700, color: "var(--label)" }}>Nothing needs attention</p>
+        <p style={{ fontSize: 13, color: "var(--label-secondary)", maxWidth: 380 }}>
           No overdue or due-soon follow-ups, and every watched or assigned lead has a next step.
           Switch to Board to keep working the pipeline.
         </p>
@@ -139,10 +139,10 @@ export default function NeedsAttentionList({
                 ) : (
                   <ListChecks style={{ width: 14, height: 14, color: meta.color }} aria-hidden="true" />
                 )}
-                <h3 style={{ fontSize: 12, fontWeight: 800, color: meta.color, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                <h3 style={{ fontSize: 12, fontWeight: 700, color: meta.color, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                   {meta.label}
                 </h3>
-                <span style={{ fontSize: 11.5, color: "#4a5670" }}>· {meta.blurb}</span>
+                <span style={{ fontSize: 11.5, color: "var(--label-secondary)" }}>· {meta.blurb}</span>
               </div>
             )}
 
@@ -152,9 +152,9 @@ export default function NeedsAttentionList({
                 alignItems: "center",
                 gap: 14,
                 padding: "12px 14px",
-                borderRadius: 12,
+                borderRadius: "var(--radius-md)",
                 background: "var(--bg-card)",
-                border: "1px solid rgba(255,255,255,0.08)",
+                border: "1px solid var(--separator)",
                 borderLeft: `3px solid ${meta.color}`,
               }}
             >
@@ -164,8 +164,8 @@ export default function NeedsAttentionList({
                     title={getVehicleTitle(lead)}
                     style={{
                       fontSize: 13.5,
-                      fontWeight: 700,
-                      color: "#f0f4ff",
+                      fontWeight: 600,
+                      color: "var(--label)",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
@@ -174,20 +174,20 @@ export default function NeedsAttentionList({
                   >
                     {getVehicleTitle(lead)}
                   </span>
-                  <span style={{ fontSize: 12.5, fontWeight: 800, color: "#c6d0e2" }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--label-body)" }}>
                     {lead.price ? formatCurrency(lead.price) : "No asking price"}
                   </span>
                   {rec && (
                     <span
                       title="Spotr heuristic recommendation"
                       style={{
-                        fontSize: 10,
-                        fontWeight: 800,
-                        borderRadius: 6,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        borderRadius: "var(--radius-xs)",
                         padding: "1px 7px",
                         color: RECOMMENDATION_COLORS[rec],
-                        background: `${RECOMMENDATION_COLORS[rec]}1a`,
-                        border: `1px solid ${RECOMMENDATION_COLORS[rec]}44`,
+                        background: `color-mix(in srgb, ${RECOMMENDATION_COLORS[rec]} 10%, transparent)`,
+                        border: `1px solid color-mix(in srgb, ${RECOMMENDATION_COLORS[rec]} 27%, transparent)`,
                       }}
                     >
                       {rec}
@@ -195,21 +195,21 @@ export default function NeedsAttentionList({
                   )}
                   <span
                     style={{
-                      fontSize: 10.5,
-                      fontWeight: 700,
-                      color: "#8b9ab8",
-                      borderRadius: 6,
+                      fontSize: 11.5,
+                      fontWeight: 600,
+                      color: "var(--label-secondary)",
+                      borderRadius: "var(--radius-xs)",
                       padding: "1px 7px",
-                      background: "rgba(255,255,255,0.05)",
+                      background: "rgba(var(--ink-rgb), 0.05)",
                     }}
                   >
                     {lead.stage}
                   </span>
                 </div>
-                <p style={{ fontSize: 11.5, color: "#8b9ab8", marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <p style={{ fontSize: 11.5, color: "var(--label-secondary)", marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {hasActiveFollowUp ? (
                     <>
-                      <span style={{ color: meta.color, fontWeight: 700 }}>
+                      <span style={{ color: meta.color, fontWeight: 600 }}>
                         {dueLabel(lead.nextActionAt, clock)}
                       </span>
                       {" · "}
@@ -232,9 +232,9 @@ export default function NeedsAttentionList({
                     onClick={() => onCompleteNextAction(lead)}
                     style={{
                       ...rowButtonStyle,
-                      background: "rgba(52,211,153,0.1)",
-                      borderColor: "rgba(52,211,153,0.4)",
-                      color: "#34d399",
+                      background: "rgba(var(--green-rgb), 0.1)",
+                      borderColor: "rgba(var(--green-rgb), 0.4)",
+                      color: "var(--green)",
                       opacity: busy ? 0.5 : 1,
                     }}
                   >

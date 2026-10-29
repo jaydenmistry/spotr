@@ -36,33 +36,34 @@ export default function LeadCard({
   // shared helper already exempts passed/terminal leads.
   const isOverdue = getFollowUpStatus(lead, now) === "overdue";
   const TrendIcon = isAppreciating ? TrendingUp : TrendingDown;
-  const trendColor = isAppreciating ? "#34d399" : "#ff9147";
+  const trendColor = isAppreciating ? "var(--green)" : "var(--orange)";
 
   return (
     <div
       onClick={onClick}
+      role="button"
+      tabIndex={0}
+      aria-label={`Open dossier for ${getVehicleTitle(lead)}`}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onClick();
+        }
+      }}
+      className="hover-lift opportunity-card"
       style={{
         marginBottom: 10,
         cursor: "pointer",
-        borderRadius: 12,
+        borderRadius: "var(--radius-lg)",
         overflow: "hidden",
         background: "var(--bg-card)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        transition: "border-color 0.15s, box-shadow 0.15s, transform 0.15s",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = "rgba(255,122,26,0.4)";
-        e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.35)";
-        e.currentTarget.style.transform = "translateY(-1px)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
-        e.currentTarget.style.boxShadow = "";
-        e.currentTarget.style.transform = "";
+        border: "1px solid var(--separator)",
+        boxShadow: "var(--shadow-sm)",
       }}
     >
       {/* Photo */}
-      <div style={{ position: "relative", height: 120, background: "#0f1520" }}>
+      <div className="card-photo" style={{ position: "relative", height: 150, overflow: "hidden", background: "var(--bg-surface)" }}>
         {lead.photo_url ? (
           <Image
             src={lead.photo_url}
@@ -80,9 +81,9 @@ export default function LeadCard({
               alignItems: "center",
               justifyContent: "center",
               fontSize: 11,
-              fontWeight: 700,
-              color: "#4a5670",
-              background: "linear-gradient(135deg, #0f1520, #1a0a00)",
+              fontWeight: 600,
+              color: "var(--label-secondary)",
+              background: "linear-gradient(135deg, var(--bg-surface), var(--bg-elevated))",
             }}
           >
             No photo available
@@ -95,16 +96,17 @@ export default function LeadCard({
             position: "absolute",
             top: 8,
             right: 8,
-            background: "rgba(8,12,20,0.85)",
+            background: "rgba(var(--base-rgb), 0.85)",
             backdropFilter: "blur(8px)",
-            borderRadius: 8,
+            borderRadius: "var(--radius-sm)",
             padding: "3px 9px",
             fontSize: 12,
-            fontWeight: 800,
-            color: "#f0f4ff",
-            border: "1px solid rgba(255,255,255,0.12)",
+            fontWeight: 700,
+            color: "var(--label)",
+            border: "1px solid var(--separator-strong)",
           }}
         >
+          <span style={{ fontWeight: 500, opacity: 0.75, marginRight: 4 }}>Asking</span>
           {formatCurrency(lead.price)}
         </div>
 
@@ -118,14 +120,14 @@ export default function LeadCard({
               display: "flex",
               alignItems: "center",
               gap: 4,
-              background: "rgba(8,12,20,0.85)",
+              background: "rgba(var(--base-rgb), 0.85)",
               backdropFilter: "blur(8px)",
-              borderRadius: 8,
+              borderRadius: "var(--radius-sm)",
               padding: "3px 8px",
               fontSize: 11,
-              fontWeight: 700,
-              color: "#34d399",
-              border: "1px solid rgba(52,211,153,0.25)",
+              fontWeight: 600,
+              color: "var(--green)",
+              border: "1px solid rgba(var(--green-rgb), 0.25)",
             }}
           >
             <ShieldCheck style={{ width: 11, height: 11 }} aria-hidden="true" />
@@ -145,14 +147,14 @@ export default function LeadCard({
               display: "flex",
               alignItems: "center",
               gap: 4,
-              background: "rgba(8,12,20,0.85)",
+              background: "rgba(var(--base-rgb), 0.85)",
               backdropFilter: "blur(8px)",
-              borderRadius: 8,
+              borderRadius: "var(--radius-sm)",
               padding: "3px 8px",
               fontSize: 11,
-              fontWeight: 700,
-              color: "#ff9147",
-              border: "1px solid rgba(255,122,26,0.35)",
+              fontWeight: 600,
+              color: "var(--tint-text)",
+              border: "1px solid rgba(var(--tint-rgb), 0.35)",
             }}
           >
             <Eye style={{ width: 11, height: 11 }} aria-hidden="true" />
@@ -165,14 +167,14 @@ export default function LeadCard({
               position: "absolute",
               bottom: 8,
               left: 8,
-              background: "rgba(8,12,20,0.85)",
+              background: "rgba(var(--base-rgb), 0.85)",
               backdropFilter: "blur(8px)",
-              borderRadius: 8,
+              borderRadius: "var(--radius-sm)",
               padding: "3px 8px",
               fontSize: 11,
-              fontWeight: 700,
-              color: "#f87171",
-              border: "1px solid rgba(248,113,113,0.3)",
+              fontWeight: 600,
+              color: "var(--red)",
+              border: "1px solid rgba(var(--red-rgb), 0.3)",
             }}
           >
             Passed in feed
@@ -192,14 +194,14 @@ export default function LeadCard({
               display: "flex",
               alignItems: "center",
               gap: 4,
-              background: "rgba(8,12,20,0.85)",
+              background: "rgba(var(--base-rgb), 0.85)",
               backdropFilter: "blur(8px)",
-              borderRadius: 8,
+              borderRadius: "var(--radius-sm)",
               padding: "3px 8px",
               fontSize: 11,
-              fontWeight: 700,
-              color: "#f87171",
-              border: "1px solid rgba(248,113,113,0.4)",
+              fontWeight: 600,
+              color: "var(--red)",
+              border: "1px solid rgba(var(--red-rgb), 0.4)",
             }}
           >
             <Clock style={{ width: 11, height: 11 }} aria-hidden="true" />
@@ -213,8 +215,8 @@ export default function LeadCard({
         <h4
           style={{
             fontSize: 13,
-            fontWeight: 700,
-            color: "#f0f4ff",
+            fontWeight: 600,
+            color: "var(--label)",
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
@@ -225,12 +227,12 @@ export default function LeadCard({
         </h4>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#8b9ab8" }}>
-            <Gauge style={{ width: 11, height: 11, color: "#4a5670", flexShrink: 0 }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--label-secondary)" }}>
+            <Gauge style={{ width: 11, height: 11, color: "var(--label-secondary)", flexShrink: 0 }} />
             {lead.miles ? new Intl.NumberFormat("en-US").format(lead.miles) : "Unknown"} miles
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#8b9ab8" }}>
-            <MapPin style={{ width: 11, height: 11, color: "#4a5670", flexShrink: 0 }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--label-secondary)" }}>
+            <MapPin style={{ width: 11, height: 11, color: "var(--label-secondary)", flexShrink: 0 }} />
             {formatDistance(lead.distanceMiles)}{lead.city || lead.state ? ` · ${lead.city}, ${lead.state}` : ""}
           </div>
         </div>
@@ -238,9 +240,9 @@ export default function LeadCard({
         {/* Analyzer box */}
         <div
           style={{
-            borderRadius: 10,
-            border: "1px solid rgba(255,255,255,0.07)",
-            background: "rgba(255,255,255,0.025)",
+            borderRadius: "var(--radius-sm)",
+            border: "1px solid var(--separator)",
+            background: "rgba(var(--ink-rgb), 0.025)",
             padding: "10px 10px 8px",
           }}
         >
@@ -248,23 +250,23 @@ export default function LeadCard({
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
             <span
               style={{
-                fontSize: 10,
-                fontWeight: 800,
+                fontSize: 11,
+                fontWeight: 700,
                 letterSpacing: "0.08em",
                 textTransform: "uppercase",
-                color: "#ff9147",
+                color: "var(--tint-text)",
               }}
             >
               Listing analyzer
             </span>
             <span
               style={{
-                borderRadius: 100,
+                borderRadius: 999,
                 padding: "2px 8px",
-                fontSize: 10,
-                fontWeight: 700,
-                background: analytics.dealScore === "Great deal" ? "rgba(52,211,153,0.15)" : "rgba(255,122,26,0.15)",
-                color: analytics.dealScore === "Great deal" ? "#34d399" : "#ff9147",
+                fontSize: 11,
+                fontWeight: 600,
+                background: analytics.dealScore === "Great deal" ? "rgba(var(--green-rgb), 0.15)" : "rgba(var(--tint-rgb), 0.15)",
+                color: analytics.dealScore === "Great deal" ? "var(--green)" : "var(--tint-text)",
               }}
             >
               {analytics.dealScore}
@@ -274,16 +276,16 @@ export default function LeadCard({
           {/* Fair value */}
           <div
             style={{
-              borderRadius: 8,
-              background: "rgba(52,211,153,0.07)",
-              border: "1px solid rgba(52,211,153,0.15)",
+              borderRadius: "var(--radius-sm)",
+              background: "rgba(var(--green-rgb), 0.07)",
+              border: "1px solid rgba(var(--green-rgb), 0.15)",
               padding: "7px 10px",
               marginBottom: 8,
             }}
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span style={{ fontSize: 11, color: "#8b9ab8" }}>Spotr est. value</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#f0f4ff" }}>
+              <span style={{ fontSize: 11, color: "var(--label-secondary)" }}>Spotr est. value</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--label)" }}>
                 {formatCurrency(analytics.estimatedMarketValue)}
               </span>
             </div>
@@ -292,7 +294,7 @@ export default function LeadCard({
                 marginTop: 3,
                 fontSize: 11,
                 fontWeight: 600,
-                color: analytics.fairValueSpread >= 0 ? "#34d399" : "#ff9147",
+                color: analytics.fairValueSpread >= 0 ? "var(--green)" : "var(--tint-text)",
               }}
             >
               {formatSignedCurrency(analytics.fairValueSpread)} vs asking · heuristic
@@ -308,11 +310,11 @@ export default function LeadCard({
               marginBottom: 6,
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 700, color: "#f0f4ff" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 600, color: "var(--label)" }}>
               <TrendIcon style={{ width: 13, height: 13, color: trendColor }} />
-              {analytics.movement}
+              {analytics.movement} · projected
             </div>
-            <span style={{ fontSize: 11, fontWeight: 700, color: trendColor }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: trendColor }}>
               {formatSignedCurrency(analytics.projectedChangeDollars)}
             </span>
           </div>
@@ -325,12 +327,12 @@ export default function LeadCard({
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              fontSize: 10,
-              color: "#4a5670",
+              fontSize: 11,
+              color: "var(--label-secondary)",
             }}
           >
             {/* Heuristic label, not a comp count — getVehicleAnalytics has no real comps. */}
-            <span>Spotr heuristic</span>
+            <span>Spotr estimate (heuristic), not market data</span>
             <span>{formatSignedPercent(analytics.projectedChangePercent)}</span>
           </div>
 
@@ -346,17 +348,15 @@ export default function LeadCard({
                 alignItems: "center",
                 justifyContent: "center",
                 gap: 5,
-                borderRadius: 8,
-                background: "linear-gradient(135deg, #ff7a1a, #f59e0b)",
+                borderRadius: 999,
+                background: "rgba(var(--tint-rgb), 0.12)",
                 padding: "7px 12px",
-                fontSize: 11,
-                fontWeight: 700,
-                color: "#fff",
+                fontSize: 12,
+                fontWeight: 600,
+                color: "var(--tint-text)",
                 textDecoration: "none",
-                transition: "opacity 0.15s",
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
-              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+              className="pressable hover-fill"
             >
               Verify listing <ExternalLink style={{ width: 11, height: 11 }} />
             </a>

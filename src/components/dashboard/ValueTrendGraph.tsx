@@ -18,7 +18,7 @@ export default function ValueTrendGraph({
   const width = 240;
   const height = compact ? 54 : 120;
   const padding = compact ? 6 : 14;
-  const color = movement === "Appreciating" ? "#16a34a" : "#ea580c";
+  const color = movement === "Appreciating" ? "var(--green)" : "var(--orange)";
 
   const coordinates = safePoints.map((point, index) => {
     const x = padding + (index / (safePoints.length - 1)) * (width - padding * 2);
@@ -32,9 +32,9 @@ export default function ValueTrendGraph({
   const fillPath = `${path} L ${width - padding} ${height - padding} L ${padding} ${height - padding} Z`;
 
   return (
-    <div className={compact ? "h-14 w-full" : "w-full"}>
+    <div style={{ width: "100%", height: compact ? 56 : undefined }}>
       {!compact && (
-        <div className="mb-2 flex items-center justify-between text-xs font-medium text-slate-500">
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, fontSize: 12, fontWeight: 500, color: "var(--label-secondary)" }}>
           <span>{formatCompactCurrency(min)}</span>
           <span>12 mo projection</span>
           <span>{formatCompactCurrency(max)}</span>
@@ -42,14 +42,14 @@ export default function ValueTrendGraph({
       )}
       <svg
         viewBox={`0 0 ${width} ${height}`}
-        className="h-full w-full overflow-visible"
+        style={{ width: "100%", height: "100%", overflow: "visible" }}
         role="img"
-        aria-label={`${movement} value trend graph`}
+        aria-label={`Spotr projected value trend (estimate): ${movement}`}
       >
         <path d={fillPath} fill={color} opacity="0.12" />
-        <path d={path} fill="none" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={compact ? 3 : 4} />
+        <path d={path} pathLength={1} className="draw-line" fill="none" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={compact ? 3 : 4} />
         {coordinates.map((point) => (
-          <circle key={`${point.x}-${point.y}`} cx={point.x} cy={point.y} r={compact ? 2.4 : 3.5} fill="#ffffff" stroke={color} strokeWidth="2" />
+          <circle key={`${point.x}-${point.y}`} cx={point.x} cy={point.y} r={compact ? 2.4 : 3.5} fill="var(--bg-card)" stroke={color} strokeWidth="2" />
         ))}
       </svg>
     </div>

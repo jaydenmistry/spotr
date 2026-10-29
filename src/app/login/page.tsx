@@ -1,5 +1,6 @@
 "use client";
 
+import { SpotrLogo } from "@/components/ui/SpotrLogo";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -52,7 +53,7 @@ export default function LoginPage() {
           width: 500,
           height: 500,
           borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(255,122,26,0.12) 0%, transparent 70%)",
+          background: "radial-gradient(circle, rgba(var(--tint-rgb), 0.12) 0%, transparent 70%)",
           top: -120,
           left: -120,
           pointerEvents: "none",
@@ -64,7 +65,7 @@ export default function LoginPage() {
           width: 400,
           height: 400,
           borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(167,139,250,0.07) 0%, transparent 70%)",
+          background: "radial-gradient(circle, rgba(var(--purple-rgb), 0.07) 0%, transparent 70%)",
           bottom: -80,
           right: -80,
           pointerEvents: "none",
@@ -76,8 +77,8 @@ export default function LoginPage() {
         style={{
           position: "absolute",
           inset: 0,
-          backgroundImage: `linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-                           linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)`,
+          backgroundImage: `linear-gradient(rgba(var(--ink-rgb), 0.02) 1px, transparent 1px),
+                           linear-gradient(90deg, rgba(var(--ink-rgb), 0.02) 1px, transparent 1px)`,
           backgroundSize: "60px 60px",
           pointerEvents: "none",
         }}
@@ -95,29 +96,7 @@ export default function LoginPage() {
               textDecoration: "none",
             }}
           >
-            <span
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 14,
-                display: "grid",
-                placeItems: "center",
-                background: "linear-gradient(135deg, #ff7a1a, #f59e0b)",
-                boxShadow: "0 8px 24px rgba(255,122,26,0.35)",
-              }}
-            >
-              <Car style={{ width: 22, height: 22, color: "#fff" }} />
-            </span>
-            <span
-              style={{
-                fontSize: 24,
-                fontWeight: 900,
-                letterSpacing: "-0.02em",
-                color: "#f0f4ff",
-              }}
-            >
-              SPOT<span style={{ color: "#ff7a1a" }}>R</span>
-            </span>
+            <SpotrLogo size={44} />
           </Link>
         </div>
 
@@ -125,7 +104,7 @@ export default function LoginPage() {
         <div
           style={{
             background: "var(--bg-card)",
-            border: "1px solid rgba(255,255,255,0.09)",
+            border: "1px solid rgba(var(--ink-rgb), 0.09)",
             borderRadius: 20,
             padding: "40px 36px",
             boxShadow: "0 24px 60px rgba(0,0,0,0.5)",
@@ -135,15 +114,15 @@ export default function LoginPage() {
             <h1
               style={{
                 fontSize: 26,
-                fontWeight: 900,
+                fontWeight: 700,
                 letterSpacing: "-0.02em",
-                color: "#f0f4ff",
+                color: "var(--label)",
                 marginBottom: 6,
               }}
             >
               Sign in
             </h1>
-            <p style={{ fontSize: 14, color: "#8b9ab8" }}>
+            <p style={{ fontSize: 14, color: "var(--label-secondary)" }}>
               Access the Spotr acquisition platform
             </p>
           </div>
@@ -156,9 +135,9 @@ export default function LoginPage() {
                 style={{
                   display: "block",
                   fontSize: 12,
-                  fontWeight: 700,
+                  fontWeight: 600,
                   letterSpacing: "0.05em",
-                  color: "#8b9ab8",
+                  color: "var(--label-secondary)",
                   marginBottom: 7,
                   textTransform: "uppercase",
                 }}
@@ -174,7 +153,7 @@ export default function LoginPage() {
                     transform: "translateY(-50%)",
                     width: 16,
                     height: 16,
-                    color: "#4a5670",
+                    color: "var(--label-tertiary)",
                     pointerEvents: "none",
                   }}
                 />
@@ -188,17 +167,17 @@ export default function LoginPage() {
                   style={{
                     width: "100%",
                     boxSizing: "border-box",
-                    background: "rgba(255,255,255,0.04)",
-                    border: "1px solid rgba(255,255,255,0.1)",
+                    background: "rgba(var(--ink-rgb), 0.04)",
+                    border: "1px solid rgba(var(--ink-rgb), 0.1)",
                     borderRadius: 10,
                     padding: "11px 14px 11px 42px",
                     fontSize: 14,
-                    color: "#f0f4ff",
+                    color: "var(--label)",
                     outline: "none",
                     transition: "border-color 0.15s",
                   }}
-                  onFocus={(e) => (e.target.style.borderColor = "#ff7a1a")}
-                  onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.1)")}
+                  onFocus={(e) => (e.target.style.borderColor = "var(--tint)")}
+                  onBlur={(e) => (e.target.style.borderColor = "rgba(var(--ink-rgb), 0.1)")}
                   placeholder="demo@spotrcars.com"
                 />
               </div>
@@ -211,9 +190,9 @@ export default function LoginPage() {
                 style={{
                   display: "block",
                   fontSize: 12,
-                  fontWeight: 700,
+                  fontWeight: 600,
                   letterSpacing: "0.05em",
-                  color: "#8b9ab8",
+                  color: "var(--label-secondary)",
                   marginBottom: 7,
                   textTransform: "uppercase",
                 }}
@@ -229,7 +208,7 @@ export default function LoginPage() {
                     transform: "translateY(-50%)",
                     width: 16,
                     height: 16,
-                    color: "#4a5670",
+                    color: "var(--label-tertiary)",
                     pointerEvents: "none",
                   }}
                 />
@@ -243,17 +222,17 @@ export default function LoginPage() {
                   style={{
                     width: "100%",
                     boxSizing: "border-box",
-                    background: "rgba(255,255,255,0.04)",
-                    border: "1px solid rgba(255,255,255,0.1)",
+                    background: "rgba(var(--ink-rgb), 0.04)",
+                    border: "1px solid rgba(var(--ink-rgb), 0.1)",
                     borderRadius: 10,
                     padding: "11px 14px 11px 42px",
                     fontSize: 14,
-                    color: "#f0f4ff",
+                    color: "var(--label)",
                     outline: "none",
                     transition: "border-color 0.15s",
                   }}
-                  onFocus={(e) => (e.target.style.borderColor = "#ff7a1a")}
-                  onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.1)")}
+                  onFocus={(e) => (e.target.style.borderColor = "var(--tint)")}
+                  onBlur={(e) => (e.target.style.borderColor = "rgba(var(--ink-rgb), 0.1)")}
                   placeholder="••••••••"
                 />
               </div>
@@ -265,10 +244,10 @@ export default function LoginPage() {
                 style={{
                   padding: "10px 14px",
                   borderRadius: 10,
-                  background: "rgba(239,68,68,0.1)",
-                  border: "1px solid rgba(239,68,68,0.25)",
+                  background: "rgba(var(--red-rgb), 0.1)",
+                  border: "1px solid rgba(var(--red-rgb), 0.25)",
                   fontSize: 13,
-                  color: "#f87171",
+                  color: "var(--red)",
                 }}
               >
                 {error}
@@ -287,15 +266,15 @@ export default function LoginPage() {
                 width: "100%",
                 padding: "13px 24px",
                 fontSize: 15,
-                fontWeight: 700,
+                fontWeight: 600,
                 color: "#fff",
                 borderRadius: 12,
                 border: "none",
                 cursor: loading ? "not-allowed" : "pointer",
                 background: loading
-                  ? "rgba(255,122,26,0.5)"
-                  : "linear-gradient(135deg, #ff7a1a, #f59e0b)",
-                boxShadow: loading ? "none" : "0 8px 24px rgba(255,122,26,0.4)",
+                  ? "rgba(var(--tint-rgb), 0.5)"
+                  : "linear-gradient(135deg, var(--tint), var(--tint-2))",
+                boxShadow: loading ? "none" : "0 8px 24px rgba(var(--tint-rgb), 0.4)",
                 transition: "opacity 0.15s",
                 marginTop: 4,
               }}
@@ -311,14 +290,14 @@ export default function LoginPage() {
               marginTop: 20,
               padding: "12px 14px",
               borderRadius: 10,
-              background: "rgba(255,122,26,0.07)",
-              border: "1px solid rgba(255,122,26,0.18)",
+              background: "rgba(var(--tint-rgb), 0.07)",
+              border: "1px solid rgba(var(--tint-rgb), 0.18)",
               fontSize: 12,
-              color: "#8b9ab8",
+              color: "var(--label-secondary)",
               lineHeight: 1.6,
             }}
           >
-            <span style={{ fontWeight: 700, color: "#ff9147" }}>Demo access: </span>
+            <span style={{ fontWeight: 600, color: "var(--tint-text)" }}>Demo access: </span>
             demo@spotrcars.com · password
           </div>
         </div>

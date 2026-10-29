@@ -1,18 +1,315 @@
 "use client";
 
 import { useSession, signOut } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { Car, Crosshair, LogOut, LayoutDashboard, Package, Radar } from "lucide-react";
+import { motion } from "motion/react";
+import { Crosshair, LayoutGrid, LogOut, Package, Radar, type LucideIcon } from "lucide-react";
 import Link from "next/link";
+import { SpotrLogo, SpotrMark } from "@/components/ui/SpotrLogo";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { spring } from "@/lib/motion";
+
+interface NavItem {
+  href: string;
+  icon: LucideIcon;
+  label: string;
+  /** Shorter label for the compact tab bar. */
+  short: string;
+}
+
+const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
+  {
+    title: "Acquire",
+    items: [
+      { href: "/dashboard/feed", icon: Radar, label: "Opportunity Feed", short: "Feed" },
+      { href: "/dashboard", icon: LayoutGrid, label: "Pipeline", short: "Pipeline" },
+    ],
+  },
+  {
+    title: "Market",
+    items: [
+      { href: "/dashboard/inventory", icon: Package, label: "Inventory", short: "Inventory" },
+      { href: "/dashboard/buybox", icon: Crosshair, label: "Buy Box", short: "Buy Box" },
+    ],
+  },
+];
+
+const NAV_ITEMS = NAV_SECTIONS.flatMap((section) => section.items);
+
+function isActive(pathname: string, href: string) {
+  return href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
+}
+
+function ShellSkeleton() {
+  return (
+    <div style={{ minHeight: "100vh", background: "var(--bg-base)" }} aria-busy="true" aria-label="Loading Spotr">
+      <div
+        className="app-sidebar"
+        style={{
+          position: "fixed",
+          inset: "0 auto 0 0",
+          width: 240,
+          flexDirection: "column",
+          gap: 10,
+          padding: "22px 14px",
+          borderRight: "1px solid var(--separator)",
+        }}
+      >
+        <div className="skeleton" style={{ width: 110, height: 30, marginBottom: 20 }} />
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="skeleton" style={{ height: 34, borderRadius: "var(--radius-sm)" }} />
+        ))}
+      </div>
+      <div className="app-main">
+        <div className="page">
+          <div className="skeleton" style={{ width: 240, height: 34, marginBottom: 10 }} />
+          <div className="skeleton" style={{ width: 360, maxWidth: "80%", height: 16, marginBottom: 32 }} />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
+            {[0, 1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="skeleton" style={{ height: 180, borderRadius: "var(--radius-lg)" }} />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SidebarLink({ item, active }: { item: NavItem; active: boolean }) {
+  const Icon = item.icon;
+  return (
+    <Link
+      href={item.href}
+      aria-current={active ? "page" : undefined}
+      className={active ? "pressable" : "pressable hover-fill hover-label"}
+      style={{
+        position: "relative",
+        display: "flex",
+        alignItems: "center",
+        gap: 11,
+        height: 36,
+        padding: "0 11px",
+        borderRadius: "var(--radius-sm)",
+        fontSize: 14,
+        fontWeight: active ? 600 : 500,
+        color: active ? "var(--label)" : "var(--label-secondary)",
+        textDecoration: "none",
+      }}
+    >
+      {active && (
+        <motion.span
+          layoutId="sidebar-active"
+          transition={spring.snappy}
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: "var(--radius-sm)",
+            background: "rgba(var(--tint-rgb), 0.14)",
+            boxShadow: "inset 0 0 0 1px rgba(var(--tint-rgb), 0.22)",
+          }}
+        />
+      )}
+      <Icon
+        size={17}
+        strokeWidth={active ? 2.3 : 2}
+        style={{ position: "relative", flexShrink: 0, color: active ? "var(--tint-text)" : "currentColor" }}
+      />
+      <span style={{ position: "relative" }}>{item.label}</span>
+    </Link>
+  );
+}
+
+function Sidebar({ pathname, email }: { pathname: string; email?: string | null }) {
+  return (
+    <nav
+      aria-label="Primary"
+      className="app-sidebar material"
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        bottom: 0,
+        width: 240,
+        flexDirection: "column",
+        zIndex: 50,
+        borderRight: "1px solid var(--separator)",
+      }}
+    >
+      <div style={{ padding: "22px 20px 18px" }}>
+        <Link href="/" aria-label="Spotr home" style={{ textDecoration: "none" }} className="pressable">
+          <SpotrLogo size={30} />
+        </Link>
+      </div>
+
+      <div style={{ flex: 1, overflowY: "auto", padding: "4px 12px" }}>
+        {NAV_SECTIONS.map((section) => (
+          <div key={section.title} style={{ marginBottom: 18 }}>
+            <p className="t-eyebrow" style={{ color: "var(--label-secondary)", padding: "0 11px 8px" }}>
+              {section.title}
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {section.items.map((item) => (
+                <SidebarLink key={item.href} item={item} active={isActive(pathname, item.href)} />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ padding: "12px", borderTop: "1px solid var(--separator)", display: "flex", flexDirection: "column", gap: 4 }}>
+        <ThemeToggle />
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px" }}>
+          <span
+            aria-hidden="true"
+            style={{
+              width: 30,
+              height: 30,
+              borderRadius: 999,
+              display: "grid",
+              placeItems: "center",
+              background: "var(--brand-gradient)",
+              color: "#fff",
+              fontSize: 13,
+              fontWeight: 700,
+              flexShrink: 0,
+            }}
+          >
+            {(email?.[0] ?? "S").toUpperCase()}
+          </span>
+          <span
+            title={email ?? undefined}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              fontSize: 13,
+              color: "var(--label-secondary)",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {email ?? "Signed in"}
+          </span>
+          <button
+            type="button"
+            onClick={() => signOut({ callbackUrl: "/" })}
+            aria-label="Sign out"
+            title="Sign out"
+            className="pressable hover-danger"
+            style={{
+              width: 30,
+              height: 30,
+              display: "grid",
+              placeItems: "center",
+              borderRadius: 999,
+              border: "none",
+              background: "transparent",
+              color: "var(--label-secondary)",
+              cursor: "pointer",
+              flexShrink: 0,
+            }}
+          >
+            <LogOut size={15} />
+          </button>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+/** Compact layouts: a translucent tab bar along the bottom, iOS-style. */
+function TabBar({ pathname }: { pathname: string }) {
+  return (
+    <nav
+      aria-label="Primary"
+      className="app-tabbar material"
+      style={{
+        position: "fixed",
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 50,
+        justifyContent: "space-around",
+        padding: "6px 6px calc(6px + env(safe-area-inset-bottom))",
+        borderTop: "1px solid var(--separator)",
+      }}
+    >
+      {NAV_ITEMS.map((item) => {
+        const active = isActive(pathname, item.href);
+        const Icon = item.icon;
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            aria-current={active ? "page" : undefined}
+            className="pressable"
+            style={{
+              position: "relative",
+              flex: 1,
+              maxWidth: 110,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 3,
+              padding: "7px 0 5px",
+              borderRadius: "var(--radius-md)",
+              fontSize: 11,
+              fontWeight: active ? 600 : 500,
+              color: active ? "var(--tint-text)" : "var(--label-secondary)",
+              textDecoration: "none",
+            }}
+          >
+            {active && (
+              <motion.span
+                layoutId="tabbar-active"
+                transition={spring.snappy}
+                style={{ position: "absolute", inset: 0, borderRadius: "var(--radius-md)", background: "rgba(var(--tint-rgb), 0.12)" }}
+              />
+            )}
+            <Icon size={21} strokeWidth={active ? 2.3 : 1.9} style={{ position: "relative" }} />
+            <span style={{ position: "relative" }}>{item.short}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+/** Compact layouts: brand + appearance switch above the content. */
+function CompactTopBar() {
+  return (
+    <div
+      className="show-compact material"
+      style={{
+        position: "sticky",
+        top: 0,
+        zIndex: 40,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "calc(10px + env(safe-area-inset-top)) 16px 10px",
+        borderBottom: "1px solid var(--separator)",
+      }}
+    >
+      <Link href="/" aria-label="Spotr home" style={{ textDecoration: "none" }}>
+        <SpotrMark size={28} />
+      </Link>
+      <div style={{ width: 64 }}>
+        <ThemeToggle label={false} />
+      </div>
+    </div>
+  );
+}
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { status } = useSession();
+  const { status, data } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -20,167 +317,15 @@ export default function DashboardLayout({
     }
   }, [status, router]);
 
-  if (status === "loading") {
-    return (
-      <div
-        style={{
-          display: "flex",
-          height: "100vh",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "var(--bg-base)",
-          color: "#ff9147",
-          fontSize: 15,
-          fontWeight: 600,
-          gap: 10,
-        }}
-      >
-        <div
-          style={{
-            width: 20,
-            height: 20,
-            borderRadius: "50%",
-            border: "2px solid rgba(255,122,26,0.2)",
-            borderTopColor: "#ff7a1a",
-            animation: "spin 0.8s linear infinite",
-          }}
-        />
-        Loading…
-      </div>
-    );
-  }
+  if (status === "loading") return <ShellSkeleton />;
 
   if (status === "authenticated") {
     return (
       <div style={{ minHeight: "100vh", background: "var(--bg-base)" }}>
-        {/* Sidebar */}
-        <nav
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            bottom: 0,
-            width: 220,
-            background: "rgba(8,12,20,0.95)",
-            backdropFilter: "blur(20px)",
-            borderRight: "1px solid rgba(255,255,255,0.07)",
-            display: "flex",
-            flexDirection: "column",
-            zIndex: 50,
-            padding: "24px 0",
-          }}
-        >
-          {/* Logo */}
-          <div style={{ padding: "0 20px 24px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-            <Link
-              href="/"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                textDecoration: "none",
-              }}
-            >
-              <span
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 12,
-                  display: "grid",
-                  placeItems: "center",
-                  background: "linear-gradient(135deg, #ff7a1a, #f59e0b)",
-                  flexShrink: 0,
-                }}
-              >
-                <Car style={{ width: 20, height: 20, color: "#fff" }} />
-              </span>
-              <span
-                style={{
-                  fontSize: 20,
-                  fontWeight: 900,
-                  letterSpacing: "-0.02em",
-                  color: "#f0f4ff",
-                }}
-              >
-                SPOT<span style={{ color: "#ff7a1a" }}>R</span>
-              </span>
-            </Link>
-          </div>
-
-          {/* Nav links */}
-          <div style={{ flex: 1, padding: "16px 12px", display: "flex", flexDirection: "column", gap: 4 }}>
-            {[
-              { href: "/dashboard", icon: LayoutDashboard, label: "Pipeline" },
-              { href: "/dashboard/feed", icon: Radar, label: "Opportunity Feed" },
-              { href: "/dashboard/buybox", icon: Crosshair, label: "Buy Box" },
-              { href: "/dashboard/inventory", icon: Package, label: "Inventory" },
-            ].map(({ href, icon: Icon, label }) => (
-              <Link
-                key={href}
-                href={href}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  padding: "10px 12px",
-                  borderRadius: 10,
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: "#8b9ab8",
-                  textDecoration: "none",
-                  transition: "background 0.15s, color 0.15s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "rgba(255,255,255,0.06)";
-                  e.currentTarget.style.color = "#f0f4ff";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "";
-                  e.currentTarget.style.color = "#8b9ab8";
-                }}
-              >
-                <Icon style={{ width: 17, height: 17, flexShrink: 0 }} />
-                {label}
-              </Link>
-            ))}
-          </div>
-
-          {/* Sign out */}
-          <div style={{ padding: "0 12px" }}>
-            <button
-              onClick={() => signOut({ callbackUrl: "/" })}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                width: "100%",
-                padding: "10px 12px",
-                borderRadius: 10,
-                fontSize: 14,
-                fontWeight: 600,
-                color: "#4a5670",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                transition: "color 0.15s",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = "#f87171")}
-              onMouseLeave={(e) => (e.currentTarget.style.color = "#4a5670")}
-            >
-              <LogOut style={{ width: 17, height: 17 }} />
-              Sign out
-            </button>
-          </div>
-        </nav>
-
-        {/* Main content — offset by sidebar */}
-        <main
-          style={{
-            marginLeft: 220,
-            minHeight: "100vh",
-            background: "var(--bg-base)",
-          }}
-        >
+        <Sidebar pathname={pathname} email={data?.user?.email} />
+        <TabBar pathname={pathname} />
+        <main className="app-main">
+          <CompactTopBar />
           {children}
         </main>
       </div>

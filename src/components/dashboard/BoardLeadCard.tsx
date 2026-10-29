@@ -11,6 +11,7 @@ import {
 import type { Recommendation } from "@/lib/opportunity";
 import { isTerminalStage } from "@/lib/stages";
 import { getFollowUpStatus } from "@/lib/followUp";
+import { RECOMMENDATION_COLORS } from "@/lib/ui/colors";
 
 /**
  * Slim board card. Carries only what a buyer needs to triage a column at a
@@ -18,22 +19,16 @@ import { getFollowUpStatus } from "@/lib/followUp";
  * Score breakdowns, economics, trend graphs and provenance stay in the dossier.
  */
 
-const RECOMMENDATION_COLORS: Record<Recommendation, string> = {
-  BUY: "#34d399",
-  INVESTIGATE: "#fbbf24",
-  WATCH: "#60a5fa",
-  PASS: "#8b9ab8",
-};
 
 const badgeBase: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   gap: 4,
-  borderRadius: 6,
-  padding: "2px 7px",
-  fontSize: 10,
-  fontWeight: 800,
-  letterSpacing: "0.02em",
+  borderRadius: 999,
+  padding: "2px 8px",
+  fontSize: 11,
+  fontWeight: 600,
+  letterSpacing: "0.01em",
   whiteSpace: "nowrap",
 };
 
@@ -83,26 +78,17 @@ export default function BoardLeadCard({
   return (
     <div
       onClick={onClick}
+      className="hover-lift"
       style={{
-        marginBottom: 10,
         cursor: "pointer",
-        borderRadius: 12,
+        borderRadius: "var(--radius-md)",
         background: "var(--bg-card)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        borderLeft: isOverdue ? "3px solid #f87171" : "1px solid rgba(255,255,255,0.08)",
+        border: "1px solid var(--separator)",
+        boxShadow: isOverdue ? "inset 3px 0 0 var(--red), var(--shadow-sm)" : "var(--shadow-sm)",
         padding: "10px 11px",
         display: "flex",
         flexDirection: "column",
         gap: 8,
-        transition: "border-color 0.15s, box-shadow 0.15s",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = "0 6px 20px rgba(0,0,0,0.35)";
-        if (!isOverdue) e.currentTarget.style.borderColor = "rgba(255,122,26,0.4)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.boxShadow = "";
-        if (!isOverdue) e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
       }}
     >
       {/* Identity: thumbnail + title + asking price */}
@@ -115,7 +101,7 @@ export default function BoardLeadCard({
             flexShrink: 0,
             borderRadius: 7,
             overflow: "hidden",
-            background: "#0f1520",
+            background: "var(--bg-surface)",
           }}
         >
           {lead.photo_url ? (
@@ -135,8 +121,8 @@ export default function BoardLeadCard({
             title={getVehicleTitle(lead)}
             style={{
               fontSize: 12.5,
-              fontWeight: 700,
-              color: "#f0f4ff",
+              fontWeight: 600,
+              color: "var(--label)",
               lineHeight: 1.3,
               display: "-webkit-box",
               WebkitLineClamp: 2,
@@ -155,7 +141,7 @@ export default function BoardLeadCard({
               marginTop: 3,
             }}
           >
-            <span style={{ fontSize: 12.5, fontWeight: 800, color: "#f0f4ff" }}>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--label)" }}>
               {lead.price ? formatCurrency(lead.price) : "No asking price"}
             </span>
             {recommendation && (
@@ -164,8 +150,8 @@ export default function BoardLeadCard({
                 style={{
                   ...badgeBase,
                   color: RECOMMENDATION_COLORS[recommendation],
-                  background: `${RECOMMENDATION_COLORS[recommendation]}1a`,
-                  border: `1px solid ${RECOMMENDATION_COLORS[recommendation]}44`,
+                  background: `color-mix(in srgb, ${RECOMMENDATION_COLORS[recommendation]} 10%, transparent)`,
+                  border: `1px solid color-mix(in srgb, ${RECOMMENDATION_COLORS[recommendation]} 27%, transparent)`,
                 }}
               >
                 {recommendation}
@@ -181,14 +167,14 @@ export default function BoardLeadCard({
           display: "flex",
           alignItems: "center",
           gap: 8,
-          fontSize: 10.5,
-          color: "#8b9ab8",
+          fontSize: 11.5,
+          color: "var(--label-secondary)",
         }}
       >
         <span>{lead.miles ? `${new Intl.NumberFormat("en-US").format(lead.miles)} mi` : "Miles unknown"}</span>
-        <span style={{ color: "#1e2a3a" }}>·</span>
+        <span style={{ color: "var(--label-secondary)" }}>·</span>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
-          <MapPin style={{ width: 10, height: 10, color: "#4a5670" }} aria-hidden="true" />
+          <MapPin style={{ width: 10, height: 10, color: "var(--label-secondary)" }} aria-hidden="true" />
           {formatDistance(lead.distanceMiles)}
         </span>
       </div>
@@ -202,15 +188,15 @@ export default function BoardLeadCard({
           style={{
             ...badgeBase,
             display: "flex",
-            color: "#f87171",
-            background: "rgba(248,113,113,0.12)",
-            border: "1px solid rgba(248,113,113,0.4)",
+            color: "var(--red)",
+            background: "rgba(var(--red-rgb), 0.12)",
+            border: "1px solid rgba(var(--red-rgb), 0.4)",
             padding: "4px 8px",
-            fontSize: 10.5,
+            fontSize: 11.5,
           }}
         >
           <Clock style={{ width: 11, height: 11, flexShrink: 0 }} aria-hidden="true" />
-          <span style={{ fontWeight: 800 }}>Overdue</span>
+          <span style={{ fontWeight: 700 }}>Overdue</span>
           <span
             style={{
               fontWeight: 600,
@@ -226,8 +212,8 @@ export default function BoardLeadCard({
       {isDueSoon && lead.nextAction && lead.nextActionAt && (
         <p
           style={{
-            fontSize: 10.5,
-            color: "#fbbf24",
+            fontSize: 11.5,
+            color: "var(--yellow)",
             display: "flex",
             alignItems: "center",
             gap: 4,
@@ -246,8 +232,8 @@ export default function BoardLeadCard({
         <p
           title={lead.lastActivity.summary}
           style={{
-            fontSize: 10,
-            color: "#4a5670",
+            fontSize: 11,
+            color: "var(--label-secondary)",
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
@@ -272,9 +258,9 @@ export default function BoardLeadCard({
               <span
                 style={{
                   ...badgeBase,
-                  color: "#f87171",
-                  background: "rgba(248,113,113,0.1)",
-                  border: "1px solid rgba(248,113,113,0.3)",
+                  color: "var(--red)",
+                  background: "rgba(var(--red-rgb), 0.1)",
+                  border: "1px solid rgba(var(--red-rgb), 0.3)",
                 }}
               >
                 Passed
@@ -284,9 +270,9 @@ export default function BoardLeadCard({
               <span
                 style={{
                   ...badgeBase,
-                  color: "#ff9147",
-                  background: "rgba(255,122,26,0.12)",
-                  border: "1px solid rgba(255,122,26,0.35)",
+                  color: "var(--tint-text)",
+                  background: "rgba(var(--tint-rgb), 0.12)",
+                  border: "1px solid rgba(var(--tint-rgb), 0.35)",
                 }}
               >
                 <Eye style={{ width: 10, height: 10 }} aria-hidden="true" />
@@ -303,13 +289,13 @@ export default function BoardLeadCard({
                 alignItems: "center",
                 gap: 3,
                 flexShrink: 0,
-                borderRadius: 100,
+                borderRadius: 999,
                 padding: "2px 7px",
-                fontSize: 9.5,
-                fontWeight: 800,
-                color: "#60a5fa",
-                background: "rgba(96,165,250,0.12)",
-                border: "1px solid rgba(96,165,250,0.3)",
+                fontSize: 11.5,
+                fontWeight: 700,
+                color: "var(--blue)",
+                background: "rgba(var(--blue-rgb), 0.12)",
+                border: "1px solid rgba(var(--blue-rgb), 0.3)",
               }}
             >
               <UserRound style={{ width: 9, height: 9 }} aria-hidden="true" />
