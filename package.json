@@ -3,13 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "npm run db:setup && next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
     "test:inventory": "vitest run src/app/dashboard/inventory/page.test.tsx",
     "seed": "node prisma/seed.js",
+    "db:setup": "prisma db push --skip-generate && npm run seed",
     "seed:fixtures": "node scripts/seed-feed-fixtures.mjs"
   },
   "prisma": {

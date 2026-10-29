@@ -21,7 +21,7 @@ Spotr is a B2B, multi-tenant dealer vehicle-acquisition intelligence platform. I
 
 ## Commands
 
-- `npm run dev` / `npm run build` / `npm run start`
+- `npm run dev` (runs `npm run db:setup` first — `prisma db push` + admin seed — then `next dev`) / `npm run build` / `npm run start`
 - Lint: `npm run lint` · Typecheck: `npx tsc --noEmit` · Seed admin: `npm run seed`
 - Tests: `npm test` / `npm run test:inventory` / `./scripts/run-inventory-tests.sh` (Vitest, `src/**/*.test.ts` & `src/**/*.test.tsx` — pure `src/lib` logic, route handlers, and UI component tests).
 - `npm run seed:fixtures` — opt-in, dev-only synthetic feed fixtures (`SPOTR-FEED-` VINs); never run in production/entrypoint.
