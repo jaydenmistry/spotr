@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import axios from "axios";
 import LeadCard from "@/components/dashboard/LeadCard";
@@ -64,11 +64,14 @@ function InventoryContent() {
   const [pageSize, setPageSize] = useState<number>(initialPageSize);
   const [page, setPage] = useState(initialPage);
 
-  useEffect(() => {
-    const p = searchParams.get("page");
-    const parsed = p ? Math.max(1, parseInt(p, 10) || 1) : 1;
-    setPage(parsed);
-  }, [searchParams]);
+  // Follow the URL (back/forward) by adjusting state during render when the
+  // page param changes, instead of a sync-setState effect.
+  // Compared by value: useSearchParams may hand back a new object each render.
+  const [prevPageParam, setPrevPageParam] = useState(pageParam);
+  if (pageParam !== prevPageParam) {
+    setPrevPageParam(pageParam);
+    setPage(pageParam ? Math.max(1, parseInt(pageParam, 10) || 1) : 1);
+  }
 
   const updatePageInUrl = (newPage: number, newSize: number = pageSize) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -125,13 +128,17 @@ function InventoryContent() {
 
   // Reset to page 1 whenever any filter/sort/pageSize changes
   const isFirstMount = useRef(true);
+  // Reads the latest pageSize/searchParams without re-running on them.
+  const resetToFirstPage = useEffectEvent(() => {
+    setPage(1);
+    updatePageInUrl(1);
+  });
   useEffect(() => {
     if (isFirstMount.current) {
       isFirstMount.current = false;
       return;
     }
-    setPage(1);
-    updatePageInUrl(1);
+    resetToFirstPage();
   }, [searchTerm, selectedMakes, minPrice, maxPrice, maxDistance, movementFilter, sortOrder, pageSize]);
 
   const filteredAndSortedLeads = useMemo(() => {

@@ -61,7 +61,8 @@ export default function PrivacyPage() {
       </ul>
       <p>
         If privacy-friendly, cookieless analytics are enabled, they record aggregate page views without identifying
-        you.
+        you. If error monitoring is enabled, crash reports are sent to Sentry with personal data such as IP addresses
+        and cookies excluded.
       </p>
 
       <h2>How long we keep it</h2>
