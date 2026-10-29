@@ -4,7 +4,10 @@ import { SpotrLogo } from "@/components/ui/SpotrLogo";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ArrowRight, Car, Lock, Mail } from "lucide-react";
+import { ArrowRight, Lock, Mail } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { spring } from "@/lib/motion";
 import Link from "next/link";
 
 export default function LoginPage() {
@@ -19,289 +22,158 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    const res = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
+    try {
+      const res = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
 
-    if (res?.error) {
-      setError("Invalid credentials. Try demo@spotrcars.com / password");
+      if (res?.error) {
+        setError("Invalid credentials. Try demo@spotrcars.com / password");
+        setLoading(false);
+      } else {
+        router.push("/dashboard");
+      }
+    } catch {
+      setError("Couldn't reach the server. Check your connection and try again.");
       setLoading(false);
-    } else {
-      router.push("/dashboard");
     }
   };
 
   return (
-    <div
+    <main
       style={{
         minHeight: "100vh",
-        background: "var(--bg-base)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: "24px",
+        padding: "24px 16px",
         position: "relative",
         overflow: "hidden",
+        background: "var(--bg-base)",
       }}
     >
-      {/* Ambient orbs */}
-      <div
-        style={{
-          position: "absolute",
-          width: 500,
-          height: 500,
-          borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(var(--tint-rgb), 0.12) 0%, transparent 70%)",
-          top: -120,
-          left: -120,
-          pointerEvents: "none",
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          width: 400,
-          height: 400,
-          borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(var(--purple-rgb), 0.07) 0%, transparent 70%)",
-          bottom: -80,
-          right: -80,
-          pointerEvents: "none",
-        }}
-      />
+      <div aria-hidden="true" className="lp-hero-glow" style={{ inset: "-30% -20% auto" }} />
 
-      {/* Grid overlay */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          backgroundImage: `linear-gradient(rgba(var(--ink-rgb), 0.02) 1px, transparent 1px),
-                           linear-gradient(90deg, rgba(var(--ink-rgb), 0.02) 1px, transparent 1px)`,
-          backgroundSize: "60px 60px",
-          pointerEvents: "none",
-        }}
-      />
+      <div style={{ position: "absolute", top: 16, right: 16, width: 64 }}>
+        <ThemeToggle label={false} />
+      </div>
 
-      <div style={{ position: "relative", width: "100%", maxWidth: 440 }}>
-        {/* Logo / back link */}
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <Link
-            href="/"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 10,
-              textDecoration: "none",
-            }}
-          >
+      <div style={{ position: "relative", width: "100%", maxWidth: 400 }}>
+        <motion.div
+          initial={{ opacity: 0, y: -10, scale: 0.9 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={spring.bouncy}
+          style={{ display: "flex", justifyContent: "center", marginBottom: 28 }}
+        >
+          <Link href="/" aria-label="Spotr home" className="pressable" style={{ textDecoration: "none" }}>
             <SpotrLogo size={44} />
           </Link>
-        </div>
+        </motion.div>
 
-        {/* Card */}
-        <div
+        <motion.div
+          initial={{ opacity: 0, y: 24, scale: 0.97 }}
+          animate={error ? { opacity: 1, y: 0, scale: 1, x: [0, -10, 9, -6, 4, 0] } : { opacity: 1, y: 0, scale: 1, x: 0 }}
+          transition={error ? { duration: 0.42, ease: "easeOut" } : { ...spring.smooth, delay: 0.08 }}
+          className="material"
           style={{
-            background: "var(--bg-card)",
-            border: "1px solid rgba(var(--ink-rgb), 0.09)",
-            borderRadius: 20,
-            padding: "40px 36px",
-            boxShadow: "0 24px 60px rgba(0,0,0,0.5)",
+            borderRadius: "var(--radius-xl)",
+            border: "1px solid var(--separator)",
+            boxShadow: "var(--shadow-lg), inset 0 1px 0 var(--material-edge)",
+            padding: "32px 28px 28px",
           }}
         >
-          <div style={{ marginBottom: 28 }}>
-            <h1
-              style={{
-                fontSize: 26,
-                fontWeight: 700,
-                letterSpacing: "-0.02em",
-                color: "var(--label)",
-                marginBottom: 6,
-              }}
-            >
-              Sign in
-            </h1>
-            <p style={{ fontSize: 14, color: "var(--label-secondary)" }}>
-              Access the Spotr acquisition platform
-            </p>
-          </div>
+          <h1 className="t-title1" style={{ color: "var(--label)", textAlign: "center" }}>Sign in</h1>
+          <p className="t-subhead" style={{ color: "var(--label-secondary)", textAlign: "center", marginTop: 6, marginBottom: 26 }}>
+            Welcome back to your buying desk.
+          </p>
 
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            {/* Email */}
-            <div>
-              <label
-                htmlFor="email-address"
-                style={{
-                  display: "block",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  letterSpacing: "0.05em",
-                  color: "var(--label-secondary)",
-                  marginBottom: 7,
-                  textTransform: "uppercase",
-                }}
-              >
-                Email
-              </label>
-              <div style={{ position: "relative" }}>
-                <Mail
-                  style={{
-                    position: "absolute",
-                    left: 14,
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    width: 16,
-                    height: 16,
-                    color: "var(--label-tertiary)",
-                    pointerEvents: "none",
-                  }}
-                />
+            <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <span className="t-footnote" style={{ fontWeight: 600, color: "var(--label-secondary)" }}>Email</span>
+              <span style={{ position: "relative" }}>
+                <Mail aria-hidden="true" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", width: 16, height: 16, color: "var(--label-secondary)", pointerEvents: "none" }} />
                 <input
-                  id="email-address"
-                  name="email"
                   type="email"
+                  autoComplete="email"
                   required
+                  aria-invalid={Boolean(error)}
+                  aria-describedby={error ? "login-error" : undefined}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  style={{
-                    width: "100%",
-                    boxSizing: "border-box",
-                    background: "rgba(var(--ink-rgb), 0.04)",
-                    border: "1px solid rgba(var(--ink-rgb), 0.1)",
-                    borderRadius: 10,
-                    padding: "11px 14px 11px 42px",
-                    fontSize: 14,
-                    color: "var(--label)",
-                    outline: "none",
-                    transition: "border-color 0.15s",
-                  }}
-                  onFocus={(e) => (e.target.style.borderColor = "var(--tint)")}
-                  onBlur={(e) => (e.target.style.borderColor = "rgba(var(--ink-rgb), 0.1)")}
-                  placeholder="demo@spotrcars.com"
+                  className="field"
+                  style={{ height: 44, paddingLeft: 38, fontSize: 15 }}
                 />
-              </div>
-            </div>
+              </span>
+            </label>
 
-            {/* Password */}
-            <div>
-              <label
-                htmlFor="password"
-                style={{
-                  display: "block",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  letterSpacing: "0.05em",
-                  color: "var(--label-secondary)",
-                  marginBottom: 7,
-                  textTransform: "uppercase",
-                }}
-              >
-                Password
-              </label>
-              <div style={{ position: "relative" }}>
-                <Lock
-                  style={{
-                    position: "absolute",
-                    left: 14,
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    width: 16,
-                    height: 16,
-                    color: "var(--label-tertiary)",
-                    pointerEvents: "none",
-                  }}
-                />
+            <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <span className="t-footnote" style={{ fontWeight: 600, color: "var(--label-secondary)" }}>Password</span>
+              <span style={{ position: "relative" }}>
+                <Lock aria-hidden="true" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", width: 16, height: 16, color: "var(--label-secondary)", pointerEvents: "none" }} />
                 <input
-                  id="password"
-                  name="password"
                   type="password"
+                  autoComplete="current-password"
                   required
+                  aria-invalid={Boolean(error)}
+                  aria-describedby={error ? "login-error" : undefined}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  style={{
-                    width: "100%",
-                    boxSizing: "border-box",
-                    background: "rgba(var(--ink-rgb), 0.04)",
-                    border: "1px solid rgba(var(--ink-rgb), 0.1)",
-                    borderRadius: 10,
-                    padding: "11px 14px 11px 42px",
-                    fontSize: 14,
-                    color: "var(--label)",
-                    outline: "none",
-                    transition: "border-color 0.15s",
-                  }}
-                  onFocus={(e) => (e.target.style.borderColor = "var(--tint)")}
-                  onBlur={(e) => (e.target.style.borderColor = "rgba(var(--ink-rgb), 0.1)")}
-                  placeholder="••••••••"
+                  className="field"
+                  style={{ height: 44, paddingLeft: 38, fontSize: 15 }}
                 />
-              </div>
-            </div>
+              </span>
+            </label>
 
-            {/* Error */}
-            {error && (
-              <div
-                style={{
-                  padding: "10px 14px",
-                  borderRadius: 10,
-                  background: "rgba(var(--red-rgb), 0.1)",
-                  border: "1px solid rgba(var(--red-rgb), 0.25)",
-                  fontSize: 13,
-                  color: "var(--red)",
-                }}
-              >
-                {error}
-              </div>
-            )}
+            <AnimatePresence initial={false}>
+              {error && (
+                <motion.p
+                  id="login-error"
+                  role="alert"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={spring.snappy}
+                  style={{ overflow: "hidden", fontSize: 13, fontWeight: 500, color: "var(--red)" }}
+                >
+                  <span style={{ display: "block", padding: "10px 14px", borderRadius: "var(--radius-md)", background: "rgba(var(--red-rgb), 0.1)" }}>{error}</span>
+                </motion.p>
+              )}
+            </AnimatePresence>
 
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-                width: "100%",
-                padding: "13px 24px",
-                fontSize: 15,
-                fontWeight: 600,
-                color: "#fff",
-                borderRadius: 12,
-                border: "none",
-                cursor: loading ? "not-allowed" : "pointer",
-                background: loading
-                  ? "rgba(var(--tint-rgb), 0.5)"
-                  : "linear-gradient(135deg, var(--tint), var(--tint-2))",
-                boxShadow: loading ? "none" : "0 8px 24px rgba(var(--tint-rgb), 0.4)",
-                transition: "opacity 0.15s",
-                marginTop: 4,
-              }}
-            >
-              {loading ? "Signing in…" : "Sign in"}
-              {!loading && <ArrowRight style={{ width: 16, height: 16 }} />}
+            <button type="submit" disabled={loading} className="btn btn-lg btn-primary pressable" style={{ width: "100%", marginTop: 6 }}>
+              {loading ? (
+                <>
+                  <span aria-hidden="true" style={{ width: 16, height: 16, borderRadius: 999, border: "2px solid rgba(255,255,255,0.35)", borderTopColor: "#fff", animation: "spin 0.8s linear infinite" }} />
+                  Signing in…
+                </>
+              ) : (
+                <>
+                  Sign in <ArrowRight size={17} />
+                </>
+              )}
             </button>
           </form>
 
-          {/* Demo hint */}
-          <div
-            style={{
-              marginTop: 20,
-              padding: "12px 14px",
-              borderRadius: 10,
-              background: "rgba(var(--tint-rgb), 0.07)",
-              border: "1px solid rgba(var(--tint-rgb), 0.18)",
-              fontSize: 12,
-              color: "var(--label-secondary)",
-              lineHeight: 1.6,
-            }}
-          >
+          {/* Demo phase only — remove before real customers (see CLAUDE.md). */}
+          <p style={{ marginTop: 18, padding: "11px 14px", borderRadius: "var(--radius-md)", background: "rgba(var(--tint-rgb), 0.1)", fontSize: 13, color: "var(--label-secondary)", textAlign: "center" }}>
             <span style={{ fontWeight: 600, color: "var(--tint-text)" }}>Demo access: </span>
             demo@spotrcars.com · password
-          </div>
-        </div>
+          </p>
+        </motion.div>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          style={{ textAlign: "center", marginTop: 20 }}
+        >
+          <Link href="/" className="hover-label" style={{ fontSize: 13, color: "var(--label-secondary)", textDecoration: "none" }}>
+            ← Back to spotrcars.com
+          </Link>
+        </motion.p>
       </div>
-    </div>
+    </main>
   );
 }

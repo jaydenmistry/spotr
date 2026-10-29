@@ -430,18 +430,10 @@ input[type="range"] { accent-color: var(--tint); }
   .page { padding: 1.25rem 1rem 2rem; }
 }
 
-/* ── Legacy keyframes (landing page; removed in its redesign) ─ */
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(28px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
+/* ── Keyframes ────────────────────────────────────────────── */
 @keyframes fadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
-}
-@keyframes pulse-ring {
-  0%   { transform: scale(1); opacity: 0.8; }
-  100% { transform: scale(1.6); opacity: 0; }
 }
 @keyframes spin {
   to { transform: rotate(360deg); }
@@ -577,3 +569,213 @@ input[type="range"] { accent-color: var(--tint); }
 @media (prefers-reduced-transparency: reduce) {
   [style*="backdrop-filter"] { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
 }
+
+/* ════════════════════════════════════════════════════════════
+   Landing page
+   ════════════════════════════════════════════════════════════ */
+.lp-nav-wrap {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+  padding: 0 12px;
+  pointer-events: none;
+}
+.lp-nav {
+  pointer-events: auto;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px 10px 20px;
+}
+
+.lp-display {
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 9vw, 6.5rem);
+  line-height: 1.02;
+  letter-spacing: -0.045em;
+  font-weight: 700;
+  color: var(--label);
+}
+.lp-gradient-text {
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.lp-lede {
+  max-width: 640px;
+  margin: 26px auto 0;
+  font-size: clamp(1.0625rem, 2vw, 1.3125rem);
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  color: var(--label-body);
+}
+.lp-hero-glow {
+  position: absolute;
+  inset: -20% -10% auto;
+  height: 900px;
+  background:
+    radial-gradient(40% 50% at 30% 30%, rgba(var(--tint-rgb), 0.28), transparent 70%),
+    radial-gradient(35% 45% at 72% 40%, rgba(62, 166, 255, 0.2), transparent 70%);
+  filter: blur(20px);
+  pointer-events: none;
+}
+.lp-product-glow {
+  position: absolute;
+  inset: 10% 8% -6%;
+  background: var(--brand-gradient);
+  filter: blur(90px);
+  opacity: 0.5;
+  border-radius: 40px;
+  pointer-events: none;
+}
+.lp-window {
+  position: relative;
+  border-radius: 22px;
+  overflow: hidden;
+  background: var(--bg-surface);
+  border: 1px solid var(--separator-strong);
+  box-shadow: var(--shadow-lg), inset 0 1px 0 var(--material-edge);
+}
+.lp-window-body { display: flex; min-height: 380px; }
+.lp-window-side {
+  width: 200px;
+  flex-shrink: 0;
+  padding: 18px 12px;
+  border-right: 1px solid var(--separator);
+  background: rgba(var(--ink-rgb), 0.02);
+}
+.lp-car-thumb {
+  width: 76px;
+  height: 58px;
+  border-radius: 12px;
+  flex-shrink: 0;
+  background:
+    radial-gradient(60% 40% at 50% 85%, rgba(0, 0, 0, 0.35), transparent 70%),
+    linear-gradient(160deg, rgba(var(--tint-rgb), 0.55), rgba(62, 166, 255, 0.35));
+}
+
+.lp-section {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 110px 20px 0;
+}
+.lp-eyebrow { color: var(--tint-text); margin-bottom: 12px; }
+.lp-h2 {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  line-height: 1.06;
+  letter-spacing: -0.035em;
+  font-weight: 700;
+  color: var(--label);
+  max-width: 800px;
+}
+
+.lp-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+.lp-principle {
+  height: 100%;
+  padding: 28px;
+  border-radius: var(--radius-xl);
+  background: var(--bg-card);
+  border: 1px solid var(--separator);
+}
+
+.lp-story { display: flex; gap: 56px; margin-top: 40px; }
+.lp-story-steps { flex: 1; min-width: 0; }
+.lp-story-step { min-height: 70vh; display: flex; flex-direction: column; justify-content: center; }
+.lp-story-stage { flex: 1; min-width: 0; }
+.lp-story-sticky { position: sticky; top: 20vh; }
+.lp-visual {
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  border-radius: var(--radius-xl);
+  background: var(--bg-surface);
+  border: 1px solid var(--separator-strong);
+  box-shadow: var(--shadow-lg);
+}
+@media (max-width: 900px) {
+  .lp-story-step { min-height: 0; padding: 36px 0; opacity: 1 !important; }
+}
+
+.lp-bento {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 40px;
+}
+.lp-bento > div:has(.lp-tile-wide) { grid-column: span 2; }
+.lp-tile {
+  position: relative;
+  height: 100%;
+  min-height: 230px;
+  padding: 28px;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  background:
+    radial-gradient(80% 60% at 100% 0%, color-mix(in srgb, var(--tile-tone) 14%, transparent), transparent 70%),
+    var(--bg-card);
+  border: 1px solid var(--separator);
+}
+@media (max-width: 900px) {
+  .lp-bento { grid-template-columns: 1fr; }
+  .lp-bento > div:has(.lp-tile-wide) { grid-column: auto; }
+}
+
+.lp-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 32px;
+  padding: 48px 24px;
+  border-radius: var(--radius-xl);
+  background: var(--bg-card);
+  border: 1px solid var(--separator);
+}
+.lp-fact-value {
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 6vw, 4.5rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.lp-cta {
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+  padding: 80px 24px;
+  border-radius: 36px;
+  /* Darker than the brand gradient so white text clears AA across it. */
+  background: linear-gradient(135deg, #4b2fd6 0%, #3a3fc4 50%, #1d5fbf 100%);
+  margin-bottom: 110px;
+}
+.lp-cta a:focus-visible { outline-color: #fff; }
+.lp-kanban { display: flex; gap: 10px; align-items: stretch; }
+@media (max-width: 480px) {
+  .lp-kanban { flex-direction: column; }
+}
+@media (forced-colors: active) {
+  .lp-gradient-text, .lp-fact-value { background: none; color: CanvasText; }
+}
+.lp-cta::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(50% 80% at 50% 0%, rgba(255, 255, 255, 0.12), transparent 70%);
+  pointer-events: none;
+}
+.lp-cta > * { position: relative; }

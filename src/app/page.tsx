@@ -1,785 +1,564 @@
 "use client";
 
-import { SpotrLogo as BrandLogo } from "@/components/ui/SpotrLogo";
 import Link from "next/link";
-import Image from "next/image";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import {
+  AnimatePresence,
+  motion,
+  useMotionValueEvent,
+  useReducedMotion,
+  useScroll,
+  useTransform,
+} from "motion/react";
 import {
   ArrowRight,
-  Bell,
-  CalendarDays,
-  Car,
-  Check,
-  CircleDollarSign,
+  CalendarClock,
+  ChevronDown,
+  Crosshair,
+  Database,
+  FileText,
   Gauge,
-  Mail,
-  MapPin,
-  MessageSquare,
-  Search,
+  LayoutGrid,
+  Radar,
+  Scale,
   ShieldCheck,
-  TrendingUp,
-  Users,
-  Zap,
-  X,
-  Plus,
+  type LucideIcon,
 } from "lucide-react";
+import { SpotrLogo } from "@/components/ui/SpotrLogo";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
+import { spring } from "@/lib/motion";
 
-/* ─── Data ──────────────────────────────────────────────────── */
+/* ─── Content ────────────────────────────────────────────────────
+   Marketing copy describes only what the product does today: licensed
+   provider data (no scraping or marketplace automation), heuristic scores
+   labeled as estimates, and no invented customers or usage numbers. */
 
-const logoCloud = [
-  "Northline Auto",
-  "Summit Ford",
-  "Vista Motors",
-  "Prime CDJR",
-  "Oak City Toyota",
-  "Metro Mazda",
-  "Harbor Honda",
-  "Canyon Kia",
+const NAV_LINKS = [
+  { label: "How it works", href: "#how-it-works" },
+  { label: "Product", href: "#product" },
+  { label: "FAQ", href: "#faq" },
 ];
 
-const workflow = [
-  {
-    icon: Search,
-    eyebrow: "Step 1 — Discover",
-    title: "Every private listing, zero tab-hopping",
-    copy: "Spotr automatically pulls fresh local private-seller listings from Facebook Marketplace, Craigslist, and Autotrader into one clean workspace — updated in real time.",
-    color: "var(--tint)",
-  },
-  {
-    icon: MessageSquare,
-    eyebrow: "Step 2 — Engage",
-    title: "Call, text, and email from one buying desk",
-    copy: "Reach sellers the moment a car hits the market. Log notes, track every reply, and move deals through your pipeline without switching apps.",
-    color: "var(--tint-2)",
-  },
+const PRINCIPLES: { icon: LucideIcon; title: string; copy: string }[] = [
   {
     icon: Gauge,
-    eyebrow: "Step 3 — Acquire",
-    title: "Transparent scoring ranks every opportunity",
-    copy: "Spotr's deterministic heuristic scores each listing on asking price vs. its estimated range, mileage, freshness, and data completeness — with the full point breakdown, source, and a confidence level on every card. No black-box AI.",
-    color: "var(--purple)",
+    title: "Every score shows its math.",
+    copy: "A deterministic heuristic with the full point breakdown, risk deductions, and a confidence level on every card. No black box.",
+  },
+  {
+    icon: Scale,
+    title: "Asking is never an estimate.",
+    copy: "Listing asking prices, Spotr estimates, and your recorded offers are labeled separately, so nobody mistakes one for another.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Sourced the right way.",
+    copy: "Listings come from licensed data providers through official APIs, with the source and freshness shown on each one.",
   },
 ];
 
-const painPoints = [
+type StepKey = "buybox" | "feed" | "dossier" | "pipeline";
+
+const STEPS: { key: StepKey; icon: LucideIcon; eyebrow: string; title: string; copy: string }[] = [
   {
-    without: "Dozens of browser tabs for each marketplace",
-    with: "One clean workspace for every private listing",
+    key: "buybox",
+    icon: Crosshair,
+    eyebrow: "Define",
+    title: "Tell Spotr what your desk buys.",
+    copy: "Set years, mileage, price bands, and make priorities in your buy box. Every opportunity is ranked against it — change it, and the feed re-ranks.",
   },
   {
-    without: "Sellers go cold because follow-up is manual",
-    with: "Automated reminders keep every seller warm",
+    key: "feed",
+    icon: Radar,
+    eyebrow: "Discover",
+    title: "A feed ranked by fit, not by noise.",
+    copy: "Fresh listings from licensed providers arrive scored and sorted. Watch the promising ones, pass on the rest with a reason, and undo a pass anytime.",
   },
   {
-    without: "No idea which cars are worth pursuing",
-    with: "A transparent opportunity score — breakdown included — shows which car to call next",
+    key: "dossier",
+    icon: FileText,
+    eyebrow: "Decide",
+    title: "The whole case for a car, on one sheet.",
+    copy: "Asking price, estimated retail band, a conservative max offer, scenarios, risks, and missing data — each figure tagged with where it came from.",
   },
   {
-    without: "Cars vanish into spreadsheets & lost sticky notes",
-    with: "A live pipeline that tracks every deal from spot to purchase",
+    key: "pipeline",
+    icon: LayoutGrid,
+    eyebrow: "Acquire",
+    title: "Nothing slips through the cracks.",
+    copy: "Drag deals across a six-stage pipeline, schedule the next action, log offers, and see what's overdue the moment you sign in.",
   },
 ];
 
-const stats = [
-  { value: "86+", label: "Fresh listings daily", icon: Car },
-  { value: "3×", label: "Faster seller contact", icon: Zap },
-  { value: "41", label: "Sellers reached today", icon: MessageSquare },
-  { value: "100%", label: "Explainable scoring", icon: Gauge },
+const FEATURES: { icon: LucideIcon; title: string; copy: string; span?: boolean; tone: string }[] = [
+  {
+    icon: Radar,
+    title: "Opportunity Feed",
+    copy: "Heuristic scoring across buy-box fit, estimated margin, price advantage, data confidence, and freshness — with a breakdown one tap away.",
+    span: true,
+    tone: "var(--tint)",
+  },
+  {
+    icon: FileText,
+    title: "Acquisition dossier",
+    copy: "Economics, scenarios, risks, activity history, and follow-ups in a single sheet.",
+    tone: "var(--blue)",
+  },
+  {
+    icon: CalendarClock,
+    title: "Follow-ups that surface themselves",
+    copy: "Next actions with due dates. Overdue and due-soon work rises to the top.",
+    tone: "var(--orange)",
+  },
+  {
+    icon: Crosshair,
+    title: "Buy box",
+    copy: "Your acquisition criteria, applied to every recommendation.",
+    tone: "var(--green)",
+  },
+  {
+    icon: Database,
+    title: "Provenance on every number",
+    copy: "Provider data, Spotr estimates, and assumptions are tagged so nobody confuses one for another. Confidence reflects how complete the listing data is.",
+    tone: "var(--purple)",
+  },
 ];
 
-const faqs = [
+const FACTS: { value: number; suffix?: string; label: string }[] = [
+  { value: 6, label: "pipeline stages, from new lead to acquired" },
+  { value: 5, label: "scoring factors, each with its points shown" },
+  { value: 0, label: "scrapers, logins, or CAPTCHA tricks" },
+];
+
+const FAQS = [
   {
     q: "What problem does Spotr solve?",
-    a: "Car dealers lose deals because they're manually browsing dozens of tabs, chasing sellers via personal phones, and tracking opportunities in spreadsheets. Spotr replaces that chaos with one purpose-built acquisition platform.",
+    a: "Buying desks lose good cars to slow, scattered workflows. Spotr ranks opportunities against what you actually buy, lays out the economics, and keeps follow-ups from going cold — in one place.",
+  },
+  {
+    q: "Where do the listings come from?",
+    a: "From licensed vehicle-data providers through their official APIs. Spotr does not scrape marketplaces, automate logins, or work around any site's terms. Each listing shows its source and when Spotr found it.",
+  },
+  {
+    q: "Are the scores and values real appraisals?",
+    a: "No, and Spotr labels them that way. Scores, estimated ranges, and max offers come from a transparent, deterministic heuristic. They are planning estimates, labeled as such, never a market quote.",
   },
   {
     q: "Does this replace our CRM?",
-    a: "No. Spotr is laser-focused on the acquisition side: finding private-seller cars, managing outreach, and moving opportunities into inventory before your competitors call first.",
+    a: "No. Spotr focuses on the acquisition side: finding cars, deciding which are worth pursuing, and moving them through to purchase.",
   },
   {
-    q: "How do I get started?",
-    a: "Use the 'Get a Demo' button to access the live demo workspace — no signup required. Your team can explore the full pipeline experience immediately.",
+    q: "How do I try it?",
+    a: "Sign in to the demo workspace to explore the feed, the dossier, and the pipeline.",
   },
 ];
 
-const previewListings = [
-  {
-    name: "2018 Toyota 4Runner",
-    price: "$31,500",
-    miles: "54k mi",
-    source: "Facebook",
-    score: 92,
-    image: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=700&q=80",
-    badge: "Hot lead",
-    badgeColor: "var(--red)",
-  },
-  {
-    name: "2021 Ford F-150",
-    price: "$39,200",
-    miles: "37k mi",
-    source: "Autotrader",
-    score: 87,
-    image: "https://images.unsplash.com/photo-1609521263047-f8f205293f24?auto=format&fit=crop&w=700&q=80",
-    badge: "New today",
-    badgeColor: "var(--green)",
-  },
-];
+/* ─── Motion helpers ─────────────────────────────────────────── */
 
-/* ─── Shared styles ──────────────────────────────────────────── */
-
-const S = {
-  card: {
-    background: "var(--bg-card)",
-    border: "1px solid rgba(var(--ink-rgb), 0.08)",
-    borderRadius: 16,
-  } as React.CSSProperties,
-  section: {
-    background: "var(--bg-base)",
-  } as React.CSSProperties,
-};
-
-/* ─── Sub-components ─────────────────────────────────────────── */
-
-function SpotrLogo() {
+function Reveal({ children, delay = 0, y = 24 }: { children: React.ReactNode; delay?: number; y?: number }) {
   return (
-    <Link href="/" className="flex items-center" aria-label="Spotr home" style={{ textDecoration: "none" }}>
-      <BrandLogo size={34} />
-    </Link>
+    <motion.div
+      initial={{ opacity: 0, y }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "0px 0px -12% 0px" }}
+      transition={{ ...spring.smooth, duration: 0.7, delay }}
+    >
+      {children}
+    </motion.div>
   );
 }
 
-function NavBar() {
+/** Headline that assembles word by word, each settling out of a soft blur. */
+function WordsIn({ text, delay = 0, gradient = false }: { text: string; delay?: number; gradient?: boolean }) {
+  const reduceMotion = useReducedMotion();
   return (
-    <header
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 100,
-        background: "rgba(var(--base-rgb), 0.85)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-        borderBottom: "1px solid rgba(var(--ink-rgb), 0.07)",
-      }}
-    >
-      <div
-        style={{
-          maxWidth: 1280,
-          margin: "0 auto",
-          padding: "0 24px",
-          height: 64,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 24,
-        }}
-      >
-        <SpotrLogo />
-
-        <nav
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 32,
-            fontSize: 14,
-            fontWeight: 500,
-            color: "var(--label-secondary)",
-          }}
-          className="hidden lg:flex"
+    <span style={{ display: "block" }}>
+      {text.split(" ").map((word, index) => (
+        <motion.span
+          key={`${word}-${index}`}
+          initial={reduceMotion ? false : { opacity: 0, y: 28, filter: "blur(10px)" }}
+          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          transition={{ ...spring.smooth, duration: 0.7, delay: delay + index * 0.05 }}
+          style={{ display: "inline-block", marginRight: "0.24em" }}
         >
-          {["How it Works", "Product", "FAQ"].map((item) => (
-            <a
-              key={item}
-              href={`#${item.toLowerCase().replaceAll(" ", "-")}`}
-              style={{ transition: "color 0.15s" }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = "var(--label)")}
-              onMouseLeave={(e) => (e.currentTarget.style.color = "var(--label-secondary)")}
-            >
-              {item}
-            </a>
-          ))}
-        </nav>
+          <span className={gradient ? "lp-gradient-text" : undefined}>{word}</span>
+        </motion.span>
+      ))}
+    </span>
+  );
+}
 
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Link
-            href="/login"
-            style={{
-              padding: "8px 16px",
-              fontSize: 14,
-              fontWeight: 600,
-              color: "var(--label-secondary)",
-              borderRadius: 10,
-              transition: "color 0.15s",
-            }}
-          >
-            Login
-          </Link>
-          <Link
-            href="/login"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "9px 20px",
-              fontSize: 14,
-              fontWeight: 600,
-              color: "#fff",
-              borderRadius: 10,
-              background: "linear-gradient(135deg, var(--tint), var(--tint-2))",
-              boxShadow: "0 4px 20px rgba(var(--tint-rgb), 0.4)",
-              transition: "opacity 0.15s, transform 0.15s",
-              whiteSpace: "nowrap",
-            }}
-          >
-            Get a Demo
-            <ArrowRight style={{ width: 15, height: 15 }} />
-          </Link>
+/* ─── Product vignettes (sample data, illustrative) ──────────── */
+
+function SampleTag() {
+  return (
+    <span className="t-eyebrow" style={{ fontSize: 10, color: "var(--yellow)", background: "rgba(var(--yellow-rgb), 0.14)", borderRadius: 999, padding: "3px 8px" }}>
+      Sample data
+    </span>
+  );
+}
+
+function ScoreRing({ score, size = 54 }: { score: number; size?: number }) {
+  const color = score >= 65 ? "var(--green)" : score >= 45 ? "var(--yellow)" : "var(--red)";
+  return (
+    <span style={{ position: "relative", width: size, height: size, display: "grid", placeItems: "center", flexShrink: 0 }}>
+      <svg width={size} height={size} viewBox="0 0 50 50" aria-hidden="true" style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)" }}>
+        <circle cx="25" cy="25" r="21" fill="none" stroke="rgba(var(--ink-rgb), 0.1)" strokeWidth="4.5" />
+        <motion.circle
+          cx="25"
+          cy="25"
+          r="21"
+          fill="none"
+          stroke={color}
+          strokeWidth="4.5"
+          strokeLinecap="round"
+          initial={{ pathLength: 0 }}
+          whileInView={{ pathLength: score / 100 }}
+          viewport={{ once: true }}
+          transition={{ ...spring.smooth, duration: 1.2, delay: 0.2 }}
+        />
+      </svg>
+      <span className="tabular" style={{ fontSize: size * 0.32, fontWeight: 700, color: "var(--label)" }}>{score}</span>
+    </span>
+  );
+}
+
+function MockCard({ title, meta, asking, maxOffer, score, rec }: { title: string; meta: string; asking: string; maxOffer: string; score: number; rec: "BUY" | "INVESTIGATE" | "WATCH" }) {
+  const recColor = rec === "BUY" ? "var(--green)" : rec === "INVESTIGATE" ? "var(--yellow)" : "var(--blue)";
+  return (
+    <div style={{ display: "flex", gap: 14, alignItems: "center", padding: 14, borderRadius: "var(--radius-lg)", background: "var(--bg-card)", border: "1px solid var(--separator)", boxShadow: "var(--shadow-sm)" }}>
+      <div aria-hidden="true" className="lp-car-thumb" />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <span className="t-eyebrow" style={{ fontSize: 10, color: recColor, background: `color-mix(in srgb, ${recColor} 14%, transparent)`, borderRadius: 999, padding: "2px 8px" }}>{rec}</span>
+        <p style={{ fontSize: 14, fontWeight: 600, color: "var(--label)", marginTop: 5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</p>
+        <p style={{ fontSize: 12, color: "var(--label-secondary)" }}>{meta}</p>
+        <div className="tabular" style={{ display: "flex", flexWrap: "wrap", columnGap: 14, rowGap: 2, marginTop: 6, fontSize: 12 }}>
+          <span style={{ color: "var(--label-secondary)" }}>Asking <b style={{ color: "var(--label)" }}>{asking}</b></span>
+          <span style={{ color: "var(--label-secondary)" }}>Max offer <b style={{ color: "var(--tint-text)" }}>{maxOffer}</b> <span style={{ fontSize: 11 }}>est.</span></span>
         </div>
       </div>
+      <ScoreRing score={score} />
+    </div>
+  );
+}
+
+function HeroProduct() {
+  return (
+    <div className="lp-window" role="img" aria-label="Illustrative preview of the Opportunity Feed with sample data">
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderBottom: "1px solid var(--separator)" }}>
+        {["#ff5f57", "#febc2e", "#28c840"].map((c) => (
+          <span key={c} style={{ width: 11, height: 11, borderRadius: 999, background: c }} />
+        ))}
+        <span style={{ flex: 1 }} />
+        <SampleTag />
+      </div>
+      <div className="lp-window-body">
+        <div className="lp-window-side hide-compact" aria-hidden="true">
+          <SpotrLogo size={22} />
+          {["Opportunity Feed", "Pipeline", "Inventory", "Buy Box"].map((label, i) => (
+            <span key={label} style={{ display: "block", marginTop: i === 0 ? 18 : 4, padding: "7px 10px", borderRadius: "var(--radius-sm)", fontSize: 12, fontWeight: i === 0 ? 600 : 500, color: i === 0 ? "var(--label)" : "var(--label-secondary)", background: i === 0 ? "rgba(var(--tint-rgb), 0.14)" : "transparent" }}>
+              {label}
+            </span>
+          ))}
+        </div>
+        <div style={{ flex: 1, minWidth: 0, padding: 18, display: "flex", flexDirection: "column", gap: 10 }}>
+          <p className="t-title3" style={{ color: "var(--label)", marginBottom: 4 }}>Opportunity Feed</p>
+          <MockCard title="2019 Porsche 911 Carrera S" meta="21,800 mi · 12 mi away · found today" asking="$118,500" maxOffer="$112,000" score={91} rec="BUY" />
+          <MockCard title="2021 Toyota Tacoma TRD Off-Road" meta="34,100 mi · 28 mi away · found 2 days ago" asking="$38,900" maxOffer="$36,400" score={78} rec="BUY" />
+          <MockCard title="2017 BMW M3 Competition" meta="Mileage missing · 41 mi away" asking="$44,500" maxOffer="$39,000" score={56} rec="INVESTIGATE" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StepVisual({ step }: { step: StepKey }) {
+  if (step === "buybox") {
+    return (
+      <div className="lp-visual" role="img" aria-label="Illustrative buy box with sample criteria">
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <p className="t-eyebrow" style={{ color: "var(--label-secondary)" }}>Buy box</p>
+          <SampleTag />
+        </div>
+        {[
+          ["Years", "2016 – 2023"],
+          ["Max mileage", "60,000 mi"],
+          ["Acquisition price", "$20k – $150k"],
+        ].map(([label, value], i) => (
+          <motion.div key={label} initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ ...spring.smooth, delay: 0.06 * i }} style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid var(--separator)", fontSize: 14 }}>
+            <span style={{ color: "var(--label-secondary)" }}>{label}</span>
+            <span className="tabular" style={{ fontWeight: 600, color: "var(--label)" }}>{value}</span>
+          </motion.div>
+        ))}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 16 }}>
+          {[
+            ["Porsche", "Core", "var(--green)"],
+            ["Toyota", "Core", "var(--green)"],
+            ["BMW", "Opportunistic", "var(--blue)"],
+            ["Maserati", "Avoid", "var(--red)"],
+          ].map(([make, priority, color], i) => (
+            <motion.span key={make} initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} transition={{ ...spring.bouncy, delay: 0.2 + 0.06 * i }} style={{ fontSize: 13, fontWeight: 600, padding: "6px 12px", borderRadius: 999, color, background: `color-mix(in srgb, ${color} 13%, transparent)` }}>
+              {make} · {priority}
+            </motion.span>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  if (step === "feed") {
+    return (
+      <div className="lp-visual" style={{ gap: 10 }} role="img" aria-label="Illustrative ranked feed with sample listings">
+        {[
+          { title: "2019 Porsche 911 Carrera S", meta: "found today", asking: "$118,500", maxOffer: "$112,000", score: 91, rec: "BUY" as const },
+          { title: "2021 Toyota Tacoma TRD", meta: "found 2 days ago", asking: "$38,900", maxOffer: "$36,400", score: 78, rec: "BUY" as const },
+          { title: "2020 Audi RS5 Sportback", meta: "found 5 days ago", asking: "$61,200", maxOffer: "$55,900", score: 63, rec: "WATCH" as const },
+        ].map((card, i) => (
+          <motion.div key={card.title} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring.smooth, delay: 0.08 * i }}>
+            <MockCard {...card} meta={`${card.meta} · sample`} />
+          </motion.div>
+        ))}
+      </div>
+    );
+  }
+  if (step === "dossier") {
+    const rows = [
+      ["Asking price", "$118,500", "Provider"],
+      ["Est. retail (low end)", "$131,000", "Spotr estimate"],
+      ["Reconditioning", "−$2,500", "Assumption"],
+      ["Transport / fees", "−$1,500", "Assumption"],
+      ["Uncertainty buffer", "−$3,000", "Assumption"],
+      ["Target gross", "−$12,000", "Assumption"],
+    ];
+    return (
+      <div className="lp-visual" role="img" aria-label="Illustrative acquisition economics with sample figures">
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <p className="t-headline" style={{ color: "var(--label)" }}>Acquisition economics</p>
+          <SampleTag />
+        </div>
+        {rows.map(([label, value, source], i) => (
+          <motion.div key={label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring.smooth, delay: 0.07 * i }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 0", borderBottom: "1px solid var(--separator)", fontSize: 14 }}>
+            <span style={{ color: "var(--label-secondary)", flex: 1 }}>{label}</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: source === "Provider" ? "var(--blue)" : "var(--purple)", background: source === "Provider" ? "rgba(var(--blue-rgb), 0.12)" : "rgba(var(--purple-rgb), 0.12)", padding: "2px 8px", borderRadius: 999 }}>{source}</span>
+            <span className="tabular" style={{ fontWeight: 600, color: "var(--label)", minWidth: 80, textAlign: "right" }}>{value}</span>
+          </motion.div>
+        ))}
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ ...spring.bouncy, delay: 0.35 }} style={{ marginTop: 16, padding: "14px 16px", borderRadius: "var(--radius-md)", background: "rgba(var(--tint-rgb), 0.1)", boxShadow: "inset 0 0 0 1px rgba(var(--tint-rgb), 0.25)" }}>
+          <p className="t-eyebrow" style={{ color: "var(--label-secondary)" }}>Recommended max offer · Spotr estimate</p>
+          <p className="t-title1 tabular" style={{ color: "var(--tint-text)", marginTop: 4 }}>$112,000</p>
+        </motion.div>
+      </div>
+    );
+  }
+  const columns = [
+    { stage: "New Leads", color: "var(--blue)", cards: ["2021 Tacoma TRD", "2020 Audi RS5"] },
+    { stage: "Contacted", color: "var(--teal)", cards: ["2019 911 Carrera S"] },
+    { stage: "Offer Made", color: "var(--orange)", cards: ["2018 Lexus GX 460"] },
+  ];
+  return (
+    <div className="lp-visual" role="img" aria-label="Illustrative pipeline board with sample deals" style={{ gap: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <p className="t-eyebrow" style={{ color: "var(--label-secondary)" }}>Pipeline</p>
+        <SampleTag />
+      </div>
+      <div className="lp-kanban">
+      {columns.map((column, ci) => (
+        <div key={column.stage} style={{ flex: 1, minWidth: 0, padding: 10, borderRadius: "var(--radius-md)", background: "rgba(var(--ink-rgb), 0.03)", border: "1px solid var(--separator)" }}>
+          <p style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: "var(--label)", marginBottom: 10 }}>
+            <span style={{ width: 7, height: 7, borderRadius: 999, background: column.color }} />
+            {column.stage}
+          </p>
+          {column.cards.map((card, i) => (
+            <motion.div
+              key={card}
+              initial={{ opacity: 0, y: 16, rotate: ci === 1 ? -3 : 0 }}
+              animate={{ opacity: 1, y: 0, rotate: 0 }}
+              transition={{ ...spring.bouncy, delay: 0.1 * ci + 0.05 * i }}
+              style={{ padding: "10px 10px", marginBottom: 8, borderRadius: "var(--radius-sm)", background: "var(--bg-card)", border: "1px solid var(--separator)", fontSize: 12, fontWeight: 500, color: "var(--label)", boxShadow: ci === 1 ? "var(--shadow-md)" : "var(--shadow-sm)" }}
+            >
+              {card}
+              {ci === 1 && <span style={{ display: "block", marginTop: 4, fontSize: 11, fontWeight: 600, color: "var(--red)" }}>Follow-up overdue</span>}
+            </motion.div>
+          ))}
+        </div>
+      ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Sections ──────────────────────────────────────────────── */
+
+function NavBar() {
+  const { scrollY } = useScroll();
+  const [scrolled, setScrolled] = useState(false);
+  useMotionValueEvent(scrollY, "change", (y) => setScrolled(y > 24));
+
+  return (
+    <header className="lp-nav-wrap">
+      <motion.nav
+        aria-label="Primary"
+        className="material lp-nav"
+        animate={{
+          maxWidth: scrolled ? 920 : 1200,
+          marginTop: scrolled ? 10 : 0,
+          borderRadius: scrolled ? 999 : 0,
+        }}
+        transition={spring.smooth}
+        style={{ borderBottom: scrolled ? "none" : "1px solid var(--separator)", boxShadow: scrolled ? "var(--shadow-md)" : "none" }}
+      >
+        <Link href="/" aria-label="Spotr home" className="pressable" style={{ textDecoration: "none" }}>
+          <SpotrLogo size={30} />
+        </Link>
+        <div className="hide-compact" style={{ display: "flex", gap: 4 }}>
+          {NAV_LINKS.map((link) => (
+            <a key={link.href} href={link.href} className="pressable hover-fill hover-label" style={{ padding: "7px 12px", borderRadius: 999, fontSize: 14, fontWeight: 500, color: "var(--label-secondary)", textDecoration: "none" }}>
+              {link.label}
+            </a>
+          ))}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ width: 64 }}>
+            <ThemeToggle label={false} />
+          </div>
+          <Link href="/login" className="btn btn-sm btn-plain pressable hide-compact">Sign in</Link>
+          <Link href="/login" className="btn btn-sm btn-primary pressable">
+            Open demo
+          </Link>
+        </div>
+      </motion.nav>
     </header>
   );
 }
 
-/* ─── Hero ───────────────────────────────────────────────────── */
+function Hero() {
+  const reduceMotion = useReducedMotion();
+  const productRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: productRef, offset: ["start end", "center center"] });
+  // The product tilts up to meet you as it scrolls into view.
+  const rotateX = useTransform(scrollYProgress, [0, 1], reduceMotion ? [0, 0] : [24, 0]);
+  const scale = useTransform(scrollYProgress, [0, 1], reduceMotion ? [1, 1] : [0.88, 1]);
+  const glowOpacity = useTransform(scrollYProgress, [0, 1], [0.35, 1]);
 
-function HeroSection() {
   return (
-    <section
-      style={{
-        background: "var(--bg-base)",
-        paddingTop: 130, // clear fixed nav
-        paddingBottom: 80,
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
-      {/* Ambient orbs — purely decorative, contained */}
-      <div
-        style={{
-          position: "absolute",
-          width: 600,
-          height: 600,
-          borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(var(--tint-rgb), 0.14) 0%, transparent 70%)",
-          top: -100,
-          left: -100,
-          pointerEvents: "none",
-          animation: "orb-move 18s ease-in-out infinite",
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          width: 500,
-          height: 500,
-          borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(var(--purple-rgb), 0.09) 0%, transparent 70%)",
-          bottom: 0,
-          right: -80,
-          pointerEvents: "none",
-          animation: "orb-move 22s ease-in-out infinite reverse",
-        }}
-      />
-
-      {/* Grid overlay */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          backgroundImage: `linear-gradient(rgba(var(--ink-rgb), 0.025) 1px, transparent 1px),
-                           linear-gradient(90deg, rgba(var(--ink-rgb), 0.025) 1px, transparent 1px)`,
-          backgroundSize: "60px 60px",
-          pointerEvents: "none",
-        }}
-      />
-
-      {/* Hero copy */}
-      <div
-        style={{
-          position: "relative",
-          maxWidth: 900,
-          margin: "0 auto",
-          padding: "0 24px",
-          textAlign: "center",
-        }}
-      >
-        {/* Eyebrow badge */}
-        <div
-          className="animate-fade-up"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "6px 16px",
-            borderRadius: 100,
-            border: "1px solid rgba(var(--tint-rgb), 0.4)",
-            background: "rgba(var(--tint-rgb), 0.1)",
-            color: "var(--tint-text)",
-            fontSize: 13,
-            fontWeight: 600,
-            marginBottom: 28,
-          }}
+    <section style={{ position: "relative", padding: "150px 20px 40px" }}>
+      <div aria-hidden="true" className="lp-hero-glow" />
+      <div style={{ position: "relative", maxWidth: 980, margin: "0 auto", textAlign: "center" }}>
+        <motion.p
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={spring.smooth}
+          style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 14px", borderRadius: 999, fontSize: 13, fontWeight: 600, color: "var(--tint-text)", background: "rgba(var(--tint-rgb), 0.12)", boxShadow: "inset 0 0 0 1px rgba(var(--tint-rgb), 0.25)", marginBottom: 26 }}
         >
-          <span
-            style={{
-              position: "relative",
-              width: 8,
-              height: 8,
-              display: "inline-flex",
-            }}
-          >
-            <span
-              style={{
-                position: "absolute",
-                inset: 0,
-                borderRadius: "50%",
-                background: "var(--tint)",
-                animation: "pulse-ring 1.5s ease-out infinite",
-                opacity: 0,
-              }}
-            />
-            <span
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                background: "var(--tint)",
-                display: "block",
-              }}
-            />
-          </span>
-          Built for car dealerships — live demo available
-        </div>
-
-        {/* H1 */}
-        <h1
-          className="animate-fade-up-delay-1"
-          style={{
-            fontSize: "clamp(2.5rem, 6vw, 5rem)",
-            fontWeight: 700,
-            lineHeight: 1.06,
-            letterSpacing: "-0.02em",
-            color: "var(--label)",
-            margin: "0 0 24px",
-          }}
-        >
-          Your competitors are calling{" "}
-          <span className="shimmer-text">private sellers</span>{" "}
-          right now.
+          <Radar size={14} /> Acquisition intelligence for dealer buying desks
+        </motion.p>
+        <h1 className="lp-display">
+          <WordsIn text="Spot it first." delay={0.05} />
+          <WordsIn text="Buy it right." delay={0.2} gradient />
         </h1>
-
-        {/* Sub-headline */}
-        <p
-          className="animate-fade-up-delay-2"
-          style={{
-            fontSize: "clamp(1rem, 2vw, 1.2rem)",
-            lineHeight: 1.7,
-            color: "var(--label-secondary)",
-            maxWidth: 680,
-            margin: "0 auto 36px",
-          }}
+        <motion.p
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...spring.smooth, delay: 0.55 }}
+          className="lp-lede"
         >
-          Dealers lose used-car deals because they&apos;re buried in tabs, missing
-          seller replies, and buying blind.{" "}
-          <span style={{ color: "var(--label)", fontWeight: 600 }}>
-            Spotr gives your buying desk one workspace to find, contact, and
-            acquire private-seller inventory before anyone else does.
-          </span>
-        </p>
-
-        {/* CTAs */}
-        <div
-          className="animate-fade-up-delay-3"
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 12,
-            marginBottom: 16,
-          }}
+          Spotr ranks vehicle listings against what your desk actually buys, shows the math behind every number, and keeps each deal moving until it&apos;s on your lot.
+        </motion.p>
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...spring.smooth, delay: 0.7 }}
+          style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 12, marginTop: 34 }}
         >
-          <Link
-            href="/login"
-            id="hero-demo-cta"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "14px 32px",
-              fontSize: 16,
-              fontWeight: 600,
-              color: "#fff",
-              borderRadius: 12,
-              background: "linear-gradient(135deg, var(--tint), var(--tint-2))",
-              boxShadow: "0 8px 28px rgba(var(--tint-rgb), 0.45)",
-              transition: "transform 0.15s, opacity 0.15s",
-            }}
-          >
-            Get a Demo
-            <ArrowRight style={{ width: 18, height: 18 }} />
+          <Link href="/login" className="btn btn-lg btn-primary pressable">
+            Open the demo <ArrowRight size={17} />
           </Link>
-          <Link
-            href="/dashboard"
-            id="hero-pipeline-cta"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "14px 32px",
-              fontSize: 16,
-              fontWeight: 600,
-              color: "var(--label)",
-              borderRadius: 12,
-              border: "1px solid rgba(var(--ink-rgb), 0.14)",
-              background: "rgba(var(--ink-rgb), 0.05)",
-              transition: "border-color 0.15s",
-            }}
-          >
-            View Live Pipeline
-          </Link>
-        </div>
-
-        <p
-          className="animate-fade-up-delay-4"
-          style={{ fontSize: 13, color: "var(--label-tertiary)" }}
-        >
-          No signup required · Demo data preloaded · Takes 30 seconds
-        </p>
+          <a href="#how-it-works" className="btn btn-lg btn-secondary pressable">
+            See how it works
+          </a>
+        </motion.div>
       </div>
 
-      {/* Dashboard preview — BELOW the text, not floating over it */}
-      <div
-        style={{
-          position: "relative",
-          maxWidth: 1200,
-          margin: "64px auto 0",
-          padding: "0 24px",
-        }}
-      >
-        {/* Dashboard shell */}
-        <div
-          style={{
-            borderRadius: 20,
-            overflow: "hidden",
-            border: "1px solid rgba(var(--ink-rgb), 0.1)",
-            background: "var(--bg-surface)",
-            boxShadow: "0 40px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(var(--ink-rgb), 0.04)",
-          }}
-        >
-          {/* Title bar */}
-          <div
-            style={{
-              height: 52,
-              display: "flex",
-              alignItems: "center",
-              gap: 16,
-              padding: "0 20px",
-              borderBottom: "1px solid rgba(var(--ink-rgb), 0.07)",
-              background: "rgba(var(--base-rgb), 0.8)",
-            }}
-          >
-            <div style={{ display: "flex", gap: 8, marginRight: 8 }}>
-              <span style={{ width: 12, height: 12, borderRadius: "50%", background: "var(--red)", display: "block" }} />
-              <span style={{ width: 12, height: 12, borderRadius: "50%", background: "var(--tint-2)", display: "block" }} />
-              <span style={{ width: 12, height: 12, borderRadius: "50%", background: "var(--green)", display: "block" }} />
-            </div>
-            <span style={{ fontSize: 15, fontWeight: 700, color: "var(--label)" }}>
-              spotr
-            </span>
-            <div
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "4px 12px",
-                borderRadius: 8,
-                background: "rgba(var(--tint-rgb), 0.15)",
-                color: "var(--tint-text)",
-                fontSize: 13,
-                fontWeight: 600,
-                marginLeft: 4,
-              }}
-            >
-              <Car style={{ width: 14, height: 14 }} />
-              Fresh Listings
-              <span
-                style={{
-                  background: "var(--tint)",
-                  color: "white",
-                  borderRadius: 100,
-                  padding: "1px 7px",
-                  fontSize: 11,
-                  fontWeight: 600,
-                }}
-              >
-                +86
-              </span>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                fontSize: 13,
-                color: "var(--label-secondary)",
-                marginLeft: 8,
-              }}
-              className="hidden md:flex"
-            >
-              <CalendarDays style={{ width: 14, height: 14 }} />
-              Appraisals
-              <span
-                style={{
-                  background: "rgba(var(--ink-rgb), 0.1)",
-                  color: "var(--label)",
-                  borderRadius: 100,
-                  padding: "1px 7px",
-                  fontSize: 11,
-                  fontWeight: 600,
-                }}
-              >
-                18
-              </span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginLeft: "auto", color: "var(--label-tertiary)" }}>
-              <MapPin style={{ width: 16, height: 16 }} />
-              <Bell style={{ width: 16, height: 16 }} />
-              <span
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: "50%",
-                  background: "linear-gradient(135deg, var(--tint), var(--tint-2))",
-                  display: "grid",
-                  placeItems: "center",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: "white",
-                }}
-              >
-                SR
-              </span>
-            </div>
-          </div>
+      <div ref={productRef} style={{ position: "relative", maxWidth: 1100, margin: "80px auto 0", perspective: 1400 }}>
+        <motion.div aria-hidden="true" className="lp-product-glow" style={{ opacity: glowOpacity }} />
+        <motion.div style={{ rotateX, scale, transformOrigin: "center top" }}>
+          <HeroProduct />
+        </motion.div>
+      </div>
+    </section>
+  );
+}
 
-          {/* Dashboard body — 3 col */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: 16,
-              padding: 16,
-              background: "linear-gradient(135deg, var(--bg-surface) 0%, rgba(var(--tint-rgb), 0.04) 50%, var(--bg-surface) 100%)",
-            }}
-            className="md:grid-cols-3 grid-cols-1"
-          >
-            {/* Col 1: listings */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {previewListings.map(({ name, price, miles, source, score, image, badge, badgeColor }) => (
-                <div
-                  key={name}
-                  style={{
-                    borderRadius: 12,
-                    padding: 14,
-                    background: "var(--bg-card)",
-                    border: "1px solid rgba(var(--ink-rgb), 0.07)",
-                  }}
-                >
-                  <div style={{ position: "relative", marginBottom: 10, borderRadius: 8, overflow: "hidden" }}>
-                    <Image
-                      src={image}
-                      alt={`${name} private seller listing`}
-                      width={700}
-                      height={420}
-                      style={{ width: "100%", height: 90, objectFit: "cover", display: "block" }}
-                    />
-                    <span
-                      style={{
-                        position: "absolute",
-                        top: 6,
-                        left: 6,
-                        background: badgeColor,
-                        color: "white",
-                        fontSize: 11,
-                        fontWeight: 600,
-                        padding: "2px 8px",
-                        borderRadius: 6,
-                      }}
-                    >
-                      {badge}
-                    </span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <div>
-                      <p style={{ fontSize: 13, fontWeight: 600, color: "var(--label)", marginBottom: 3 }}>{name}</p>
-                      <p style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--label-secondary)" }}>
-                        <Gauge style={{ width: 11, height: 11 }} />
-                        {miles} · {source}
-                      </p>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--tint-text)" }}>{price}</span>
-                      <p style={{ fontSize: 11, color: "var(--label-secondary)", marginTop: 2 }}>Heuristic: {score}</p>
-                    </div>
-                  </div>
+function Principles() {
+  return (
+    <section className="lp-section">
+      <div className="lp-grid-3">
+        {PRINCIPLES.map(({ icon: Icon, title, copy }, i) => (
+          <Reveal key={title} delay={i * 0.08}>
+            <div className="lp-principle">
+              <span style={{ width: 44, height: 44, borderRadius: 14, display: "grid", placeItems: "center", color: "var(--tint-text)", background: "rgba(var(--tint-rgb), 0.12)", marginBottom: 18 }}>
+                <Icon size={21} />
+              </span>
+              <h2 className="t-title3" style={{ color: "var(--label)", marginBottom: 8 }}>{title}</h2>
+              <p style={{ fontSize: 15, lineHeight: 1.55, color: "var(--label-secondary)" }}>{copy}</p>
+            </div>
+          </Reveal>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** Scroll-driven story: the copy scrolls, the product stays pinned and changes with it. */
+function HowItWorks() {
+  const [active, setActive] = useState<StepKey>("buybox");
+
+  return (
+    <section id="how-it-works" className="lp-section" style={{ scrollMarginTop: 80 }}>
+      <Reveal>
+        <p className="t-eyebrow lp-eyebrow">How it works</p>
+        <h2 className="lp-h2">From criteria to keys, in four moves.</h2>
+      </Reveal>
+      <div className="lp-story">
+        <div className="lp-story-steps">
+          {STEPS.map((step, index) => {
+            const Icon = step.icon;
+            const isActive = active === step.key;
+            return (
+              <motion.div
+                key={step.key}
+                className="lp-story-step"
+                onViewportEnter={() => setActive(step.key)}
+                // A thin band across the middle of the screen: the step crossing it is the active one.
+                viewport={{ margin: "-45% 0px -45% 0px" }}
+                animate={{ opacity: isActive ? 1 : 0.55 }}
+                transition={spring.smooth}
+              >
+                <p className="t-eyebrow" style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--tint-text)", marginBottom: 12 }}>
+                  <Icon size={15} /> {String(index + 1).padStart(2, "0")} · {step.eyebrow}
+                </p>
+                <h3 className="t-title1" style={{ color: "var(--label)", marginBottom: 12 }}>{step.title}</h3>
+                <p style={{ fontSize: 17, lineHeight: 1.55, color: "var(--label-secondary)", maxWidth: 460 }}>{step.copy}</p>
+                <div className="show-compact" style={{ marginTop: 24 }}>
+                  <StepVisual step={step.key} />
                 </div>
-              ))}
-            </div>
-
-            {/* Col 2: top-scored opportunity */}
-            <div
-              style={{
-                borderRadius: 12,
-                padding: 14,
-                background: "var(--bg-card)",
-                border: "1px solid rgba(var(--tint-rgb), 0.2)",
-              }}
-            >
-              <div
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  marginBottom: 12,
-                  padding: "5px 12px",
-                  borderRadius: 8,
-                  background: "rgba(var(--tint-rgb), 0.15)",
-                  color: "var(--tint-text)",
-                  fontSize: 12,
-                  fontWeight: 600,
-                }}
+              </motion.div>
+            );
+          })}
+        </div>
+        <div className="lp-story-stage hide-compact">
+          <div className="lp-story-sticky">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={active}
+                initial={{ opacity: 0, y: 30, scale: 0.96, filter: "blur(6px)" }}
+                animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+                exit={{ opacity: 0, y: -20, scale: 0.98, filter: "blur(6px)" }}
+                transition={{ ...spring.smooth, duration: 0.5 }}
               >
-                <Gauge style={{ width: 13, height: 13 }} />
-                Top heuristic score today
-              </div>
-              <div style={{ borderRadius: 10, overflow: "hidden", marginBottom: 12 }}>
-                <Image
-                  src="https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=1000&q=80"
-                  alt="Black coupe listed by a private seller"
-                  width={1000}
-                  height={640}
-                  style={{ width: "100%", height: 180, objectFit: "cover", display: "block" }}
-                />
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-                {[["92", "Heuristic score"], ["6h", "Found by Spotr"], ["High", "Confidence"]].map(([value, label]) => (
-                  <div
-                    key={label}
-                    style={{
-                      borderRadius: 8,
-                      padding: "10px 6px",
-                      textAlign: "center",
-                      background: "rgba(var(--ink-rgb), 0.04)",
-                      border: "1px solid rgba(var(--ink-rgb), 0.06)",
-                    }}
-                  >
-                    <p style={{ fontSize: 16, fontWeight: 700, color: "var(--tint-text)" }}>{value}</p>
-                    <p style={{ fontSize: 11, color: "var(--label-secondary)", marginTop: 2 }}>{label}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Col 3: tasks + pipeline */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div
-                style={{
-                  borderRadius: 12,
-                  padding: 14,
-                  background: "var(--bg-card)",
-                  border: "1px solid rgba(var(--ink-rgb), 0.07)",
-                }}
-              >
-                <p style={{ fontSize: 13, fontWeight: 600, color: "var(--label)", marginBottom: 12 }}>Buyer tasks</p>
-                {["Send range offer", "Book inspection", "Pull history report"].map((task, index) => (
-                  <div key={task} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: index < 2 ? 10 : 0 }}>
-                    <span
-                      style={{
-                        width: 22,
-                        height: 22,
-                        borderRadius: "50%",
-                        display: "grid",
-                        placeItems: "center",
-                        flexShrink: 0,
-                        background: index === 0 ? "rgba(var(--tint-rgb), 0.2)" : "rgba(var(--ink-rgb), 0.06)",
-                      }}
-                    >
-                      <Check
-                        style={{
-                          width: 12,
-                          height: 12,
-                          color: index === 0 ? "var(--tint)" : "var(--label-tertiary)",
-                        }}
-                      />
-                    </span>
-                    <span style={{ fontSize: 12, color: index === 0 ? "var(--label)" : "var(--label-secondary)", flex: 1 }}>{task}</span>
-                    {index === 0 && (
-                      <span
-                        style={{
-                          background: "var(--tint)",
-                          color: "white",
-                          fontSize: 11,
-                          fontWeight: 600,
-                          padding: "2px 7px",
-                          borderRadius: 5,
-                        }}
-                      >
-                        next
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              <div
-                style={{
-                  borderRadius: 12,
-                  padding: 14,
-                  background: "linear-gradient(135deg, rgba(var(--tint-rgb), 0.15), rgba(var(--yellow-rgb), 0.08))",
-                  border: "1px solid rgba(var(--tint-rgb), 0.25)",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                }}
-              >
-                <Zap style={{ width: 28, height: 28, color: "var(--tint-2)", flexShrink: 0 }} />
-                <div>
-                  <p style={{ fontSize: 11, color: "var(--label-secondary)" }}>Today&apos;s activity</p>
-                  <p style={{ fontSize: 18, fontWeight: 700, color: "var(--label)" }}>41 sellers contacted</p>
-                </div>
-              </div>
-
-              <div
-                style={{
-                  borderRadius: 12,
-                  padding: 14,
-                  background: "var(--bg-card)",
-                  border: "1px solid rgba(var(--ink-rgb), 0.07)",
-                }}
-              >
-                <p style={{ fontSize: 13, fontWeight: 600, color: "var(--label)", marginBottom: 12 }}>Pipeline health</p>
-                {[["New Leads", 78], ["Contacted", 48], ["Offer Made", 32]].map(([stage, pct]) => (
-                  <div key={stage as string} style={{ marginBottom: 10 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--label-secondary)", marginBottom: 4 }}>
-                      <span>{stage}</span>
-                      <span>{pct}%</span>
-                    </div>
-                    <div style={{ height: 5, borderRadius: 100, background: "rgba(var(--ink-rgb), 0.07)" }}>
-                      <div
-                        style={{
-                          height: 5,
-                          width: `${pct}%`,
-                          borderRadius: 100,
-                          background: "linear-gradient(90deg, var(--tint), var(--tint-2))",
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+                <StepVisual step={active} />
+              </motion.div>
+            </AnimatePresence>
           </div>
         </div>
       </div>
@@ -787,661 +566,153 @@ function HeroSection() {
   );
 }
 
-/* ─── Logo cloud ─────────────────────────────────────────────── */
-
-function LogoCloud() {
+function Features() {
   return (
-    <section style={{ ...S.section, padding: "72px 24px" }}>
-      <div style={{ maxWidth: 1200, margin: "0 auto", textAlign: "center" }}>
-        <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--label-tertiary)", marginBottom: 28 }}>
-          Trusted by growth-minded dealerships
-        </p>
-        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 10 }}>
-          {logoCloud.map((logo) => (
-            <div
-              key={logo}
-              style={{
-                padding: "10px 20px",
-                borderRadius: 10,
-                background: "var(--bg-card)",
-                border: "1px solid rgba(var(--ink-rgb), 0.07)",
-                fontSize: 13,
-                fontWeight: 600,
-                color: "var(--label-tertiary)",
-              }}
-            >
-              {logo}
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ─── Problem section ────────────────────────────────────────── */
-
-function ProblemSection() {
-  return (
-    <section id="how-it-works" style={{ ...S.section, padding: "96px 24px" }}>
-      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-        {/* Header */}
-        <div style={{ textAlign: "center", maxWidth: 760, margin: "0 auto 56px" }}>
-          <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--tint)", marginBottom: 16 }}>
-            The problem
-          </p>
-          <h2
-            style={{
-              fontSize: "clamp(2rem, 4.5vw, 3.25rem)",
-              fontWeight: 700,
-              lineHeight: 1.1,
-              letterSpacing: "-0.02em",
-              color: "var(--label)",
-              marginBottom: 20,
-            }}
-          >
-            Dealers are losing cars to competitors{" "}
-            <span className="shimmer-text">every single day</span>
-          </h2>
-          <p style={{ fontSize: 17, lineHeight: 1.7, color: "var(--label-secondary)" }}>
-            Private-seller vehicles sell fast. The dealership that contacts the
-            seller first usually wins. Right now, that&apos;s probably not you.
-          </p>
-        </div>
-
-        {/* Two-column comparison */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
-          {/* Without */}
-          <div
-            style={{
-              borderRadius: 16,
-              padding: "28px 28px 32px",
-              background: "rgba(var(--red-rgb), 0.06)",
-              border: "1px solid rgba(var(--red-rgb), 0.18)",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-              <span
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 10,
-                  display: "grid",
-                  placeItems: "center",
-                  background: "rgba(var(--red-rgb), 0.15)",
-                }}
-              >
-                <X style={{ width: 18, height: 18, color: "var(--red)" }} />
+    <section id="product" className="lp-section" style={{ scrollMarginTop: 80 }}>
+      <Reveal>
+        <p className="t-eyebrow lp-eyebrow">Product</p>
+        <h2 className="lp-h2">Built for the way buyers actually work.</h2>
+      </Reveal>
+      <div className="lp-bento">
+        {FEATURES.map(({ icon: Icon, title, copy, span, tone }, i) => (
+          <Reveal key={title} delay={(i % 3) * 0.07}>
+            <article className={`lp-tile hover-lift${span ? " lp-tile-wide" : ""}`} style={{ ["--tile-tone" as string]: tone }}>
+              <span style={{ width: 42, height: 42, borderRadius: 13, display: "grid", placeItems: "center", color: tone, background: `color-mix(in srgb, ${tone} 13%, transparent)`, marginBottom: 20 }}>
+                <Icon size={20} />
               </span>
-              <h3 style={{ fontSize: 16, fontWeight: 600, color: "var(--label)" }}>Without Spotr</h3>
-            </div>
-            <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: 14 }}>
-              {painPoints.map((pt) => (
-                <li key={pt.without} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14, color: "var(--label-secondary)", lineHeight: 1.5 }}>
-                  <span
-                    style={{
-                      width: 18,
-                      height: 18,
-                      borderRadius: "50%",
-                      display: "grid",
-                      placeItems: "center",
-                      flexShrink: 0,
-                      marginTop: 1,
-                      background: "rgba(var(--red-rgb), 0.2)",
-                    }}
-                  >
-                    <X style={{ width: 10, height: 10, color: "var(--red)" }} />
-                  </span>
-                  {pt.without}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* With */}
-          <div
-            style={{
-              borderRadius: 16,
-              padding: "28px 28px 32px",
-              background: "rgba(var(--tint-rgb), 0.07)",
-              border: "1px solid rgba(var(--tint-rgb), 0.22)",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-              <span
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 10,
-                  display: "grid",
-                  placeItems: "center",
-                  background: "rgba(var(--tint-rgb), 0.2)",
-                }}
-              >
-                <Check style={{ width: 18, height: 18, color: "var(--tint)" }} />
-              </span>
-              <h3 style={{ fontSize: 16, fontWeight: 600, color: "var(--label)" }}>With Spotr</h3>
-            </div>
-            <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: 14 }}>
-              {painPoints.map((pt) => (
-                <li key={pt.with} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14, color: "var(--label)", lineHeight: 1.5 }}>
-                  <span
-                    style={{
-                      width: 18,
-                      height: 18,
-                      borderRadius: "50%",
-                      display: "grid",
-                      placeItems: "center",
-                      flexShrink: 0,
-                      marginTop: 1,
-                      background: "rgba(var(--tint-rgb), 0.2)",
-                    }}
-                  >
-                    <Check style={{ width: 10, height: 10, color: "var(--tint)" }} />
-                  </span>
-                  {pt.with}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ─── Workflow section ───────────────────────────────────────── */
-
-function WorkflowSection() {
-  return (
-    <section id="product" style={{ ...S.section, padding: "96px 24px" }}>
-      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-        <div style={{ textAlign: "center", maxWidth: 600, margin: "0 auto 56px" }}>
-          <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--tint)", marginBottom: 16 }}>
-            How it works
-          </p>
-          <h2
-            style={{
-              fontSize: "clamp(2rem, 4.5vw, 3rem)",
-              fontWeight: 700,
-              lineHeight: 1.1,
-              letterSpacing: "-0.02em",
-              color: "var(--label)",
-            }}
-          >
-            Three steps from listing to acquisition
-          </h2>
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
-          {workflow.map((item, i) => (
-            <article
-              key={item.title}
-              style={{
-                position: "relative",
-                borderRadius: 16,
-                padding: "28px 28px 32px",
-                background: "var(--bg-card)",
-                border: "1px solid rgba(var(--ink-rgb), 0.08)",
-                overflow: "hidden",
-                transition: "transform 0.2s, box-shadow 0.2s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-4px)";
-                e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.4)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "";
-                e.currentTarget.style.boxShadow = "";
-              }}
-            >
-              {/* Step watermark */}
-              <div
-                style={{
-                  position: "absolute",
-                  right: -8,
-                  top: -12,
-                  fontSize: 96,
-                  fontWeight: 700,
-                  color: "rgba(var(--ink-rgb), 0.02)",
-                  lineHeight: 1,
-                  userSelect: "none",
-                }}
-              >
-                {i + 1}
-              </div>
-
-              <div
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 12,
-                  display: "grid",
-                  placeItems: "center",
-                  marginBottom: 20,
-                  background: `color-mix(in srgb, ${item.color} 10%, transparent)`,
-                  border: `1px solid color-mix(in srgb, ${item.color} 19%, transparent)`,
-                }}
-              >
-                <item.icon style={{ width: 22, height: 22, color: item.color }} />
-              </div>
-
-              <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: item.color, marginBottom: 10 }}>
-                {item.eyebrow}
-              </p>
-              <h3 style={{ fontSize: 20, fontWeight: 700, lineHeight: 1.25, letterSpacing: "-0.01em", color: "var(--label)", marginBottom: 12 }}>
-                {item.title}
-              </h3>
-              <p style={{ fontSize: 14, lineHeight: 1.7, color: "var(--label-secondary)" }}>
-                {item.copy}
-              </p>
+              <h3 className="t-title3" style={{ color: "var(--label)", marginBottom: 8 }}>{title}</h3>
+              <p style={{ fontSize: 15, lineHeight: 1.55, color: "var(--label-secondary)", maxWidth: 520 }}>{copy}</p>
             </article>
-          ))}
-        </div>
+          </Reveal>
+        ))}
       </div>
     </section>
   );
 }
 
-/* ─── Stats section ──────────────────────────────────────────── */
-
-function StatsSection() {
+function Facts() {
+  const [visible, setVisible] = useState(false);
   return (
-    <section style={{ ...S.section, padding: "0 24px 96px" }}>
-      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-        <div
-          style={{
-            borderRadius: 20,
-            padding: "56px 40px",
-            background: "linear-gradient(135deg, var(--bg-card) 0%, rgba(var(--tint-rgb), 0.06) 50%, var(--bg-card) 100%)",
-            border: "1px solid rgba(var(--ink-rgb), 0.08)",
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-            gap: 40,
-          }}
-        >
-          {stats.map(({ value, label, icon: Icon }) => (
-            <div key={label} style={{ textAlign: "center" }}>
-              <div
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 14,
-                  display: "grid",
-                  placeItems: "center",
-                  margin: "0 auto 16px",
-                  background: "rgba(var(--tint-rgb), 0.15)",
-                }}
-              >
-                <Icon style={{ width: 22, height: 22, color: "var(--tint)" }} />
-              </div>
-              <p style={{ fontSize: "clamp(2.5rem, 5vw, 3.5rem)", fontWeight: 700, color: "var(--tint-text)", lineHeight: 1 }}>{value}</p>
-              <p style={{ fontSize: 13, fontWeight: 600, color: "var(--label-secondary)", marginTop: 8 }}>{label}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ─── Features banner ────────────────────────────────────────── */
-
-function FeaturesBannerSection() {
-  return (
-    <section id="solutions" style={{ ...S.section, padding: "0 24px 96px" }}>
-      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-        <div
-          style={{
-            borderRadius: 24,
-            overflow: "hidden",
-            background: "linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-elevated) 60%, var(--bg-surface) 100%)",
-            border: "1px solid rgba(var(--tint-rgb), 0.2)",
-          }}
-        >
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-              gap: 48,
-              padding: "56px 48px",
-            }}
-          >
-            {/* Left */}
-            <div>
-              <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--tint)", marginBottom: 16 }}>
-                Built for the buying desk
-              </p>
-              <h2
-                style={{
-                  fontSize: "clamp(1.75rem, 3.5vw, 2.75rem)",
-                  fontWeight: 700,
-                  lineHeight: 1.15,
-                  letterSpacing: "-0.02em",
-                  color: "var(--label)",
-                  marginBottom: 20,
-                }}
-              >
-                Give one buyer the leverage of a full acquisition team.
-              </h2>
-              <p style={{ fontSize: 16, lineHeight: 1.7, color: "var(--label-secondary)", marginBottom: 32 }}>
-                Prioritized listings, seller messaging, appraisal tasks, and
-                pipeline status all connected. Promising cars never vanish into
-                spreadsheets.
-              </p>
-              <Link
-                href="/login"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "13px 24px",
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: "#fff",
-                  borderRadius: 12,
-                  background: "linear-gradient(135deg, var(--tint), var(--tint-2))",
-                  boxShadow: "0 8px 24px rgba(var(--tint-rgb), 0.35)",
-                  transition: "opacity 0.15s",
-                }}
-              >
-                Start sourcing smarter
-                <ArrowRight style={{ width: 16, height: 16 }} />
-              </Link>
-            </div>
-
-            {/* Right */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {[
-                [Users, "Assign buyers and track ownership", "var(--blue)"],
-                [Mail, "Centralize every seller conversation", "var(--purple)"],
-                [TrendingUp, "Measure acquisition pipeline value", "var(--green)"],
-                [ShieldCheck, "Keep every deal step visible", "var(--tint-2)"],
-              ].map(([Icon, label, color]) => (
-                <div
-                  key={label as string}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 14,
-                    padding: "14px 16px",
-                    borderRadius: 12,
-                    background: "rgba(var(--ink-rgb), 0.04)",
-                    border: "1px solid rgba(var(--ink-rgb), 0.07)",
-                  }}
-                >
-                  <span
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 10,
-                      display: "grid",
-                      placeItems: "center",
-                      flexShrink: 0,
-                      background: `color-mix(in srgb, ${color as string} 13%, transparent)`,
-                    }}
-                  >
-                    <Icon style={{ width: 18, height: 18, color: color as string }} />
-                  </span>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: "var(--label)" }}>{label as string}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ─── FAQ section ────────────────────────────────────────────── */
-
-function FAQSection() {
-  const [openIndex, setOpenIndex] = useState<number | null>(0);
-
-  return (
-    <section id="faq" style={{ ...S.section, padding: "0 24px 96px" }}>
-      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-            gap: 64,
-            alignItems: "start",
-          }}
-        >
-          {/* Left */}
-          <div>
-            <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--tint)", marginBottom: 16 }}>
-              FAQ
+    <section className="lp-section">
+      <motion.div className="lp-facts" onViewportEnter={() => setVisible(true)} viewport={{ once: true, amount: 0.5 }}>
+        {FACTS.map((fact) => (
+          <div key={fact.label} style={{ textAlign: "center" }}>
+            <p className="lp-fact-value tabular">
+              {/* Final value server-side and before scrolling in; counts up once visible. */}
+              <AnimatedNumber key={visible ? "count" : "static"} countUp={visible} value={fact.value} duration={1.4} />
+              {fact.suffix}
             </p>
-            <h2
-              style={{
-                fontSize: "clamp(2rem, 4vw, 2.75rem)",
-                fontWeight: 700,
-                lineHeight: 1.1,
-                letterSpacing: "-0.02em",
-                color: "var(--label)",
-                marginBottom: 20,
-              }}
-            >
-              Quick answers.
-            </h2>
-            <p style={{ fontSize: 16, lineHeight: 1.7, color: "var(--label-secondary)", marginBottom: 32 }}>
-              The demo account is already wired into the live Spotr app — your
-              team can go from this page to the working product in seconds.
-            </p>
-            <Link
-              href="/login"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "13px 24px",
-                fontSize: 14,
-                fontWeight: 600,
-                color: "var(--label)",
-                borderRadius: 12,
-                border: "1px solid rgba(var(--ink-rgb), 0.14)",
-                background: "rgba(var(--ink-rgb), 0.05)",
-                transition: "border-color 0.15s",
-              }}
-            >
-              Enter the demo
-              <ArrowRight style={{ width: 16, height: 16 }} />
-            </Link>
+            <p style={{ fontSize: 14, color: "var(--label-secondary)", maxWidth: 200, margin: "6px auto 0" }}>{fact.label}</p>
           </div>
+        ))}
+      </motion.div>
+    </section>
+  );
+}
 
-          {/* Right — accordion */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {faqs.map(({ q, a }, i) => (
-              <div
-                key={q}
-                style={{
-                  borderRadius: 14,
-                  overflow: "hidden",
-                  background: openIndex === i ? "rgba(var(--tint-rgb), 0.07)" : "var(--bg-card)",
-                  border: `1px solid ${openIndex === i ? "rgba(var(--tint-rgb), 0.25)" : "rgba(var(--ink-rgb), 0.07)"}`,
-                  transition: "background 0.2s, border-color 0.2s",
-                }}
+function FAQ() {
+  const [open, setOpen] = useState<number | null>(0);
+  return (
+    <section id="faq" className="lp-section" style={{ scrollMarginTop: 80, maxWidth: 820 }}>
+      <Reveal>
+        <p className="t-eyebrow lp-eyebrow">FAQ</p>
+        <h2 className="lp-h2">Questions, answered plainly.</h2>
+      </Reveal>
+      <div style={{ marginTop: 32 }}>
+        {FAQS.map((item, index) => {
+          const isOpen = open === index;
+          return (
+            <div key={item.q} style={{ borderBottom: "1px solid var(--separator)" }}>
+              <h3 style={{ margin: 0 }}>
+              <button
+                type="button"
+                id={`faq-q-${index}`}
+                aria-expanded={isOpen}
+                onClick={() => setOpen(isOpen ? null : index)}
+                className="pressable"
+                style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "22px 4px", border: "none", background: "transparent", cursor: "pointer", textAlign: "left", color: "var(--label)" }}
               >
-                <button
-                  id={`faq-btn-${i}`}
-                  onClick={() => setOpenIndex(openIndex === i ? null : i)}
-                  style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 16,
-                    padding: "18px 20px",
-                    cursor: "pointer",
-                    background: "none",
-                    border: "none",
-                    textAlign: "left",
-                  }}
-                >
-                  <span style={{ fontSize: 15, fontWeight: 600, color: "var(--label)" }}>{q}</span>
-                  <span
-                    style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: "50%",
-                      display: "grid",
-                      placeItems: "center",
-                      flexShrink: 0,
-                      background: "rgba(var(--ink-rgb), 0.06)",
-                      transition: "transform 0.2s",
-                      transform: openIndex === i ? "rotate(45deg)" : "rotate(0deg)",
-                    }}
+                <span className="t-headline">{item.q}</span>
+                <motion.span animate={{ rotate: isOpen ? 180 : 0 }} transition={spring.snappy} style={{ display: "grid", placeItems: "center", width: 30, height: 30, borderRadius: 999, background: "var(--fill)", flexShrink: 0 }}>
+                  <ChevronDown size={16} />
+                </motion.span>
+              </button>
+              </h3>
+              <AnimatePresence initial={false}>
+                {isOpen && (
+                  <motion.div
+                    role="region"
+                    aria-labelledby={`faq-q-${index}`}
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={spring.smooth}
+                    style={{ overflow: "hidden" }}
                   >
-                    <Plus style={{ width: 14, height: 14, color: "var(--tint)" }} />
-                  </span>
-                </button>
-                {openIndex === i && (
-                  <p style={{ padding: "0 20px 18px", fontSize: 14, lineHeight: 1.7, color: "var(--label-secondary)" }}>
-                    {a}
-                  </p>
+                    <p style={{ padding: "0 4px 24px", fontSize: 16, lineHeight: 1.6, color: "var(--label-secondary)", maxWidth: 680 }}>{item.a}</p>
+                  </motion.div>
                 )}
-              </div>
-            ))}
-          </div>
-        </div>
+              </AnimatePresence>
+            </div>
+          );
+        })}
       </div>
     </section>
   );
 }
 
-/* ─── Bottom CTA ─────────────────────────────────────────────── */
-
-function CtaBanner() {
+function ClosingCta() {
   return (
-    <section style={{ ...S.section, padding: "0 24px 80px" }}>
-      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-        <div
-          style={{
-            position: "relative",
-            overflow: "hidden",
-            borderRadius: 24,
-            padding: "72px 40px",
-            textAlign: "center",
-            background: "linear-gradient(135deg, var(--tint) 0%, var(--tint-2) 100%)",
-          }}
-        >
-          {/* Decorative circles */}
-          <div style={{ position: "absolute", width: 300, height: 300, borderRadius: "50%", background: "rgba(var(--ink-rgb), 0.1)", top: -80, left: -80, pointerEvents: "none" }} />
-          <div style={{ position: "absolute", width: 200, height: 200, borderRadius: "50%", background: "rgba(var(--ink-rgb), 0.06)", bottom: -60, right: -40, pointerEvents: "none" }} />
-
-          <div style={{ position: "relative" }}>
-            <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(var(--ink-rgb), 0.75)", marginBottom: 16 }}>
-              Ready to stop losing cars?
-            </p>
-            <h2
-              style={{
-                fontSize: "clamp(2rem, 4.5vw, 3rem)",
-                fontWeight: 700,
-                lineHeight: 1.1,
-                letterSpacing: "-0.02em",
-                color: "#fff",
-                marginBottom: 16,
-                maxWidth: 600,
-                marginLeft: "auto",
-                marginRight: "auto",
-              }}
-            >
-              Start buying smarter today.
-            </h2>
-            <p style={{ fontSize: 17, color: "rgba(var(--ink-rgb), 0.85)", marginBottom: 32, maxWidth: 480, marginLeft: "auto", marginRight: "auto" }}>
-              Jump into the demo workspace — no signup, no credit card. Your
-              team can explore the full pipeline in under a minute.
-            </p>
-            <Link
-              href="/login"
-              id="bottom-cta"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "16px 36px",
-                fontSize: 16,
-                fontWeight: 700,
-                color: "var(--tint-strong)",
-                borderRadius: 12,
-                background: "#fff",
-                boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
-                transition: "transform 0.15s, opacity 0.15s",
-              }}
-            >
-              Enter Demo Workspace
-              <ArrowRight style={{ width: 18, height: 18 }} />
-            </Link>
-          </div>
+    <section className="lp-section">
+      <Reveal>
+        <div className="lp-cta">
+          <h2 className="lp-h2" style={{ color: "#fff", margin: "0 auto 14px" }}>Your next great buy is already listed.</h2>
+          <p style={{ fontSize: 18, color: "#fff", maxWidth: 560, margin: "0 auto 30px" }}>
+            Sign in to the demo workspace and see the feed, the dossier, and the pipeline for yourself.
+          </p>
+          <Link href="/login" className="btn btn-lg pressable" style={{ background: "#fff", color: "#2a1f8f", boxShadow: "0 10px 30px rgba(0,0,0,0.25)" }}>
+            Open the demo <ArrowRight size={17} />
+          </Link>
         </div>
-      </div>
+      </Reveal>
     </section>
   );
 }
-
-/* ─── Footer ─────────────────────────────────────────────────── */
 
 function Footer() {
   return (
-    <footer
-      style={{
-        borderTop: "1px solid rgba(var(--ink-rgb), 0.07)",
-        background: "var(--bg-surface)",
-        padding: "28px 24px",
-      }}
-    >
-      <div
-        style={{
-          maxWidth: 1200,
-          margin: "0 auto",
-          display: "flex",
-          flexWrap: "wrap",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 16,
-        }}
-      >
-        <SpotrLogo />
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 20, fontSize: 13, fontWeight: 600 }}>
-          {[
-            ["Product", "#product"],
-            ["Solutions", "#solutions"],
-            ["FAQ", "#faq"],
-          ].map(([label, href]) => (
-            <a key={label} href={href} style={{ color: "var(--label-tertiary)", transition: "color 0.15s" }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = "var(--label)")}
-              onMouseLeave={(e) => (e.currentTarget.style.color = "var(--label-tertiary)")}
-            >
-              {label}
+    <footer style={{ borderTop: "1px solid var(--separator)", padding: "32px 20px 48px" }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+        <SpotrLogo size={26} />
+        <nav aria-label="Footer" style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {[...NAV_LINKS, { label: "Sign in", href: "/login" }].map((link) => (
+            <a key={link.href} href={link.href} className="hover-label hover-fill" style={{ padding: "6px 10px", borderRadius: 999, fontSize: 13, color: "var(--label-secondary)", textDecoration: "none" }}>
+              {link.label}
             </a>
           ))}
-          <Link href="/login" style={{ color: "var(--label-tertiary)", transition: "color 0.15s" }}>Login</Link>
-        </div>
+        </nav>
+        <p style={{ width: "100%", fontSize: 12, color: "var(--label-secondary)" }}>
+          Scores, estimated values, and max offers are Spotr heuristic estimates, not appraisals or market quotes.
+        </p>
       </div>
     </footer>
   );
 }
 
-/* ─── Page ────────────────────────────────────────────────────── */
-
 export default function Home() {
   return (
     <>
       <NavBar />
-      <main style={{ background: "var(--bg-base)", minHeight: "100vh" }}>
-        <HeroSection />
-        <LogoCloud />
-        <ProblemSection />
-        <WorkflowSection />
-        <StatsSection />
-        <FeaturesBannerSection />
-        <FAQSection />
-        <CtaBanner />
-        <Footer />
+      <main style={{ background: "var(--bg-base)", minHeight: "100vh", overflowX: "clip" }}>
+        <Hero />
+        <Principles />
+        <HowItWorks />
+        <Features />
+        <Facts />
+        <FAQ />
+        <ClosingCta />
       </main>
+      <Footer />
     </>
   );
 }
