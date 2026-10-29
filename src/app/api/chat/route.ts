@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/db/prisma";
 import { authOptions } from "@/lib/auth";
+import { rateLimit, clientIp } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const CHAT_MESSAGE_MAX_LENGTH = 1000;
 
 // Gemini models in fallback order
 const PREFERRED_MODELS = [
@@ -43,10 +45,11 @@ async function callGeminiApi(
   for (const model of PREFERRED_MODELS) {
     try {
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/${model}:generateContent?key=${GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/${model}:generateContent`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          // Key in a header, not the URL, so it never lands in proxy/access logs.
+          headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY },
           body: JSON.stringify({ contents }),
         }
       );
@@ -134,6 +137,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Each message is a metered Gemini call (with model fallbacks), so throttle it.
+  if (!rateLimit(`chat:${clientIp(request.headers)}`, 30, 60 * 1000)) {
+    return NextResponse.json({ error: "Too many messages. Try again in a minute." }, { status: 429 });
+  }
+
   let body: { leadId?: string; message?: string };
   try {
     body = await request.json();
@@ -149,6 +157,10 @@ export async function POST(request: Request) {
 
   if (!message || typeof message !== "string" || !message.trim()) {
     return NextResponse.json({ error: "message content is required" }, { status: 400 });
+  }
+
+  if (message.length > CHAT_MESSAGE_MAX_LENGTH) {
+    return NextResponse.json({ error: `Keep messages under ${CHAT_MESSAGE_MAX_LENGTH} characters.` }, { status: 400 });
   }
 
   try {

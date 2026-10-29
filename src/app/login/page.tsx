@@ -12,8 +12,8 @@ import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("demo@spotrcars.com");
-  const [password, setPassword] = useState("password");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -30,7 +30,7 @@ export default function LoginPage() {
       });
 
       if (res?.error) {
-        setError("Invalid credentials. Try demo@spotrcars.com / password");
+        setError("That email and password don't match. Please try again.");
         setLoading(false);
       } else {
         router.push("/dashboard");
@@ -73,8 +73,8 @@ export default function LoginPage() {
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, y: 24, scale: 0.97 }}
-          animate={error ? { opacity: 1, y: 0, scale: 1, x: [0, -10, 9, -6, 4, 0] } : { opacity: 1, y: 0, scale: 1, x: 0 }}
+          initial={{ y: 24, scale: 0.97 }}
+          animate={error ? { y: 0, scale: 1, x: [0, -10, 9, -6, 4, 0] } : { y: 0, scale: 1, x: 0 }}
           transition={error ? { duration: 0.42, ease: "easeOut" } : { ...spring.smooth, delay: 0.08 }}
           className="material"
           style={{
@@ -156,10 +156,11 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Demo phase only — remove before real customers (see CLAUDE.md). */}
-          <p style={{ marginTop: 18, padding: "11px 14px", borderRadius: "var(--radius-md)", background: "rgba(var(--tint-rgb), 0.1)", fontSize: 13, color: "var(--label-secondary)", textAlign: "center" }}>
-            <span style={{ fontWeight: 600, color: "var(--tint-text)" }}>Demo access: </span>
-            demo@spotrcars.com · password
+          <p style={{ marginTop: 18, fontSize: 14, color: "var(--label-secondary)", textAlign: "center" }}>
+            New to Spotr?{" "}
+            <Link href="/request-access" style={{ color: "var(--tint-text)", fontWeight: 600, textDecoration: "none" }}>
+              Request access
+            </Link>
           </p>
         </motion.div>
 

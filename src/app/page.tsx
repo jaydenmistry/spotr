@@ -25,7 +25,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { SpotrLogo } from "@/components/ui/SpotrLogo";
-import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { SiteNav } from "@/components/marketing/SiteNav";
+import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
 import { spring } from "@/lib/motion";
 
@@ -34,11 +35,6 @@ import { spring } from "@/lib/motion";
    provider data (no scraping or marketplace automation), heuristic scores
    labeled as estimates, and no invented customers or usage numbers. */
 
-const NAV_LINKS = [
-  { label: "How it works", href: "#how-it-works" },
-  { label: "Product", href: "#product" },
-  { label: "FAQ", href: "#faq" },
-];
 
 const PRINCIPLES: { icon: LucideIcon; title: string; copy: string }[] = [
   {
@@ -149,8 +145,8 @@ const FAQS = [
     a: "No. Spotr focuses on the acquisition side: finding cars, deciding which are worth pursuing, and moving them through to purchase.",
   },
   {
-    q: "How do I try it?",
-    a: "Sign in to the demo workspace to explore the feed, the dossier, and the pipeline.",
+    q: "How do I get access?",
+    a: "Request access with a few details about your dealership. We'll reach out to set up your workspace and walk your desk through the feed, the dossier, and the pipeline.",
   },
 ];
 
@@ -177,8 +173,10 @@ function WordsIn({ text, delay = 0, gradient = false }: { text: string; delay?: 
       {text.split(" ").map((word, index) => (
         <motion.span
           key={`${word}-${index}`}
-          initial={reduceMotion ? false : { opacity: 0, y: 28, filter: "blur(10px)" }}
-          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          // No opacity fade: the headline is the LCP element, so it paints on the
+          // first frame and the motion is carried by blur + rise alone.
+          initial={reduceMotion ? false : { y: 28, filter: "blur(10px)" }}
+          animate={{ y: 0, filter: "blur(0px)" }}
           transition={{ ...spring.smooth, duration: 0.7, delay: delay + index * 0.05 }}
           style={{ display: "inline-block", marginRight: "0.24em" }}
         >
@@ -230,7 +228,7 @@ function MockCard({ title, meta, asking, maxOffer, score, rec }: { title: string
     <div style={{ display: "flex", gap: 14, alignItems: "center", padding: 14, borderRadius: "var(--radius-lg)", background: "var(--bg-card)", border: "1px solid var(--separator)", boxShadow: "var(--shadow-sm)" }}>
       <div aria-hidden="true" className="lp-car-thumb" />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <span className="t-eyebrow" style={{ fontSize: 10, color: recColor, background: `color-mix(in srgb, ${recColor} 14%, transparent)`, borderRadius: 999, padding: "2px 8px" }}>{rec}</span>
+        <span className="t-eyebrow" style={{ fontSize: 11, color: recColor, background: `color-mix(in srgb, ${recColor} 14%, transparent)`, borderRadius: 999, padding: "2px 8px" }}>{rec}</span>
         <p style={{ fontSize: 14, fontWeight: 600, color: "var(--label)", marginTop: 5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</p>
         <p style={{ fontSize: 12, color: "var(--label-secondary)" }}>{meta}</p>
         <div className="tabular" style={{ display: "flex", flexWrap: "wrap", columnGap: 14, rowGap: 2, marginTop: 6, fontSize: 12 }}>
@@ -389,48 +387,6 @@ function StepVisual({ step }: { step: StepKey }) {
 
 /* ─── Sections ──────────────────────────────────────────────── */
 
-function NavBar() {
-  const { scrollY } = useScroll();
-  const [scrolled, setScrolled] = useState(false);
-  useMotionValueEvent(scrollY, "change", (y) => setScrolled(y > 24));
-
-  return (
-    <header className="lp-nav-wrap">
-      <motion.nav
-        aria-label="Primary"
-        className="material lp-nav"
-        animate={{
-          maxWidth: scrolled ? 920 : 1200,
-          marginTop: scrolled ? 10 : 0,
-          borderRadius: scrolled ? 999 : 0,
-        }}
-        transition={spring.smooth}
-        style={{ borderBottom: scrolled ? "none" : "1px solid var(--separator)", boxShadow: scrolled ? "var(--shadow-md)" : "none" }}
-      >
-        <Link href="/" aria-label="Spotr home" className="pressable" style={{ textDecoration: "none" }}>
-          <SpotrLogo size={30} />
-        </Link>
-        <div className="hide-compact" style={{ display: "flex", gap: 4 }}>
-          {NAV_LINKS.map((link) => (
-            <a key={link.href} href={link.href} className="pressable hover-fill hover-label" style={{ padding: "7px 12px", borderRadius: 999, fontSize: 14, fontWeight: 500, color: "var(--label-secondary)", textDecoration: "none" }}>
-              {link.label}
-            </a>
-          ))}
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <div style={{ width: 64 }}>
-            <ThemeToggle label={false} />
-          </div>
-          <Link href="/login" className="btn btn-sm btn-plain pressable hide-compact">Sign in</Link>
-          <Link href="/login" className="btn btn-sm btn-primary pressable">
-            Open demo
-          </Link>
-        </div>
-      </motion.nav>
-    </header>
-  );
-}
-
 function Hero() {
   const reduceMotion = useReducedMotion();
   const productRef = useRef<HTMLDivElement>(null);
@@ -456,10 +412,11 @@ function Hero() {
           <WordsIn text="Spot it first." delay={0.05} />
           <WordsIn text="Buy it right." delay={0.2} gradient />
         </h1>
+        {/* Paints on the first frame (it's often the LCP element); only rises. */}
         <motion.p
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ ...spring.smooth, delay: 0.55 }}
+          initial={{ y: 16 }}
+          animate={{ y: 0 }}
+          transition={{ ...spring.smooth, delay: 0.25 }}
           className="lp-lede"
         >
           Spotr ranks vehicle listings against what your desk actually buys, shows the math behind every number, and keeps each deal moving until it&apos;s on your lot.
@@ -470,8 +427,8 @@ function Hero() {
           transition={{ ...spring.smooth, delay: 0.7 }}
           style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 12, marginTop: 34 }}
         >
-          <Link href="/login" className="btn btn-lg btn-primary pressable">
-            Open the demo <ArrowRight size={17} />
+          <Link href="/request-access" className="btn btn-lg btn-primary pressable">
+            Request access <ArrowRight size={17} />
           </Link>
           <a href="#how-it-works" className="btn btn-lg btn-secondary pressable">
             See how it works
@@ -668,10 +625,10 @@ function ClosingCta() {
         <div className="lp-cta">
           <h2 className="lp-h2" style={{ color: "#fff", margin: "0 auto 14px" }}>Your next great buy is already listed.</h2>
           <p style={{ fontSize: 18, color: "#fff", maxWidth: 560, margin: "0 auto 30px" }}>
-            Sign in to the demo workspace and see the feed, the dossier, and the pipeline for yourself.
+            Tell us about your buying desk and we&apos;ll set up a workspace for your team.
           </p>
-          <Link href="/login" className="btn btn-lg pressable" style={{ background: "#fff", color: "#2a1f8f", boxShadow: "0 10px 30px rgba(0,0,0,0.25)" }}>
-            Open the demo <ArrowRight size={17} />
+          <Link href="/request-access" className="btn btn-lg pressable" style={{ background: "#fff", color: "#2a1f8f", boxShadow: "0 10px 30px rgba(0,0,0,0.25)" }}>
+            Request access <ArrowRight size={17} />
           </Link>
         </div>
       </Reveal>
@@ -679,30 +636,10 @@ function ClosingCta() {
   );
 }
 
-function Footer() {
-  return (
-    <footer style={{ borderTop: "1px solid var(--separator)", padding: "32px 20px 48px" }}>
-      <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
-        <SpotrLogo size={26} />
-        <nav aria-label="Footer" style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {[...NAV_LINKS, { label: "Sign in", href: "/login" }].map((link) => (
-            <a key={link.href} href={link.href} className="hover-label hover-fill" style={{ padding: "6px 10px", borderRadius: 999, fontSize: 13, color: "var(--label-secondary)", textDecoration: "none" }}>
-              {link.label}
-            </a>
-          ))}
-        </nav>
-        <p style={{ width: "100%", fontSize: 12, color: "var(--label-secondary)" }}>
-          Scores, estimated values, and max offers are Spotr heuristic estimates, not appraisals or market quotes.
-        </p>
-      </div>
-    </footer>
-  );
-}
-
 export default function Home() {
   return (
     <>
-      <NavBar />
+      <SiteNav />
       <main style={{ background: "var(--bg-base)", minHeight: "100vh", overflowX: "clip" }}>
         <Hero />
         <Principles />
@@ -712,7 +649,7 @@ export default function Home() {
         <FAQ />
         <ClosingCta />
       </main>
-      <Footer />
+      <SiteFooter />
     </>
   );
 }

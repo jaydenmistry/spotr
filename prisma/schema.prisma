@@ -112,3 +112,20 @@ model Activity {
 
   @@index([leadId, createdAt])
 }
+
+// Inbound "Request access" submissions from the public site. Prospect
+// (dealer staff) contact details only — never seller PII. Reviewed by the
+// signed-in team at /dashboard/requests; status is new → contacted → archived.
+model AccessRequest {
+  id         String   @id @default(cuid())
+  name       String
+  email      String
+  dealership String
+  role       String
+  message    String?
+  status     String   @default("new")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([status, createdAt])
+}

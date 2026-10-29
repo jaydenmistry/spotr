@@ -255,6 +255,7 @@ export default function ChatMock({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Practice message…"
+          maxLength={1000}
           aria-label={`Practice message to simulated ${displayName}`}
           disabled={loading}
           className="field"

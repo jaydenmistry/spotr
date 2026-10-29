@@ -74,7 +74,7 @@ spotr-startup/
    NEXTAUTH_SECRET="your-development-secret-key"
    NEXTAUTH_URL="http://localhost:3000"
    ADMIN_EMAIL="admin@spotrcars.com"
-   ADMIN_PASSWORD="password123"
+   ADMIN_PASSWORD="choose-a-long-unique-password"
    MARKETCHECK_API_KEY="your-optional-marketcheck-key"
    ```
 

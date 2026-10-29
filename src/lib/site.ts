@@ -4,3 +4,6 @@ export const SITE_NAME = "Spotr";
 export const SITE_TITLE = "Spotr — Private Party Vehicle Acquisition";
 export const SITE_DESCRIPTION =
   "Spotr helps dealer buying desks rank vehicle listings against their buy box, see the math behind every estimate, and move each acquisition through a clear pipeline.";
+
+/** Public contact address shown on the marketing, legal, and access pages. */
+export const CONTACT_EMAIL = "hello@spotrcars.com";

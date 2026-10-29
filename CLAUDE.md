@@ -53,5 +53,5 @@ Spotr is a B2B, multi-tenant dealer vehicle-acquisition intelligence platform. I
 - `Lead.stage` is free-text in the schema; the six kanban stages live in `src/lib/stages.ts` (`STAGES`/`TERMINAL_STAGES`/`isStage`) and `PATCH /api/leads` rejects anything else — but old rows may still hold arbitrary values.
 - `scripts/refresh-leads.mjs` **deletes all leads**, then calls the fetch API unauthenticated (will 401) — broken and dangerous; don't run it.
 - The in-memory rate limiter (`src/lib/rateLimit.ts`) is per-instance by design; swap for Redis only if the app ever runs multiple replicas.
-- The login page ships visible demo credentials — acceptable for the demo phase only; must be removed before real customers.
+- The login page no longer shows demo credentials; prospects use `/request-access` (public, rate-limited, stored in `AccessRequest`, reviewed at `/dashboard/requests`). The seeded admin account still exists — rotate `ADMIN_PASSWORD` away from any value that was ever shown publicly.
 - `.env` is gitignored; never commit secrets. `.env.example` documents required vars (`MARKETCHECK_API_KEY`, `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, optional `NEXT_PUBLIC_*`).

@@ -4,9 +4,9 @@ import { useSession, signOut } from "next-auth/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { motion } from "motion/react";
-import { Crosshair, LayoutGrid, LogOut, Package, Radar, type LucideIcon } from "lucide-react";
+import { Crosshair, Inbox, LayoutGrid, LogOut, Package, Radar, type LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { SpotrLogo, SpotrMark } from "@/components/ui/SpotrLogo";
+import { SpotrLogo } from "@/components/ui/SpotrLogo";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { spring } from "@/lib/motion";
 
@@ -32,6 +32,10 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
       { href: "/dashboard/inventory", icon: Package, label: "Inventory", short: "Inventory" },
       { href: "/dashboard/buybox", icon: Crosshair, label: "Buy Box", short: "Buy Box" },
     ],
+  },
+  {
+    title: "Team",
+    items: [{ href: "/dashboard/requests", icon: Inbox, label: "Access requests", short: "Requests" }],
   },
 ];
 
@@ -293,7 +297,7 @@ function CompactTopBar() {
       }}
     >
       <Link href="/" aria-label="Spotr home" style={{ textDecoration: "none" }}>
-        <SpotrMark size={28} />
+        <SpotrLogo size={28} />
       </Link>
       <div style={{ width: 64 }}>
         <ThemeToggle label={false} />

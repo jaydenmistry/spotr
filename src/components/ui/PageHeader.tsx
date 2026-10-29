@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { spring } from "@/lib/motion";
+import { SpotrMark } from "./SpotrLogo";
 
 interface PageHeaderProps {
   title: string;
@@ -57,8 +58,12 @@ export function PageHeader({ title, subtitle, actions }: PageHeaderProps) {
               borderBottom: "1px solid var(--separator)",
             }}
           >
-            <span className="t-headline" style={{ color: "var(--label)" }}>
-              {title}
+            <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <SpotrMark size={24} />
+              <span aria-hidden="true" style={{ width: 1, height: 18, background: "var(--separator-strong)" }} />
+              <span className="t-headline" style={{ color: "var(--label)" }}>
+                {title}
+              </span>
             </span>
           </motion.div>
         )}
