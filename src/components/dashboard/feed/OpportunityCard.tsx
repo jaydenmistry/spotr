@@ -84,6 +84,7 @@ export default function OpportunityCard({
 
   return (
     <article
+      data-lead-id={lead.id}
       className="hover-lift opportunity-card"
       style={{
         display: "flex",
@@ -101,6 +102,7 @@ export default function OpportunityCard({
         onClick={() => onOpenDossier(lead)}
         aria-label={`Open dossier for ${title}${isSample ? " (sample data)" : ""}`}
         className="card-photo"
+        data-card-focus
         style={{
           position: "relative",
           flex: "1 1 240px",

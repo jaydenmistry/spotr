@@ -23,6 +23,8 @@ interface SheetProps {
   toolbar?: React.ReactNode;
   /** Accessible name of the built-in close button. */
   closeLabel?: string;
+  /** "medium" sizes to content (help panels); default is the full dossier sheet. */
+  size?: "large" | "medium";
   children: React.ReactNode;
 }
 
@@ -39,7 +41,7 @@ const CLOSE_FALLBACK_MS = 700;
  */
 const subscribeNoop = () => () => {};
 
-export function Sheet({ onClose, ariaLabel, header, toolbar, closeLabel = "Close", children }: SheetProps) {
+export function Sheet({ onClose, ariaLabel, header, toolbar, closeLabel = "Close", size = "large", children }: SheetProps) {
   const reduceMotion = useReducedMotion();
   const panelRef = useRef<HTMLDivElement>(null);
   const y = useMotionValue(typeof window === "undefined" ? 800 : reduceMotion ? 0 : window.innerHeight);
@@ -163,7 +165,7 @@ export function Sheet({ onClose, ariaLabel, header, toolbar, closeLabel = "Close
         aria-modal="true"
         aria-label={ariaLabel}
         tabIndex={-1}
-        className="sheet-panel"
+        className={size === "medium" ? "sheet-panel sheet-medium" : "sheet-panel"}
         style={{
           y,
           opacity,
@@ -213,7 +215,7 @@ export function Sheet({ onClose, ariaLabel, header, toolbar, closeLabel = "Close
           </div>
           {header}
         </div>
-        <div style={{ flexShrink: 0, borderBottom: "1px solid var(--separator)" }}>{toolbar}</div>
+        {toolbar && <div style={{ flexShrink: 0, borderBottom: "1px solid var(--separator)" }}>{toolbar}</div>}
         <div style={{ flex: 1, overflowY: "auto", overscrollBehavior: "contain", paddingBottom: "env(safe-area-inset-bottom)" }}>{children}</div>
       </motion.div>
     </div>,

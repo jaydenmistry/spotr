@@ -4,10 +4,12 @@ import { useSession, signOut } from "next-auth/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { motion } from "motion/react";
-import { Crosshair, Inbox, LayoutGrid, LogOut, Package, Radar, type LucideIcon } from "lucide-react";
+import { Crosshair, Inbox, LayoutGrid, LogOut, Package, Radar, Search, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { SpotrLogo } from "@/components/ui/SpotrLogo";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { CommandPaletteProvider, useCommandPalette } from "@/components/command/CommandPaletteProvider";
+import { Kbd, usePaletteShortcutLabel } from "@/components/ui/Kbd";
 import { spring } from "@/lib/motion";
 
 interface NavItem {
@@ -124,6 +126,43 @@ function SidebarLink({ item, active }: { item: NavItem; active: boolean }) {
   );
 }
 
+/** Opens the command palette; looks like a search field so it's findable without the shortcut. */
+function PaletteButton() {
+  const { openPalette } = useCommandPalette();
+  const keys = usePaletteShortcutLabel();
+  return (
+    <button
+      type="button"
+      onClick={openPalette}
+      aria-label="Search or jump to…"
+      aria-haspopup="dialog"
+      aria-keyshortcuts={keys[0] === "⌘" ? "Meta+K" : "Control+K"}
+      className="pressable hover-fill"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 9,
+        width: "100%",
+        height: 36,
+        padding: "0 8px 0 11px",
+        borderRadius: "var(--radius-sm)",
+        border: "1px solid var(--separator)",
+        background: "var(--fill)",
+        color: "var(--label-secondary)",
+        fontSize: 14,
+        fontWeight: 500,
+        cursor: "pointer",
+      }}
+    >
+      <Search size={15} aria-hidden="true" />
+      <span style={{ flex: 1, textAlign: "left" }}>Search</span>
+      <span className="keyboard-only">
+        <Kbd keys={keys} />
+      </span>
+    </button>
+  );
+}
+
 function Sidebar({ pathname, email }: { pathname: string; email?: string | null }) {
   return (
     <nav
@@ -144,6 +183,10 @@ function Sidebar({ pathname, email }: { pathname: string; email?: string | null 
         <Link href="/" aria-label="Spotr home" style={{ textDecoration: "none" }} className="pressable">
           <SpotrLogo size={30} />
         </Link>
+      </div>
+
+      <div style={{ padding: "0 12px 14px" }}>
+        <PaletteButton />
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "4px 12px" }}>
@@ -282,6 +325,7 @@ function TabBar({ pathname }: { pathname: string }) {
 
 /** Compact layouts: brand + appearance switch above the content. */
 function CompactTopBar() {
+  const { openPalette } = useCommandPalette();
   return (
     <div
       className="show-compact material"
@@ -299,8 +343,30 @@ function CompactTopBar() {
       <Link href="/" aria-label="Spotr home" style={{ textDecoration: "none" }}>
         <SpotrLogo size={28} />
       </Link>
-      <div style={{ width: 64 }}>
-        <ThemeToggle label={false} />
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <button
+          type="button"
+          onClick={openPalette}
+          aria-label="Search or jump to…"
+          aria-haspopup="dialog"
+          className="pressable hover-fill"
+          style={{
+            width: 36,
+            height: 36,
+            display: "grid",
+            placeItems: "center",
+            borderRadius: 999,
+            border: "none",
+            background: "var(--fill)",
+            color: "var(--label-secondary)",
+            cursor: "pointer",
+          }}
+        >
+          <Search size={17} aria-hidden="true" />
+        </button>
+        <div style={{ width: 64 }}>
+          <ThemeToggle label={false} />
+        </div>
       </div>
     </div>
   );
@@ -325,14 +391,16 @@ export default function DashboardLayout({
 
   if (status === "authenticated") {
     return (
-      <div style={{ minHeight: "100vh", background: "var(--bg-base)" }}>
-        <Sidebar pathname={pathname} email={data?.user?.email} />
-        <TabBar pathname={pathname} />
-        <main className="app-main">
-          <CompactTopBar />
-          {children}
-        </main>
-      </div>
+      <CommandPaletteProvider>
+        <div style={{ minHeight: "100vh", background: "var(--bg-base)" }}>
+          <Sidebar pathname={pathname} email={data?.user?.email} />
+          <TabBar pathname={pathname} />
+          <main className="app-main">
+            <CompactTopBar />
+            {children}
+          </main>
+        </div>
+      </CommandPaletteProvider>
     );
   }
 

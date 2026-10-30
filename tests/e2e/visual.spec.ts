@@ -53,3 +53,21 @@ test("app: dossier", async ({ page }) => {
   await settle(page);
   await expect(page).toHaveScreenshot("dossier.png", { mask: timeSensitive(page) });
 });
+
+test("app: command palette", async ({ page }) => {
+  await page.goto("/dashboard/feed");
+  await settle(page);
+  await page.getByRole("button", { name: "Search or jump to…" }).filter({ visible: true }).first().click();
+  await expect(page.getByRole("combobox", { name: /search commands/i })).toBeFocused();
+  await settle(page);
+  await expect(page).toHaveScreenshot("command-palette.png", { mask: timeSensitive(page) });
+});
+
+test("app: keyboard shortcuts", async ({ page }) => {
+  await page.goto("/dashboard/feed");
+  await settle(page);
+  await page.keyboard.press("Shift+?");
+  await expect(page.getByRole("dialog", { name: "Keyboard shortcuts" })).toBeVisible();
+  await settle(page);
+  await expect(page).toHaveScreenshot("keyboard-shortcuts.png", { mask: timeSensitive(page) });
+});

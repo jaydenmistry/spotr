@@ -30,6 +30,29 @@ test("dossier: opens from the feed, switches tabs, closes with Escape", async ({
   await expect(dialog).toBeHidden();
 });
 
+test("command palette: Ctrl+K, filter, Enter navigates", async ({ page }) => {
+  await page.goto("/dashboard/feed");
+  // The shell (and its key listener) mounts once the session resolves.
+  await page.getByRole("button", { name: "Search or jump to…" }).filter({ visible: true }).first().waitFor();
+  await page.keyboard.press("Control+k");
+  const input = page.getByRole("combobox", { name: /search commands/i });
+  await expect(input).toBeFocused();
+  await input.fill("pipe");
+  await expect(page.getByRole("option", { name: /Pipeline/ })).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page.getByRole("dialog", { name: "Command palette" })).toBeHidden();
+});
+
+test("feed shortcuts: j focuses a card, o opens its dossier", async ({ page }) => {
+  await page.goto("/dashboard/feed");
+  await page.getByRole("button", { name: /^open dossier$/i }).first().waitFor();
+  await page.keyboard.press("j");
+  await expect(page.locator("[data-card-focus]").first()).toBeFocused();
+  await page.keyboard.press("o");
+  await expect(page.getByRole("dialog")).toBeVisible();
+});
+
 test("theme toggle switches to light and persists", async ({ browser }) => {
   // Own context: the shared fixture re-applies the project theme on every load.
   const context = await browser.newContext({ storageState: "tests/e2e/.auth/admin.json" });

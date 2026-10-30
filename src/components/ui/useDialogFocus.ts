@@ -6,6 +6,11 @@ import { useEffect, useRef } from "react";
 // prompt opened over the dossier sheet closes alone and keeps focus inside it.
 const stack: symbol[] = [];
 
+/** Page-level keyboard shortcuts stand down while any dialog is open. */
+export function hasOpenDialog() {
+  return stack.length > 0;
+}
+
 // Excludes tabindex="-1" (e.g. non-selected tabs in a roving-tabindex group).
 const FOCUSABLE = [
   "a[href]",
@@ -44,7 +49,8 @@ export function useDialogFocus(
       const container = containerRef.current;
       if (!container) return;
 
-      if (event.key === "Escape") {
+      // Escape while an IME is composing cancels the composition, not the dialog.
+      if (event.key === "Escape" && !event.isComposing && event.keyCode !== 229) {
         event.preventDefault();
         onEscapeRef.current();
         return;

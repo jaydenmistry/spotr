@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { ChevronLeft, ChevronRight, Radar, RefreshCw, Search, Undo2 } from "lucide-react";
+import { ArrowDownWideNarrow, ChevronLeft, ChevronRight, Eye, FilterX, Keyboard, Radar, RefreshCw, Search, ThumbsDown, Undo2 } from "lucide-react";
 import OpportunityCard from "@/components/dashboard/feed/OpportunityCard";
 import LeadModal from "@/components/dashboard/modal/LeadModal";
 import OutcomeReasonDialog from "@/components/dashboard/OutcomeReasonDialog";
@@ -17,6 +18,11 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Toast } from "@/components/ui/Toast";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { listContainer, listItem, spring } from "@/lib/motion";
+import { useCommandPalette, useRegisterCommands } from "@/components/command/CommandPaletteProvider";
+import type { Command } from "@/components/command/CommandPalette";
+import { hasOpenDialog } from "@/components/ui/useDialogFocus";
+import { Kbd } from "@/components/ui/Kbd";
+import { isPlainKey, singleKeyShortcutsEnabled } from "@/lib/shortcuts";
 
 type FeedView = "active" | "watching" | "passed";
 type FeedSort = "score" | "newest" | "margin" | "distance" | "age";
@@ -66,7 +72,24 @@ function loadErrorMessage(error: unknown) {
   return "Couldn't load the opportunity feed. Check your connection and try again.";
 }
 
+const VIEW_ICONS = { active: Radar, watching: Eye, passed: ThumbsDown } as const;
+
 export default function FeedPage() {
+  // useSearchParams needs a Suspense boundary (see Next's use-search-params docs).
+  return (
+    <Suspense fallback={<div className="page" style={{ maxWidth: 1040 }} />}>
+      <FeedPageContent />
+    </Suspense>
+  );
+}
+
+function FeedPageContent() {
+  // Deep links from the command palette: ?q=<vin or title>&open=<lead id>.
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const linkedQuery = (searchParams.get("q") ?? "").trim().slice(0, 60);
+  const linkedOpen = searchParams.get("open");
+  const { openHelp, shortcutsEnabled } = useCommandPalette();
   const [leads, setLeads] = useState<FeedLead[]>([]);
   const [total, setTotal] = useState(0);
   const [meta, setMeta] = useState<{ candidateSetCapped: boolean; assessedCount: number; matchingTotal: number; buyBoxPersisted: boolean } | null>(null);
@@ -80,12 +103,50 @@ export default function FeedPage() {
   const [view, setView] = useState<FeedView>("active");
   const [sort, setSort] = useState<FeedSort>("score");
   const [recFilter, setRecFilter] = useState<"" | Recommendation>("");
-  const [searchInput, setSearchInput] = useState("");
-  const [q, setQ] = useState("");
+  const [searchInput, setSearchInput] = useState(linkedQuery);
+  const [q, setQ] = useState(linkedQuery);
   const [dossierLead, setDossierLead] = useState<FeedLead | null>(null);
   const [pendingPass, setPendingPass] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [pendingOpen, setPendingOpen] = useState<string | null>(linkedOpen);
+  const [appliedLink, setAppliedLink] = useState(searchParams.toString());
+  const searchRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  // After a keyboard pass: the passed card, and the neighbour to focus once it's gone.
+  const refocusAfterPass = useRef<{ passedId: string; nextId: string | null } | null>(null);
+
+  // A new palette link while already on the feed: apply it during render
+  // (not in an effect) so the stale list never flashes.
+  const linkKey = searchParams.toString();
+  if (linkKey !== appliedLink) {
+    setAppliedLink(linkKey);
+    if (linkedQuery || linkedOpen) {
+      setSearchInput(linkedQuery);
+      setQ(linkedQuery);
+      setRecFilter("");
+      setView("active");
+      setPage(1);
+      setLoading(true);
+      // Force a fetch even if the link matches the current filters, so
+      // `loading` always resolves.
+      setReloadKey((value) => value + 1);
+      setPendingOpen(linkedOpen);
+    }
+  }
+
+  // Strip the link params once read so a reload doesn't reopen the dossier.
+  useEffect(() => {
+    if (searchParams.has("q") || searchParams.has("open")) window.history.replaceState(null, "", pathname);
+  }, [searchParams, pathname]);
+
+  // Open the linked dossier once its results have loaded.
+  if (pendingOpen && !loading) {
+    const match = leads.find((lead) => lead.id === pendingOpen);
+    setPendingOpen(null);
+    if (match) setDossierLead(match);
+    else if (!loadError) setActionError("That vehicle is no longer in Opportunities — it may have been passed or moved to a closed stage.");
+  }
 
   // Debounce search input into the applied query.
   useEffect(() => {
@@ -182,6 +243,7 @@ export default function FeedPage() {
         }
       } catch (error) {
         console.error("Feed action failed", error);
+        refocusAfterPass.current = null;
         setActionError(
           axios.isAxiosError(error) && error.response?.status === 401
             ? "Your session has expired. Please sign in again."
@@ -210,6 +272,148 @@ export default function FeedPage() {
   const safePage = Math.min(page, totalPages);
   const hasFilters = Boolean(q || recFilter);
 
+  // ── Keyboard shortcuts (single keys; guarded so typing and dialogs win) ──
+  const cardElements = () => Array.from(listRef.current?.querySelectorAll<HTMLElement>("[data-lead-id]") ?? []);
+  const focusCard = (card: HTMLElement | undefined) => {
+    const target = card?.querySelector<HTMLElement>("[data-card-focus]");
+    if (!target) return;
+    target.focus({ preventScroll: true });
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    target.closest("[data-lead-id]")?.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
+  };
+
+  const onShortcut = useEffectEvent((event: KeyboardEvent) => {
+    if (!singleKeyShortcutsEnabled() || hasOpenDialog() || !isPlainKey(event)) return;
+    const key = event.key;
+    const cards = cardElements();
+    const currentIndex = cards.findIndex((card) => card.contains(document.activeElement));
+    const currentLead = currentIndex >= 0 ? leads.find((lead) => lead.id === cards[currentIndex].dataset.leadId) : undefined;
+    const claim = () => event.preventDefault();
+
+    if (key === "j" || key === "k") {
+      if (cards.length === 0) return;
+      claim();
+      const next = currentIndex === -1 ? 0 : Math.min(Math.max(currentIndex + (key === "j" ? 1 : -1), 0), cards.length - 1);
+      focusCard(cards[next]);
+    } else if (key === "o" && currentLead) {
+      claim();
+      setDossierLead(currentLead);
+    } else if (key === "/") {
+      claim();
+      searchRef.current?.focus();
+      searchRef.current?.select();
+    } else if (key === "[" && safePage > 1) {
+      claim();
+      setPage(safePage - 1);
+    } else if (key === "]" && safePage < totalPages) {
+      claim();
+      setPage(safePage + 1);
+    } else if (key === "z" && lastPassed && view !== "passed") {
+      claim();
+      void handleAction(lastPassed.id, "unpass");
+    } else if (currentLead && view !== "passed" && busyLeadId !== currentLead.id) {
+      if (key === "w") {
+        claim();
+        handleAction(currentLead.id, currentLead.watchedAt ? "unwatch" : "watch");
+      } else if (key === "a") {
+        claim();
+        handleAction(currentLead.id, currentLead.assignedTo ? "unassign" : "assign");
+      } else if (key === "p") {
+        claim();
+        const nextId = (leads[currentIndex + 1] ?? leads[currentIndex - 1])?.id ?? null;
+        refocusAfterPass.current = { passedId: currentLead.id, nextId };
+        handleAction(currentLead.id, "pass");
+      }
+    }
+  });
+
+  useEffect(() => {
+    const listener = (event: KeyboardEvent) => onShortcut(event);
+    window.addEventListener("keydown", listener);
+    return () => window.removeEventListener("keydown", listener);
+  }, []);
+
+  // After a keyboard pass, keep the buyer's place: focus whichever card
+  // slid into the passed card's slot.
+  // Waits until the refetched list no longer contains the passed card, and
+  // targets by id so the card still animating out is never chosen.
+  useEffect(() => {
+    const target = refocusAfterPass.current;
+    if (!target || loading || refreshing || pendingPass) return;
+    if (leads.some((lead) => lead.id === target.passedId)) return;
+    refocusAfterPass.current = null;
+    const cards = cardElements().filter((card) => card.dataset.leadId !== target.passedId);
+    focusCard(cards.find((card) => card.dataset.leadId === target.nextId) ?? cards[0]);
+  }, [leads, loading, refreshing, pendingPass]);
+
+  // ── Page commands for the ⌘K palette ──
+  const feedCommands = useMemo<Command[]>(() => {
+    const list: Command[] = VIEW_TABS.filter((tab) => tab.view !== view).map((tab) => ({
+      id: `feed-view-${tab.view}`,
+      group: "This page",
+      label: `Show ${tab.label}`,
+      icon: VIEW_ICONS[tab.view],
+      keywords: ["feed", "view", "tab"],
+      run: () => switchView(tab.view),
+    }));
+    for (const option of SORT_OPTIONS) {
+      if (option.value === sort) continue;
+      list.push({
+        id: `feed-sort-${option.value}`,
+        group: "This page",
+        label: `Sort by ${option.label.toLowerCase()}`,
+        icon: ArrowDownWideNarrow,
+        keywords: ["order", "rank"],
+        run: () => {
+          setSort(option.value);
+          setPage(1);
+        },
+      });
+    }
+    for (const rec of ["BUY", "INVESTIGATE"] as const) {
+      if (recFilter === rec) continue;
+      list.push({
+        id: `feed-rec-${rec}`,
+        group: "This page",
+        label: `Show only ${rec === "BUY" ? "Buy" : "Investigate"} recommendations`,
+        hint: "Spotr estimate — filters the feed",
+        icon: Radar,
+        keywords: ["filter", "recommendation", rec.toLowerCase()],
+        run: () => {
+          setRecFilter(rec);
+          setPage(1);
+        },
+      });
+    }
+    if (hasFilters) {
+      list.push({
+        id: "feed-clear-filters",
+        group: "This page",
+        label: "Clear search and filters",
+        icon: FilterX,
+        keywords: ["reset"],
+        run: () => {
+          setSearchInput("");
+          setQ("");
+          setRecFilter("");
+          setPage(1);
+        },
+      });
+    }
+    list.push({
+      id: "feed-search",
+      group: "This page",
+      label: "Search the feed",
+      icon: Search,
+      shortcut: ["/"],
+      keywords: ["find", "filter"],
+      // By id: the React Compiler treats ref reads inside memoized values as render-time reads.
+      run: () => document.getElementById("feed-search")?.focus(),
+    });
+    return list;
+  }, [view, sort, recFilter, hasFilters, switchView]);
+  useRegisterCommands(feedCommands);
+
   const viewNoun = view === "passed" ? "passed vehicles" : view === "watching" ? "watched opportunities" : "opportunities";
 
   return (
@@ -221,7 +425,10 @@ export default function FeedPage() {
           description="A standardized reason keeps the pipeline honest about why opportunities were rejected."
           confirmLabel="Pass"
           busy={busyLeadId === pendingPass}
-          onCancel={() => setPendingPass(null)}
+          onCancel={() => {
+            refocusAfterPass.current = null;
+            setPendingPass(null);
+          }}
           onConfirm={(reason, note) => {
             void performAction(pendingPass, "pass", { reason, note }).finally(() =>
               setPendingPass(null)
@@ -256,11 +463,14 @@ export default function FeedPage() {
         <div style={{ position: "relative", flex: "1 1 220px", minWidth: 180 }}>
           <Search style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", width: 15, height: 15, color: "var(--label-tertiary)", pointerEvents: "none" }} />
           <input
+            ref={searchRef}
+            id="feed-search"
             type="text"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Search make, model, trim, VIN…"
             aria-label="Search opportunities"
+            aria-keyshortcuts={shortcutsEnabled ? "/" : undefined}
             className="field"
             style={{ paddingLeft: 36, borderRadius: 999 }}
           />
@@ -407,7 +617,8 @@ export default function FeedPage() {
       {/* Feed */}
       {!loading && !loadError && leads.length > 0 && (
         <>
-          <p className="t-footnote" style={{ color: "var(--label-secondary)", marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
+          <p className="t-footnote" style={{ color: "var(--label-secondary)" }}>
             Showing{" "}
             <span className="tabular" style={{ fontWeight: 600, color: "var(--label)" }}>
               {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, total)}
@@ -417,10 +628,21 @@ export default function FeedPage() {
               ? ` · ranked across the ${meta.assessedCount} newest of ${meta.matchingTotal} matching listings — not exhaustive`
               : ""}
           </p>
+          <button
+            type="button"
+            onClick={openHelp}
+            className="t-footnote pressable hover-label keyboard-only hide-compact"
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0, border: "none", background: "transparent", padding: 0, color: "var(--label-secondary)", cursor: "pointer" }}
+          >
+            <Keyboard size={14} aria-hidden="true" />
+            Shortcuts {shortcutsEnabled ? <Kbd keys={["?"]} /> : "(off)"}
+          </button>
+          </div>
 
           {/* Cards reflow on springs; a passed card slides out and the rest
               close the gap. The list dims while a refetch is in flight. */}
           <motion.div
+            ref={listRef}
             variants={listContainer}
             initial="hidden"
             animate="show"
