@@ -38,7 +38,14 @@ export function clientIp(headers: Headers | Record<string, string | string[] | u
     return Array.isArray(value) ? value[0] : value;
   };
 
+  // The leftmost X-Forwarded-For entries are whatever the client sent, so they
+  // can't be trusted for rate limiting. Our single reverse proxy (Traefik via
+  // Dokploy) appends the address it actually saw, which makes the rightmost
+  // entry the real client. Revisit if another proxy/CDN is added in front.
   const forwarded = get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0].trim();
+  if (forwarded) {
+    const hops = forwarded.split(",").map((hop) => hop.trim()).filter(Boolean);
+    if (hops.length > 0) return hops[hops.length - 1];
+  }
   return get("x-real-ip") ?? "unknown";
 }

@@ -68,14 +68,16 @@ const MOVEMENT_OPTIONS: Array<{ value: MovementFilter; label: string }> = [
   { value: "Depreciating", label: "Projected downward" },
 ];
 
+// backgroundColor (not the `background` shorthand) so selects keep the
+// global chevron background-image.
 const inputStyle: React.CSSProperties = {
-  background: "rgba(255,255,255,0.04)",
-  border: "1px solid rgba(255,255,255,0.1)",
-  borderRadius: 8,
-  padding: "8px 12px",
+  backgroundColor: "var(--fill)",
+  border: "1px solid var(--separator)",
+  borderRadius: 999,
+  height: 36,
+  padding: "0 14px",
   fontSize: 13,
-  color: "#f0f4ff",
-  outline: "none",
+  color: "var(--label)",
   width: "100%",
   boxSizing: "border-box",
 };
@@ -84,15 +86,17 @@ const toggleStyle = (active: boolean): React.CSSProperties => ({
   display: "inline-flex",
   alignItems: "center",
   gap: 6,
-  padding: "8px 12px",
-  borderRadius: 8,
+  height: 36,
+  padding: "0 14px",
+  borderRadius: 999,
   fontSize: 13,
-  fontWeight: 700,
+  fontWeight: 600,
   cursor: "pointer",
   whiteSpace: "nowrap",
-  border: `1px solid ${active ? "rgba(255,122,26,0.5)" : "rgba(255,255,255,0.12)"}`,
-  background: active ? "rgba(255,122,26,0.12)" : "rgba(255,255,255,0.04)",
-  color: active ? "#ff9147" : "#8b9ab8",
+  border: `1px solid ${active ? "transparent" : "var(--separator)"}`,
+  background: active ? "rgba(var(--tint-rgb), 0.16)" : "var(--fill)",
+  color: active ? "var(--tint-text)" : "var(--label-secondary)",
+  transition: "background-color 180ms ease, color 180ms ease, transform var(--spring-bouncy-duration) var(--spring-bouncy)",
 });
 
 export default function PipelineControls({
@@ -129,8 +133,8 @@ export default function PipelineControls({
       aria-label="Pipeline filters"
       style={{
         background: "var(--bg-card)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        borderRadius: 14,
+        border: "1px solid var(--separator)",
+        borderRadius: "var(--radius-lg)",
         padding: "14px 16px",
         marginBottom: 20,
         display: "flex",
@@ -149,7 +153,7 @@ export default function PipelineControls({
               transform: "translateY(-50%)",
               width: 14,
               height: 14,
-              color: "#4a5670",
+              color: "var(--label-secondary)",
               pointerEvents: "none",
             }}
             aria-hidden="true"
@@ -164,7 +168,7 @@ export default function PipelineControls({
           />
         </div>
 
-        <label style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 10, fontWeight: 700, color: "#4a5670", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        <label style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 11, fontWeight: 600, color: "var(--label-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
           Stage
           <select
             aria-label="Filter by stage"
@@ -172,16 +176,16 @@ export default function PipelineControls({
             onChange={(e) => onChange({ stage: e.target.value })}
             style={{ ...inputStyle, cursor: "pointer", width: "auto" }}
           >
-            <option value="All" style={{ background: "#0f1520" }}>All stages</option>
+            <option value="All" style={{ background: "var(--bg-surface)" }}>All stages</option>
             {STAGES.map((stage) => (
-              <option key={stage} value={stage} style={{ background: "#0f1520" }}>
+              <option key={stage} value={stage} style={{ background: "var(--bg-surface)" }}>
                 {stage}
               </option>
             ))}
           </select>
         </label>
 
-        <label style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 10, fontWeight: 700, color: "#4a5670", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        <label style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 11, fontWeight: 600, color: "var(--label-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
           {/* BUY/PASS read as instructions, so the heuristic caveat matters
               here at least as much as it does on the movement filter. */}
           Recommendation
@@ -193,7 +197,7 @@ export default function PipelineControls({
             style={{ ...inputStyle, cursor: "pointer", width: "auto" }}
           >
             {RECOMMENDATIONS.map((rec) => (
-              <option key={rec} value={rec} style={{ background: "#0f1520" }}>
+              <option key={rec} value={rec} style={{ background: "var(--bg-surface)" }}>
                 {rec === "All" ? "All recs" : rec}
               </option>
             ))}
@@ -204,7 +208,7 @@ export default function PipelineControls({
           type="button"
           aria-pressed={filters.watchedOnly}
           onClick={() => onChange({ watchedOnly: !filters.watchedOnly })}
-          style={toggleStyle(filters.watchedOnly)}
+          className="pressable" style={toggleStyle(filters.watchedOnly)}
         >
           <Eye style={{ width: 13, height: 13 }} aria-hidden="true" />
           Watched
@@ -217,20 +221,18 @@ export default function PipelineControls({
           type="button"
           aria-pressed={followUpActive}
           onClick={() => onChange({ followUp: followUpActive ? "all" : "overdue" })}
-          style={toggleStyle(followUpActive)}
+          className="pressable" style={toggleStyle(followUpActive)}
         >
           <CalendarClock style={{ width: 13, height: 13 }} aria-hidden="true" />
           Needs follow-up
           <span
-            aria-label={
-              filters.followUp === "due-soon" ? "due soon count" : "overdue count"
-            }
+            aria-label={filters.followUp === "due-soon" ? "due soon count" : "overdue count"}
             style={{
-              borderRadius: 100,
+              borderRadius: 999,
               padding: "1px 7px",
               fontSize: 11,
-              fontWeight: 800,
-              background: followUpActive ? "rgba(255,122,26,0.25)" : "rgba(255,255,255,0.08)",
+              fontWeight: 700,
+              background: followUpActive ? "rgba(var(--tint-rgb), 0.25)" : "rgba(var(--ink-rgb), 0.08)",
             }}
           >
             {filters.followUp === "due-soon" ? dueSoonCount : overdueCount}
@@ -243,18 +245,18 @@ export default function PipelineControls({
           type="button"
           aria-expanded={showMore}
           onClick={() => setShowMore((v) => !v)}
-          style={toggleStyle(advancedActive)}
+          className="pressable" style={toggleStyle(advancedActive)}
         >
           <SlidersHorizontal style={{ width: 13, height: 13 }} aria-hidden="true" />
           More filters
           {advancedActive && (
             <span
               style={{
-                borderRadius: 100,
+                borderRadius: 999,
                 padding: "1px 7px",
                 fontSize: 11,
-                fontWeight: 800,
-                background: "rgba(255,122,26,0.25)",
+                fontWeight: 700,
+                background: "rgba(var(--tint-rgb), 0.25)",
               }}
             >
               on
@@ -271,13 +273,13 @@ export default function PipelineControls({
               alignItems: "center",
               gap: 5,
               padding: "8px 12px",
-              borderRadius: 8,
+              borderRadius: "var(--radius-sm)",
               fontSize: 13,
-              fontWeight: 700,
+              fontWeight: 600,
               cursor: "pointer",
-              border: "1px solid rgba(248,113,113,0.35)",
-              background: "rgba(248,113,113,0.08)",
-              color: "#f87171",
+              border: "1px solid rgba(var(--red-rgb), 0.35)",
+              background: "rgba(var(--red-rgb), 0.08)",
+              color: "var(--red)",
               whiteSpace: "nowrap",
             }}
           >
@@ -295,10 +297,10 @@ export default function PipelineControls({
             gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
             gap: 10,
             paddingTop: 10,
-            borderTop: "1px solid rgba(255,255,255,0.06)",
+            borderTop: "1px solid var(--separator)",
           }}
         >
-          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 10, fontWeight: 700, color: "#4a5670", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11, fontWeight: 600, color: "var(--label-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
             Make
             <select
               aria-label="Filter by make"
@@ -307,13 +309,13 @@ export default function PipelineControls({
               style={{ ...inputStyle, cursor: "pointer" }}
             >
               {MAKE_FILTER_OPTIONS.map((make) => (
-                <option key={make} value={make} style={{ background: "#0f1520" }}>
+                <option key={make} value={make} style={{ background: "var(--bg-surface)" }}>
                   {make}
                 </option>
               ))}
             </select>
           </label>
-          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 10, fontWeight: 700, color: "#4a5670", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11, fontWeight: 600, color: "var(--label-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
             Min price
             <input
               type="number"
@@ -324,7 +326,7 @@ export default function PipelineControls({
               onChange={(e) => onChange({ minPrice: e.target.value })}
             />
           </label>
-          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 10, fontWeight: 700, color: "#4a5670", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11, fontWeight: 600, color: "var(--label-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
             Max price
             <input
               type="number"
@@ -339,7 +341,7 @@ export default function PipelineControls({
               Buy Box or the ingestion pull radius, so nothing is hidden by
               distance unless the buyer asks for it. Leads with unknown
               distance are kept (filterLeads' documented behaviour). */}
-          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 10, fontWeight: 700, color: "#4a5670", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11, fontWeight: 600, color: "var(--label-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
             Within radius (mi)
             {/* Digits only, leading zeros stripped. `filterLeads` treats a
                 falsy maxDistance as "no limit", so a bare "0" would silently
@@ -359,14 +361,13 @@ export default function PipelineControls({
                 onChange({ maxDistance: e.target.value.replace(/\D/g, "").replace(/^0+/, "") })
               }
             />
-            <span id="pipeline-radius-help" style={{ fontSize: 10, fontWeight: 500, color: "#4a5670", textTransform: "none", letterSpacing: 0 }}>
+            <span id="pipeline-radius-help" style={{ fontSize: 11, fontWeight: 400, color: "var(--label-secondary)", textTransform: "none", letterSpacing: 0 }}>
               {radiusActive
                 ? `Showing leads within ${filters.maxDistance.trim()} mi (unknown distance still shown).`
                 : "Blank shows every distance."}
             </span>
           </label>
-
-          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 10, fontWeight: 700, color: "#4a5670", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11, fontWeight: 600, color: "var(--label-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
             Spotr projected movement
             <select
               aria-label="Filter by Spotr projected movement (heuristic estimate)"
@@ -376,12 +377,12 @@ export default function PipelineControls({
               style={{ ...inputStyle, cursor: "pointer" }}
             >
               {MOVEMENT_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value} style={{ background: "#0f1520" }}>
+                <option key={option.value} value={option.value} style={{ background: "var(--bg-surface)" }}>
                   {option.label}
                 </option>
               ))}
             </select>
-            <span id="pipeline-movement-help" style={{ fontSize: 10, fontWeight: 500, color: "#4a5670", textTransform: "none", letterSpacing: 0 }}>
+            <span id="pipeline-movement-help" style={{ fontSize: 11, fontWeight: 400, color: "var(--label-secondary)", textTransform: "none", letterSpacing: 0 }}>
               Estimate based on Spotr heuristic — not market data.
             </span>
           </label>

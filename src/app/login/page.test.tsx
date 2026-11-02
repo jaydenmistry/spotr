@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 //
-// Focused reliability tests for the login page: the password field must start
-// empty (no stale hardcoded prefill that drifts out of sync with the seeded
-// ADMIN_PASSWORD), and the existing credential submit / error-handling flow
-// must be preserved. Only next-auth and next/navigation are mocked.
+// Focused reliability tests for the login page: both fields must start empty
+// (no stale hardcoded prefill that drifts out of sync with the seeded
+// ADMIN_PASSWORD), and the credential submit / error-handling flow must be
+// preserved. Only next-auth and next/navigation are mocked.
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -20,19 +20,19 @@ beforeEach(() => vi.clearAllMocks());
 afterEach(cleanup);
 
 describe("LoginPage reliability", () => {
-  it("starts with an empty password field and a real placeholder", () => {
+  it("starts with empty email and password fields", () => {
     render(<LoginPage />);
-    const password = screen.getByPlaceholderText("Enter password") as HTMLInputElement;
+    const email = screen.getByLabelText("Email") as HTMLInputElement;
+    const password = screen.getByLabelText("Password") as HTMLInputElement;
+    expect(email.value).toBe("");
     expect(password.value).toBe("");
     expect(password.type).toBe("password");
   });
 
-  it("does not ship any hardcoded password string in the rendered page", () => {
+  it("does not ship any demo credentials in the rendered page", () => {
     const { container } = render(<LoginPage />);
-    // The old stale prefill/hint literally rendered the word "password" as a
-    // credential value; guard against that specific regression returning.
     expect(container.querySelector('input[type="password"]')?.getAttribute("value") ?? "").toBe("");
-    expect(container.textContent).not.toMatch(/·\s*password\b/);
+    expect(container.textContent).not.toMatch(/demo@|·\s*password\b/i);
   });
 
   it("submits the typed credentials and routes to the dashboard on success", async () => {
@@ -40,13 +40,14 @@ describe("LoginPage reliability", () => {
     signIn.mockResolvedValue({ error: null });
     render(<LoginPage />);
 
-    await user.type(screen.getByPlaceholderText("Enter password"), "s3cret-typed");
+    await user.type(screen.getByLabelText("Email"), "buyer@example.com");
+    await user.type(screen.getByLabelText("Password"), "s3cret-typed");
     await user.click(screen.getByRole("button", { name: /sign in/i }));
 
     await waitFor(() => expect(signIn).toHaveBeenCalledTimes(1));
     expect(signIn).toHaveBeenCalledWith(
       "credentials",
-      expect.objectContaining({ email: "demo@spotrcars.com", password: "s3cret-typed", redirect: false })
+      expect.objectContaining({ email: "buyer@example.com", password: "s3cret-typed", redirect: false })
     );
     await waitFor(() => expect(push).toHaveBeenCalledWith("/dashboard"));
   });
@@ -56,10 +57,11 @@ describe("LoginPage reliability", () => {
     (signIn as Mock).mockResolvedValue({ error: "CredentialsSignin" });
     render(<LoginPage />);
 
-    await user.type(screen.getByPlaceholderText("Enter password"), "wrong");
+    await user.type(screen.getByLabelText("Email"), "buyer@example.com");
+    await user.type(screen.getByLabelText("Password"), "wrong");
     await user.click(screen.getByRole("button", { name: /sign in/i }));
 
-    await waitFor(() => expect(screen.getByText(/invalid credentials/i)).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/don't match/i));
     expect(push).not.toHaveBeenCalled();
   });
 });

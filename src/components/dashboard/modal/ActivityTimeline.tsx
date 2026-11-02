@@ -20,21 +20,22 @@ import {
 } from "lucide-react";
 import { parseActivityDetail, type ActivityRecord } from "@/lib/followUp";
 import type { LucideIcon } from "lucide-react";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 const TYPE_ICONS: Record<string, { icon: LucideIcon; color: string }> = {
-  watched: { icon: Eye, color: "#ff9147" },
-  unwatched: { icon: EyeOff, color: "#8b9ab8" },
-  passed: { icon: Ban, color: "#f87171" },
-  restored: { icon: Undo2, color: "#34d399" },
-  assigned: { icon: UserPlus, color: "#60a5fa" },
-  unassigned: { icon: UserCheck, color: "#8b9ab8" },
-  stage_changed: { icon: ArrowRight, color: "#a78bfa" },
-  marked_lost: { icon: Ban, color: "#f87171" },
-  note_added: { icon: StickyNote, color: "#fbbf24" },
-  next_action_set: { icon: CalendarClock, color: "#60a5fa" },
-  next_action_completed: { icon: CircleCheck, color: "#34d399" },
-  next_action_cleared: { icon: ListChecks, color: "#8b9ab8" },
-  offer_recorded: { icon: DollarSign, color: "#34d399" },
+  watched: { icon: Eye, color: "var(--tint-text)" },
+  unwatched: { icon: EyeOff, color: "var(--label-secondary)" },
+  passed: { icon: Ban, color: "var(--red)" },
+  restored: { icon: Undo2, color: "var(--green)" },
+  assigned: { icon: UserPlus, color: "var(--blue)" },
+  unassigned: { icon: UserCheck, color: "var(--label-secondary)" },
+  stage_changed: { icon: ArrowRight, color: "var(--purple)" },
+  marked_lost: { icon: Ban, color: "var(--red)" },
+  note_added: { icon: StickyNote, color: "var(--yellow)" },
+  next_action_set: { icon: CalendarClock, color: "var(--blue)" },
+  next_action_completed: { icon: CircleCheck, color: "var(--green)" },
+  next_action_cleared: { icon: ListChecks, color: "var(--label-secondary)" },
+  offer_recorded: { icon: DollarSign, color: "var(--green)" },
 };
 
 const timeFormatter = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" });
@@ -119,9 +120,17 @@ export default function ActivityTimeline({
   // Loading
   if (!activities && !error) {
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "40px 0", color: "#8b9ab8", fontSize: 13 }}>
-        <div style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(255,122,26,0.2)", borderTopColor: "#ff7a1a", animation: "spin 0.8s linear infinite" }} />
-        Loading activity…
+      <div aria-busy="true" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <span className="t-footnote" style={{ color: "var(--label-secondary)" }}>Loading activity…</span>
+        {[0, 1, 2].map((i) => (
+          <div key={i} style={{ display: "flex", gap: 12 }}>
+            <div className="skeleton" style={{ width: 30, height: 30, borderRadius: 999 }} />
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+              <div className="skeleton" style={{ width: "50%", height: 14 }} />
+              <div className="skeleton" style={{ width: "30%", height: 12 }} />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
@@ -130,26 +139,15 @@ export default function ActivityTimeline({
   if (error) {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "32px 0", textAlign: "center" }}>
-        <p style={{ fontSize: 13, color: "#f87171", fontWeight: 600 }}>{error}</p>
+        <p style={{ fontSize: 13, color: "var(--red)", fontWeight: 600 }}>{error}</p>
         <button
           onClick={() => {
             setError(null);
             setActivities(null);
             setLocalReload((value) => value + 1);
           }}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "7px 12px",
-            borderRadius: 8,
-            fontSize: 12,
-            fontWeight: 700,
-            border: "1px solid rgba(255,255,255,0.12)",
-            background: "rgba(255,255,255,0.04)",
-            color: "#f0f4ff",
-            cursor: "pointer",
-          }}
+          type="button"
+          className="btn btn-sm btn-secondary pressable"
         >
           <RefreshCw style={{ width: 13, height: 13 }} aria-hidden="true" />
           Retry
@@ -174,6 +172,8 @@ export default function ActivityTimeline({
       {/* Add note */}
       <div style={{ display: "flex", gap: 8 }}>
         <input
+          aria-label="Internal note"
+          className="field"
           value={note}
           onChange={(event) => setNote(event.target.value)}
           onKeyDown={(event) => {
@@ -181,87 +181,67 @@ export default function ActivityTimeline({
           }}
           placeholder="Add an internal note… (no seller contact info)"
           maxLength={500}
-          style={{
-            flex: 1,
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.12)",
-            borderRadius: 8,
-            padding: "9px 12px",
-            fontSize: 13,
-            color: "#f0f4ff",
-          }}
+          style={{ flex: 1, borderRadius: 999, padding: "0 16px" }}
         />
         <button
           onClick={() => void submitNote()}
           disabled={savingNote || !note.trim()}
           aria-label="Add note"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "9px 14px",
-            borderRadius: 8,
-            fontSize: 12,
-            fontWeight: 700,
-            border: "1px solid rgba(255,122,26,0.4)",
-            background: "rgba(255,122,26,0.12)",
-            color: "#ff9147",
-            cursor: savingNote || !note.trim() ? "default" : "pointer",
-            opacity: savingNote || !note.trim() ? 0.5 : 1,
-          }}
+          type="button"
+          className="btn btn-primary pressable"
         >
           <Send style={{ width: 13, height: 13 }} aria-hidden="true" />
           {savingNote ? "Saving…" : "Note"}
         </button>
       </div>
-      {noteError && <p style={{ fontSize: 12, color: "#f87171" }}>{noteError}</p>}
+      {noteError && <p role="alert" className="pop-in" style={{ fontSize: 12, color: "var(--red)" }}>{noteError}</p>}
 
       {/* Empty state */}
       {(activities ?? []).length === 0 ? (
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "28px 0", textAlign: "center" }}>
-          <StickyNote style={{ width: 26, height: 26, color: "#8b9ab8" }} aria-hidden="true" />
-          <p style={{ fontSize: 14, fontWeight: 700, color: "#f0f4ff" }}>No activity yet</p>
-          <p style={{ fontSize: 12, color: "#8b9ab8", maxWidth: 320 }}>
-            Buyer actions — watching, offers, notes, stage moves, and decisions — will appear here
-            as they happen.
-          </p>
-        </div>
+        <EmptyState
+          icon={StickyNote}
+          title="No activity yet"
+          body="Buyer actions — watching, offers, notes, stage moves, and decisions — will appear here as they happen."
+        />
       ) : (
         Array.from(grouped.entries()).map(([day, dayActivities]) => (
           <div key={day}>
-            <p style={{ fontSize: 11, fontWeight: 800, color: "#8b9ab8", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+            <p className="t-eyebrow" style={{ color: "var(--label-secondary)", marginBottom: 10 }}>
               {day}
             </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {dayActivities.map((activity) => {
-                const meta = TYPE_ICONS[activity.type] ?? { icon: StickyNote, color: "#8b9ab8" };
+            {/* A continuous rail behind the icons ties each day's events together. */}
+            <div style={{ position: "relative", display: "flex", flexDirection: "column", gap: 4 }}>
+              <span aria-hidden="true" style={{ position: "absolute", left: 14, top: 12, bottom: 12, width: 2, borderRadius: 999, background: "var(--separator)" }} />
+              {dayActivities.map((activity, index) => {
+                const meta = TYPE_ICONS[activity.type] ?? { icon: StickyNote, color: "var(--label-secondary)" };
                 const Icon = meta.icon;
                 const extra = detailLine(activity);
                 return (
                   <div
                     key={activity.id}
-                    style={{ display: "flex", gap: 10, padding: "8px 10px", borderRadius: 8, alignItems: "flex-start" }}
+                    className="rise-in"
+                    style={{ position: "relative", display: "flex", gap: 12, padding: "6px 0", alignItems: "flex-start", animationDelay: `${Math.min(index, 10) * 40}ms` }}
                   >
                     <span
                       style={{
-                        width: 26,
-                        height: 26,
-                        borderRadius: 8,
+                        width: 30,
+                        height: 30,
+                        borderRadius: 999,
                         display: "grid",
                         placeItems: "center",
                         flexShrink: 0,
-                        background: `${meta.color}1a`,
-                        marginTop: 1,
+                        background: `linear-gradient(color-mix(in srgb, ${meta.color} 16%, transparent), color-mix(in srgb, ${meta.color} 16%, transparent)), var(--bg-surface)`,
+                        boxShadow: "0 0 0 3px var(--bg-surface)",
                       }}
                     >
                       <Icon style={{ width: 13, height: 13, color: meta.color }} aria-hidden="true" />
                     </span>
                     <div style={{ minWidth: 0 }}>
-                      <p style={{ fontSize: 13, color: "#f0f4ff", fontWeight: 600 }}>{activity.summary}</p>
+                      <p style={{ fontSize: 14, color: "var(--label)", fontWeight: 600, paddingTop: 4 }}>{activity.summary}</p>
                       {extra && (
-                        <p style={{ fontSize: 12, color: "#8b9ab8", marginTop: 2, overflowWrap: "anywhere" }}>{extra}</p>
+                        <p style={{ fontSize: 12, color: "var(--label-secondary)", marginTop: 2, overflowWrap: "anywhere" }}>{extra}</p>
                       )}
-                      <p style={{ fontSize: 11, color: "#8b9ab8", marginTop: 2 }}>
+                      <p className="tabular" style={{ fontSize: 12, color: "var(--label-secondary)", marginTop: 2 }}>
                         {timeFormatter.format(new Date(activity.createdAt))}
                         {activity.actor ? ` · ${activity.actor}` : ""}
                       </p>

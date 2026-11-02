@@ -1,22 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
+import { useDialogFocus } from "@/components/ui/useDialogFocus";
+import { createPortal } from "react-dom";
+import { motion } from "motion/react";
+import { spring } from "@/lib/motion";
 import { X } from "lucide-react";
 import { NOTE_MAX_LENGTH, OUTCOME_REASONS, type OutcomeReasonCode } from "@/lib/followUp";
 
-const buttonStyle: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  padding: "8px 14px",
-  borderRadius: 8,
-  fontSize: 13,
-  fontWeight: 700,
-  cursor: "pointer",
-  border: "1px solid rgba(255,255,255,0.12)",
-  background: "rgba(255,255,255,0.04)",
-  color: "#f0f4ff",
-};
+const subscribeNoop = () => () => {};
+
 
 /**
  * Modal prompt for the standardized outcome reason required when a lead is
@@ -43,21 +36,23 @@ export default function OutcomeReasonDialog({
   const [reason, setReason] = useState<OutcomeReasonCode | "">("");
   const [note, setNote] = useState("");
   const selectRef = useRef<HTMLSelectElement>(null);
+  const mounted = useSyncExternalStore(subscribeNoop, () => true, () => false);
 
-  useEffect(() => {
-    selectRef.current?.focus();
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onCancel();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onCancel]);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(panelRef, onCancel, selectRef);
 
-  return (
-    <div
+  if (!mounted) return null;
+
+  // Portaled so it always sits above the dossier sheet. Alert-style entrance:
+  // the panel settles down from slightly larger while the scrim fades in.
+  return createPortal(
+    <motion.div
       role="dialog"
       aria-modal="true"
       aria-label={title}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.18 }}
       style={{
         position: "fixed",
         inset: 0,
@@ -65,22 +60,30 @@ export default function OutcomeReasonDialog({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "rgba(4,7,12,0.7)",
-        backdropFilter: "blur(4px)",
+        background: "var(--scrim)",
+        backdropFilter: "blur(8px)",
+        WebkitBackdropFilter: "blur(8px)",
         padding: 20,
       }}
       onClick={(event) => {
         if (event.target === event.currentTarget) onCancel();
       }}
     >
-      <div
+      <motion.div
+        ref={panelRef}
+        tabIndex={-1}
+        initial={{ opacity: 0, scale: 1.08 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={spring.smooth}
         style={{
           width: "100%",
           maxWidth: 420,
-          borderRadius: 14,
-          border: "1px solid rgba(255,255,255,0.1)",
-          background: "var(--bg-card)",
-          padding: "20px 22px",
+          borderRadius: "var(--radius-xl)",
+          border: "1px solid var(--separator)",
+          background: "var(--bg-elevated)",
+          boxShadow: "var(--shadow-lg)",
+          outline: "none",
+          padding: "22px 22px 18px",
           display: "flex",
           flexDirection: "column",
           gap: 14,
@@ -88,87 +91,68 @@ export default function OutcomeReasonDialog({
       >
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
           <div>
-            <h3 style={{ fontSize: 16, fontWeight: 800, color: "#f0f4ff", marginBottom: 4 }}>{title}</h3>
-            <p style={{ fontSize: 12, color: "#8b9ab8" }}>{description}</p>
+            <h3 className="t-headline" style={{ color: "var(--label)", marginBottom: 4 }}>{title}</h3>
+            <p className="t-footnote" style={{ color: "var(--label-secondary)" }}>{description}</p>
           </div>
           <button
             onClick={onCancel}
             aria-label="Cancel"
-            style={{ ...buttonStyle, padding: 6, color: "#8b9ab8" }}
+            className="pressable hover-fill"
+            style={{ width: 30, height: 30, display: "grid", placeItems: "center", borderRadius: 999, border: "none", background: "var(--fill)", cursor: "pointer", color: "var(--label-secondary)", flexShrink: 0 }}
           >
             <X style={{ width: 15, height: 15 }} aria-hidden="true" />
           </button>
         </div>
 
-        <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, fontWeight: 700, color: "#8b9ab8" }}>
+        <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, fontWeight: 600, color: "var(--label-secondary)" }}>
           Reason
           <select
             ref={selectRef}
             value={reason}
             onChange={(event) => setReason(event.target.value as OutcomeReasonCode | "")}
-            style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              borderRadius: 8,
-              padding: "9px 12px",
-              fontSize: 13,
-              color: reason ? "#f0f4ff" : "#8b9ab8",
-              fontWeight: 600,
-            }}
+            className="field"
+            style={{ color: reason ? "var(--label)" : "var(--label-secondary)", fontWeight: 500 }}
           >
-            <option value="" disabled style={{ background: "#131926" }}>
+            <option value="" disabled>
               Select a reason…
             </option>
             {OUTCOME_REASONS.map((option) => (
-              <option key={option.code} value={option.code} style={{ background: "#131926" }}>
+              <option key={option.code} value={option.code}>
                 {option.label}
               </option>
             ))}
           </select>
         </label>
 
-        <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, fontWeight: 700, color: "#8b9ab8" }}>
+        <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, fontWeight: 600, color: "var(--label-secondary)" }}>
           Note (optional — internal; don&apos;t include seller contact info)
           <textarea
             value={note}
             onChange={(event) => setNote(event.target.value.slice(0, NOTE_MAX_LENGTH))}
             rows={3}
             placeholder="Anything worth remembering about this decision…"
-            style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              borderRadius: 8,
-              padding: "9px 12px",
-              fontSize: 13,
-              color: "#f0f4ff",
-              resize: "vertical",
-              fontFamily: "inherit",
-            }}
+            className="field"
+            style={{ height: "auto", padding: "9px 12px", resize: "vertical", fontWeight: 400 }}
           />
         </label>
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-          <button onClick={onCancel} disabled={busy} style={{ ...buttonStyle, color: "#8b9ab8" }}>
+          <button type="button" onClick={onCancel} disabled={busy} className="btn btn-secondary pressable">
             Cancel
           </button>
           <button
             onClick={() => {
               if (reason) onConfirm(reason, note.trim() ? note.trim() : null);
             }}
+            type="button"
             disabled={busy || !reason}
-            style={{
-              ...buttonStyle,
-              background: "rgba(248,113,113,0.12)",
-              borderColor: "rgba(248,113,113,0.45)",
-              color: "#f87171",
-              cursor: busy || !reason ? "not-allowed" : "pointer",
-              opacity: busy || !reason ? 0.5 : 1,
-            }}
+            className="btn btn-destructive pressable"
           >
             {busy ? "Saving…" : confirmLabel}
           </button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>,
+    document.body
   );
 }

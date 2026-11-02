@@ -11,7 +11,9 @@
     "test:inventory": "vitest run src/app/dashboard/inventory/page.test.tsx",
     "seed": "node prisma/seed.js",
     "db:setup": "prisma db push --skip-generate && npm run seed",
-    "seed:fixtures": "node scripts/seed-feed-fixtures.mjs"
+    "seed:fixtures": "node scripts/seed-feed-fixtures.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:docker": "docker run --rm --ipc=host --user \"$(id -u):$(id -g)\" -e HOME=/tmp -v \"$PWD\":/work -w /work mcr.microsoft.com/playwright:v1.63.0-noble npx playwright test"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
@@ -19,9 +21,11 @@
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
     "@prisma/client": "^5.22.0",
+    "@sentry/nextjs": "11.7.0",
     "axios": "^1.18.0",
     "bcryptjs": "^3.0.3",
     "lucide-react": "^1.18.0",
+    "motion": "14.2.0",
     "next": "16.2.9",
     "next-auth": "^4.24.14",
     "prisma": "^5.22.0",
@@ -29,6 +33,7 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
+    "@playwright/test": "1.63.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",

@@ -119,7 +119,10 @@ describe("Inventory Page - Loading and Data Fetching", () => {
     render(<InventoryPage />);
 
     await waitFor(() => expect(screen.queryByText("Loading inventory…")).toBeNull());
-    expect(screen.getByText("No vehicles found matching your specific filters.")).toBeTruthy();
+    // A failed load is reported as a failure (with a retry), not as an empty filter result.
+    expect(screen.getByText("Couldn't load inventory")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /retry/i })).toBeTruthy();
+    expect(screen.queryByText("No vehicles found matching your specific filters.")).toBeNull();
   });
 });
 

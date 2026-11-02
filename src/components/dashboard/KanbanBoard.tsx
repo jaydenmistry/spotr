@@ -11,6 +11,7 @@ import { getFollowUpStatus, type OutcomeReasonCode } from "@/lib/followUp";
 import type { Recommendation } from "@/lib/opportunity";
 
 import { STAGES } from "@/lib/stages";
+import { STAGE_COLORS, tone } from "@/lib/ui/colors";
 
 /**
  * Accessible name for a board card's single tab stop. Setting aria-label
@@ -29,15 +30,6 @@ function cardAccessibleName(lead: LeadRecord, now?: Date) {
   const price = lead.price ? `asking ${formatCurrency(lead.price)}` : "no asking price";
   return `${getVehicleTitle(lead)}, ${price}, ${urgency}. Press Enter to open dossier, Space to start a drag.`;
 }
-
-const STAGE_COLORS: Record<string, string> = {
-  "New Leads": "#60a5fa",
-  "Contacted": "#ff9147",
-  "Appraisal": "#a78bfa",
-  "Offer Made": "#f59e0b",
-  "Acquired": "#34d399",
-  "Lost": "#f87171",
-};
 
 export default function KanbanBoard({
   leads,
@@ -90,6 +82,7 @@ export default function KanbanBoard({
     } catch (error) {
       console.error("Failed to update lead status:", error);
       onLeadUpdate(previousLeads);
+      setDropNotice(`Couldn't move that lead to ${newStage} — it's back where it was. Please try again.`);
     }
   };
 
@@ -145,21 +138,22 @@ export default function KanbanBoard({
       )}
     {dropNotice && (
       <div
-        role="status"
+        role="alert"
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
           gap: 10,
           marginBottom: 10,
-          borderRadius: 10,
-          border: "1px solid rgba(251,191,36,0.4)",
-          background: "rgba(251,191,36,0.08)",
+          borderRadius: "var(--radius-md)",
+          boxShadow: "inset 0 0 0 1px rgba(var(--red-rgb), 0.28)",
+          background: "rgba(var(--red-rgb), 0.1)",
           padding: "9px 14px",
-          fontSize: 12.5,
-          fontWeight: 600,
-          color: "#fbbf24",
+          fontSize: 13,
+          fontWeight: 500,
+          color: "var(--red)",
         }}
+        className="pop-in"
       >
         {dropNotice}
         <button
@@ -169,9 +163,9 @@ export default function KanbanBoard({
             background: "none",
             border: "none",
             cursor: "pointer",
-            color: "#fbbf24",
+            color: "var(--red)",
             fontSize: 14,
-            fontWeight: 700,
+            fontWeight: 600,
             lineHeight: 1,
           }}
         >
@@ -192,7 +186,7 @@ export default function KanbanBoard({
       >
         {STAGES.map((stage) => {
           const stageLeads = leads.filter(l => l.stage === stage);
-          const color = STAGE_COLORS[stage] ?? "#8b9ab8";
+          const color = STAGE_COLORS[stage] ?? "var(--label-secondary)";
           const overdueInStage = stageLeads.filter(
             (l) => getFollowUpStatus(l, now) === "overdue"
           ).length;
@@ -206,10 +200,10 @@ export default function KanbanBoard({
                 width: 288,
                 flexShrink: 0,
                 flexDirection: "column",
-                borderRadius: 14,
-                background: "rgba(255,255,255,0.025)",
-                border: "1px solid rgba(255,255,255,0.07)",
-                padding: "14px 12px",
+                borderRadius: "var(--radius-lg)",
+                background: `linear-gradient(180deg, ${tone(color, 7)}, transparent 120px), rgba(var(--ink-rgb), 0.025)`,
+                border: "1px solid var(--separator)",
+                padding: "14px 10px 10px",
               }}
             >
               {/* Column header */}
@@ -228,14 +222,15 @@ export default function KanbanBoard({
                       height: 8,
                       borderRadius: "50%",
                       background: color,
+                      boxShadow: `0 0 0 3px ${tone(color, 22)}`,
                       flexShrink: 0,
                     }}
                   />
                   <h3
                     style={{
                       fontSize: 13,
-                      fontWeight: 700,
-                      color: "#f0f4ff",
+                      fontWeight: 600,
+                      color: "var(--label)",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
@@ -252,13 +247,13 @@ export default function KanbanBoard({
                         display: "inline-flex",
                         alignItems: "center",
                         gap: 3,
-                        borderRadius: 100,
+                        borderRadius: 999,
                         padding: "2px 7px",
-                        fontSize: 10.5,
-                        fontWeight: 800,
-                        color: "#f87171",
-                        background: "rgba(248,113,113,0.14)",
-                        border: "1px solid rgba(248,113,113,0.35)",
+                        fontSize: 11.5,
+                        fontWeight: 700,
+                        color: "var(--red)",
+                        background: "rgba(var(--red-rgb), 0.14)",
+                        border: "1px solid rgba(var(--red-rgb), 0.35)",
                       }}
                     >
                       <Clock style={{ width: 10, height: 10 }} aria-hidden="true" />
@@ -267,12 +262,12 @@ export default function KanbanBoard({
                   )}
                   <span
                     style={{
-                      borderRadius: 100,
+                      borderRadius: 999,
                       padding: "2px 9px",
                       fontSize: 11,
-                      fontWeight: 700,
+                      fontWeight: 600,
                       color,
-                      background: `${color}18`,
+                      background: `color-mix(in srgb, ${color} 9%, transparent)`,
                     }}
                   >
                     {stageLeads.length}
@@ -288,14 +283,12 @@ export default function KanbanBoard({
                     style={{
                       flex: 1,
                       overflowY: "auto",
-                      borderRadius: 10,
+                      borderRadius: "var(--radius-sm)",
                       padding: 4,
-                      transition: "background 0.15s, box-shadow 0.15s",
-                      background: snapshot.isDraggingOver
-                        ? "rgba(255,122,26,0.06)"
-                        : "transparent",
+                      transition: "background 0.2s, box-shadow 0.2s",
+                      background: snapshot.isDraggingOver ? tone(color, 8) : "transparent",
                       boxShadow: snapshot.isDraggingOver
-                        ? `inset 0 0 0 2px ${color}66`
+                        ? `inset 0 0 0 2px color-mix(in srgb, ${color} 40%, transparent)`
                         : "inset 0 0 0 1px transparent",
                     }}
                   >
@@ -306,10 +299,10 @@ export default function KanbanBoard({
                           alignItems: "center",
                           justifyContent: "center",
                           height: 76,
-                          borderRadius: 10,
-                          border: "1px dashed rgba(255,255,255,0.1)",
+                          borderRadius: "var(--radius-sm)",
+                          border: "1.5px dashed var(--separator-strong)",
                           fontSize: 11.5,
-                          color: "#4a5670",
+                          color: "var(--label-secondary)",
                           textAlign: "center",
                           padding: "0 12px",
                         }}
@@ -324,6 +317,7 @@ export default function KanbanBoard({
                             ref={provided.innerRef}
                             {...provided.draggableProps}
                             {...provided.dragHandleProps}
+                            style={{ ...provided.draggableProps.style, marginBottom: 8 }}
                             // dragHandleProps already supplies role="button" and
                             // tabIndex={0}, so this wrapper is the card's single
                             // tab stop — BoardLeadCard stays a plain div.
@@ -340,17 +334,24 @@ export default function KanbanBoard({
                               event.preventDefault();
                               onLeadClick(lead);
                             }}
-                            style={{
-                              ...provided.draggableProps.style,
-                              opacity: snapshot.isDragging ? 0.85 : 1,
-                            }}
                           >
-                            <BoardLeadCard
-                              lead={lead}
-                              now={now}
-                              recommendation={recommendationOf?.(lead)}
-                              onClick={() => onLeadClick(lead)}
-                            />
+                            {/* The library owns the outer transform; the lift
+                                (tilt + scale + deeper shadow) lives on an inner layer. */}
+                            <div
+                              style={{
+                                borderRadius: "var(--radius-md)",
+                                transform: snapshot.isDragging && !snapshot.isDropAnimating ? "rotate(1.5deg) scale(1.035)" : "none",
+                                boxShadow: snapshot.isDragging && !snapshot.isDropAnimating ? "var(--shadow-lg)" : "none",
+                                transition: "transform var(--spring-bouncy-duration) var(--spring-bouncy), box-shadow 240ms ease",
+                              }}
+                            >
+                              <BoardLeadCard
+                                lead={lead}
+                                now={now}
+                                recommendation={recommendationOf?.(lead)}
+                                onClick={() => onLeadClick(lead)}
+                              />
+                            </div>
                           </div>
                         )}
                       </Draggable>
