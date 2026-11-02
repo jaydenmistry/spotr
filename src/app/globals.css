@@ -86,8 +86,10 @@
   --radius-xl: 28px;
 
   /* ── Type ───────────────────────────────────────────────── */
-  --font-text: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI Variable Display", "Segoe UI", system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* The system SF Pro on Apple devices, Onest everywhere else.
+     --font-onest comes from next/font (src/lib/fonts.ts) on <html>. */
+  --font-text: -apple-system, BlinkMacSystemFont, var(--font-onest), system-ui, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, var(--font-onest), system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
 
   /* ── Motion: CSS approximations of Apple springs ───────────

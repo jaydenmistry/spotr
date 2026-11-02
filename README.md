@@ -51,7 +51,7 @@ A single number is easy to ignore if you don't trust it. The Spotr score is buil
 
 For the redesign I used Apple's Human Interface Guidelines as the reference point, since they're a well-documented system built for exactly this kind of dense, everyday tool. In practice that meant:
 
-- **System fonts** (SF Pro on Apple devices, Segoe UI on Windows) instead of a downloaded typeface. The page loads faster, and the text looks native on every device.
+- **SF Pro on Apple devices, Onest everywhere else.** Apple devices use the SF Pro that's already built in, so they don't download any font at all. Other devices get Onest, an open-source typeface with a similar feel, which the site hosts itself so there's no request to Google. SF Pro can't be bundled with a website, so the link preview image is rendered from it ahead of time instead (`scripts/render-og-image.mjs`).
 - **Semantic color tokens.** Colors are named by role, like `--label-secondary` or `--fill-hover`, instead of by hex value. Light and dark themes just swap the token values, with dark as the default.
 - **Motion with a reason.** Animations use springs described the way Apple describes them, a bounce amount and a duration, and most have zero bounce. The dossier sheet can be dragged down to close. When you let go, it uses Apple's scroll-deceleration formula to work out where your flick would have landed and decides whether to close from that, and it rubber-bands when you drag past the top. Everything respects the "reduce motion" system setting.
 - **Translucent materials** (blurred backgrounds) are only used on things that float over content, like the nav bars, sheets and toasts, so the page still has a clear sense of depth.
