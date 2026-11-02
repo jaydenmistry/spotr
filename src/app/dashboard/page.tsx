@@ -26,7 +26,7 @@ import {
 import { FOLLOW_UP_TICK_MS, getFollowUpStatus } from "@/lib/followUp";
 import { isTerminalStage } from "@/lib/stages";
 import type { Recommendation } from "@/lib/opportunity";
-import { buildAssessmentMap } from "@/lib/pipeline";
+import { buildAssessmentMap, buildNeedsAttention, buildPipelineLeadSets } from "@/lib/pipeline";
 import { DEFAULT_BUY_BOX, type BuyBoxConfig } from "@/lib/buyBox";
 import type { FeedAction } from "@/lib/feedActions";
 import type { OutcomeReasonCode } from "@/lib/followUp";
@@ -200,18 +200,21 @@ export default function DashboardPage() {
     [assessmentMap]
   );
 
-  // Non-view filters applied to the full lead set. Stats and both views all
-  // read from this, so header counts describe the same set the views render.
-  const filteredLeads = useMemo(() => {
+  // baseOperationalLeads — every lead matching the user's explicit
+  // NON-follow-up filters: search, make, price, explicit radius, projected
+  // movement, stage, recommendation, watched. Terminal/passed leads are still
+  // in here; buildPipelineLeadSets owns that dimension. This is the single
+  // root every Pipeline number descends from.
+  const baseOperationalLeads = useMemo(() => {
     const base = filterLeads(leads, {
       searchTerm: filters.searchTerm,
       makeFilter: getMakeFilterList(filters.makeFilter),
       minPrice: filters.minPrice,
       maxPrice: filters.maxPrice,
-      // Distance is NOT filtered here: the pipeline shows every eligible lead
-      // regardless of how far it is. The pull radius is an ingestion setting,
-      // never a hidden view filter that silently drops far-away leads.
-      maxDistance: "",
+      // Explicit user-supplied radius ONLY. Blank means no distance filtering.
+      // The Buy Box radius and the ingestion pull radius are deliberately not
+      // consulted here — neither may silently hide farther leads.
+      maxDistance: filters.maxDistance,
       movementFilter: filters.movementFilter,
     });
     return base.filter((lead) => {
@@ -220,22 +223,33 @@ export default function DashboardPage() {
         return false;
       }
       if (filters.watchedOnly && !lead.watchedAt) return false;
-      if (filters.followUp !== "all") {
-        // Follow-up filters intersect with everything else (never replace).
-        if (getFollowUpStatus(lead, now) !== filters.followUp) return false;
-      }
       return true;
     });
-  }, [leads, filters, assessmentMap, now]);
+  }, [leads, filters, assessmentMap]);
 
-  // Count of active leads whose follow-up is overdue — drives the control-bar
-  // badge. Independent of whether the follow-up filter is currently on.
-  const overdueActiveCount = useMemo(
-    () =>
-      leads.filter(
-        (l) => !isTerminalStage(l.stage) && !l.passedAt && getFollowUpStatus(l, now) === "overdue"
-      ).length,
-    [leads, now]
+  // active / overdue / dueSoon / visible, all derived from that one root.
+  // Header stats read `active`, `overdue`, `dueSoon`; the control badge reads
+  // `overdue`; the result count and both views read `visible`.
+  const leadSets = useMemo(
+    () => buildPipelineLeadSets(baseOperationalLeads, filters.followUp, now),
+    [baseOperationalLeads, filters.followUp, now]
+  );
+  const visibleLeads = leadSets.visible;
+
+  // Same definition the feed's Watching tab uses: shortlisted, not passed,
+  // still open. Derived from `active` so it agrees with the other stats.
+  const watchingCount = useMemo(
+    () => leadSets.active.filter((l) => l.watchedAt).length,
+    [leadSets]
+  );
+
+  // The Needs Attention rows, built once here and handed to the list, so the
+  // count in the result summary is literally the set that gets rendered rather
+  // than a second derivation that could drift from it. Grouping and ordering
+  // still live entirely in buildNeedsAttention.
+  const attentionEntries = useMemo(
+    () => buildNeedsAttention(visibleLeads, scoreOf, now),
+    [visibleLeads, scoreOf, now]
   );
 
   // Resolve the default view once, after the first real load: Needs Attention
@@ -344,7 +358,13 @@ export default function DashboardPage() {
   }
 
   const filtersActive = hasActiveFilters(filters);
-  const priceFilterActive = filters.minPrice !== "" || filters.maxPrice !== "";
+  // Name the constraints that are easy to forget because they live under
+  // "More filters" — radius above all, since it silently removes leads.
+  const activeConstraints = [
+    filters.minPrice !== "" || filters.maxPrice !== "" ? "price" : null,
+    filters.maxDistance.trim() !== "" ? `within ${filters.maxDistance.trim()} mi` : null,
+    filters.movementFilter !== "All" ? "projected movement" : null,
+  ].filter((label): label is string => label !== null);
 
   return (
     <div className="page" style={{ display: "flex", flexDirection: "column", minHeight: "calc(100vh - 40px)", maxWidth: "none" }}>
@@ -384,14 +404,16 @@ export default function DashboardPage() {
           </label>
           <label style={toolbarFieldStyle}>
             {/* Ingestion radius for Pull Listings only — it does NOT filter the
-                board/attention views (every eligible lead is always shown). */}
-            Radius
+                board/attention views (every eligible lead is always shown).
+                Named "Pull radius" so it can't be confused with the explicit
+                "Within radius" view filter under More filters. */}
+            Pull radius
             <input
               type="number"
               min={10}
               max={100}
               step={10}
-              aria-label="Pull radius in miles"
+              aria-label="Pull radius in miles — applies to new listing pulls only, not to what is shown below"
               value={radiusMiles}
               onChange={(e) => setRadiusMiles(Math.max(10, Math.min(100, Number(e.target.value) || 100)))}
               className="tabular" style={{ ...toolbarInputStyle, width: 58 }}
@@ -443,8 +465,10 @@ export default function DashboardPage() {
       />
 
       <TopStats
-        leads={filteredLeads}
-        now={now}
+        activeCount={leadSets.active.length}
+        overdueCount={leadSets.overdue.length}
+        dueSoonCount={leadSets.dueSoon.length}
+        watchingCount={watchingCount}
         followUp={filters.followUp}
         watchedOnly={filters.watchedOnly}
         onToggleFollowUp={(next) => updateFilters({ followUp: next })}
@@ -455,7 +479,8 @@ export default function DashboardPage() {
         filters={filters}
         onChange={updateFilters}
         onClearAll={clearAllFilters}
-        overdueCount={overdueActiveCount}
+        overdueCount={leadSets.overdue.length}
+        dueSoonCount={leadSets.dueSoon.length}
       />
 
       {/* View toggle + result summary */}
@@ -471,14 +496,48 @@ export default function DashboardPage() {
           ]}
         />
 
+        {/* Result count describes exactly what the view below renders: on the
+            Board that is `visible`; in Needs Attention it is the curated
+            attention rows, which are a subset of `visible` — quoting the
+            `visible` total there would claim hundreds of rows beside a
+            handful. Header stats above always describe `active`. */}
         <div aria-live="polite" className="tabular" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, fontSize: 12, color: "var(--label-secondary)" }}>
-          <span style={{ fontWeight: 600, color: "var(--label)" }}>{filteredLeads.length}</span>
-          <span>of {leads.length} shown</span>
+          {viewMode === "attention" ? (
+            // Zero is left to the list's own empty state, which explains the
+            // situation far better than a bare count could.
+            attentionEntries.length > 0 && (
+              // One text node on purpose: this sits in an aria-live region, and
+              // splitting the number into its own element makes assistive tech
+              // read "1lead needs attention".
+              <span style={{ fontWeight: 600, color: "var(--label)" }}>
+                {attentionEntries.length === 1
+                  ? "1 lead needs attention"
+                  : `${attentionEntries.length} leads need attention`}
+              </span>
+            )
+          ) : (
+            <>
+              <span style={{ fontWeight: 600, color: "var(--label)" }}>{visibleLeads.length}</span>
+              <span>of {leads.length} shown</span>
+            </>
+          )}
+          {/* A follow-up scope narrows the views but deliberately not the
+              header stats, so name it here — otherwise "Overdue: 2" beside a
+              board with no overdue cards reads as a bug. */}
+          {filters.followUp !== "all" && (
+            <>
+              <span style={{ color: "var(--label-tertiary)" }}>·</span>
+              <span style={{ color: "var(--tint-text)", fontWeight: 600 }}>
+                showing {filters.followUp === "overdue" ? "overdue" : "due soon"} only
+              </span>
+            </>
+          )}
           {filtersActive && (
             <>
               <span style={{ color: "var(--label-tertiary)" }}>·</span>
               <span style={{ color: "var(--yellow)", fontWeight: 600 }}>
-                filtered{priceFilterActive ? " (price filter active)" : ""}
+                filtered
+                {activeConstraints.length > 0 ? ` (${activeConstraints.join(", ")})` : ""}
               </span>
             </>
           )}
@@ -500,17 +559,16 @@ export default function DashboardPage() {
 
       {viewMode === "attention" ? (
         <NeedsAttentionList
-          leads={filteredLeads}
+          entries={attentionEntries}
           now={now}
           recommendationOf={recommendationOf}
-          scoreOf={scoreOf}
           onOpen={(lead) => setSelectedLead(lead)}
           onCompleteNextAction={completeNextAction}
           busyLeadId={busyLeadId}
         />
       ) : (
         <KanbanBoard
-          leads={filteredLeads}
+          leads={visibleLeads}
           now={now}
           recommendationOf={recommendationOf}
           onLeadClick={(lead) => setSelectedLead(lead)}

@@ -6,13 +6,30 @@ import { Clock } from "lucide-react";
 import BoardLeadCard from "./BoardLeadCard";
 import OutcomeReasonDialog from "./OutcomeReasonDialog";
 import axios from "axios";
-import type { LeadRecord } from "@/lib/vehicleAnalytics";
+import { formatCurrency, getVehicleTitle, type LeadRecord } from "@/lib/vehicleAnalytics";
 import { getFollowUpStatus, type OutcomeReasonCode } from "@/lib/followUp";
 import type { Recommendation } from "@/lib/opportunity";
 
 import { STAGES } from "@/lib/stages";
 import { STAGE_COLORS, tone } from "@/lib/ui/colors";
 
+/**
+ * Accessible name for a board card's single tab stop. Setting aria-label
+ * replaces the computed name entirely, so it has to carry the facts a sighted
+ * user triages on — identity, asking price, follow-up urgency — not just
+ * "Open dossier". Details beyond these stay in the dossier itself.
+ */
+function cardAccessibleName(lead: LeadRecord, now?: Date) {
+  const status = getFollowUpStatus(lead, now);
+  const urgency =
+    status === "overdue"
+      ? "follow-up overdue"
+      : status === "due-soon"
+      ? "follow-up due soon"
+      : "no urgent follow-up";
+  const price = lead.price ? `asking ${formatCurrency(lead.price)}` : "no asking price";
+  return `${getVehicleTitle(lead)}, ${price}, ${urgency}. Press Enter to open dossier, Space to start a drag.`;
+}
 
 export default function KanbanBoard({
   leads,
@@ -301,9 +318,21 @@ export default function KanbanBoard({
                             {...provided.draggableProps}
                             {...provided.dragHandleProps}
                             style={{ ...provided.draggableProps.style, marginBottom: 8 }}
+                            // dragHandleProps already supplies role="button" and
+                            // tabIndex={0}, so this wrapper is the card's single
+                            // tab stop — BoardLeadCard stays a plain div.
+                            aria-label={cardAccessibleName(lead, now)}
                             onKeyDown={(event) => {
-                              // Space lifts (handled by the library); Enter opens the dossier.
-                              if (event.key === "Enter" && !snapshot.isDragging) onLeadClick(lead);
+                              // Space belongs to the dnd keyboard sensor, which
+                              // binds it at window in the CAPTURE phase and
+                              // preventDefaults it to lift the card. Only Enter
+                              // opens the dossier, never mid-drag, and never for
+                              // a key already handled upstream.
+                              if (event.key !== "Enter") return;
+                              if (event.defaultPrevented || snapshot.isDragging) return;
+                              if (event.target !== event.currentTarget) return;
+                              event.preventDefault();
+                              onLeadClick(lead);
                             }}
                           >
                             {/* The library owns the outer transform; the lift

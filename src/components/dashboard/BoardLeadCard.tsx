@@ -48,6 +48,68 @@ function relativeTime(iso: string, now: Date) {
   return deltaMs >= 0 ? `in ${value}` : `${value} ago`;
 }
 
+/**
+ * Compact record-age from the timestamp we already have. `createdAt` is when
+ * Spotr first ingested/recorded the listing — NOT a verified seller posting
+ * time — so the copy says "Seen", never "Listed", to avoid implying a
+ * provenance we can't stand behind. Anything missing, unparseable, or in the
+ * future is reported as unknown rather than guessed.
+ */
+function listedAgeLabel(iso: string | null | undefined, now: Date) {
+  if (!iso) return "Age unknown";
+  const seenAt = new Date(iso).getTime();
+  if (!Number.isFinite(seenAt)) return "Age unknown";
+  const days = Math.floor((now.getTime() - seenAt) / 86_400_000);
+  if (days < 0) return "Age unknown";
+  if (days === 0) return "Seen today";
+  if (days < 7) return `Seen ${days}d ago`;
+  if (days < 30) return `Seen ${Math.floor(days / 7)}w ago`;
+  return `Seen ${Math.floor(days / 30)}mo ago`;
+}
+
+/**
+ * Activity types whose `summary` is built entirely from server-side templates
+ * and allowlisted values (enum labels, stage names, formatted currency), so it
+ * can never contain buyer-typed text. Only these render verbatim on the board.
+ *
+ * `next_action_set` and `next_action_completed` deliberately are NOT here:
+ * their summaries interpolate the buyer's free-typed next-action string, which
+ * despite the "no seller contact info" guidance is not enforced and could carry
+ * a seller's phone number or name. The board is an at-a-glance surface visible
+ * while merely scrolling a column, so those collapse to a generic label; the
+ * literal text stays in the dossier timeline the buyer opens deliberately.
+ *
+ * Unknown/future types default to the generic label too — fail closed, so a new
+ * free-text summary added server-side cannot silently leak onto the board.
+ */
+const TEMPLATE_ONLY_ACTIVITY_TYPES = new Set([
+  "watched",
+  "unwatched",
+  "passed",
+  "restored",
+  "assigned",
+  "unassigned",
+  "next_action_cleared",
+  "offer_recorded",
+  "note_added",
+  "stage_changed",
+  "marked_lost",
+]);
+
+const GENERIC_ACTIVITY_LABELS: Record<string, string> = {
+  next_action_set: "Next action set",
+  next_action_completed: "Next action completed",
+};
+
+/** Board-safe activity text: verbatim only for template-only types. */
+function activityLabel(activity: { type: string; summary: string }) {
+  if (TEMPLATE_ONLY_ACTIVITY_TYPES.has(activity.type)) return activity.summary;
+  return (
+    GENERIC_ACTIVITY_LABELS[activity.type] ??
+    activity.type.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())
+  );
+}
+
 function initialsOf(email: string) {
   const local = email.split("@")[0] ?? email;
   const parts = local.split(/[._-]+/).filter(Boolean);
@@ -76,7 +138,18 @@ export default function BoardLeadCard({
   const showPassed = Boolean(lead.passedAt);
   const showWatching =
     !lead.passedAt && Boolean(lead.watchedAt) && !isTerminalStage(lead.stage);
+  // A recommendation is an instruction about what to do next, so it must not
+  // sit as a live chip on a lead that is already closed out. Passed/terminal
+  // leads keep it only as a muted, explicitly historic marker.
+  const isClosedOut = showPassed || isTerminalStage(lead.stage);
+  const listedAge = listedAgeLabel(lead.createdAt, clock);
 
+  // Deliberately NOT focusable and NOT role="button". KanbanBoard renders this
+  // inside @hello-pangea/dnd's Draggable, whose dragHandleProps already put
+  // role="button" + tabIndex={0} on the wrapper. Adding them here too would
+  // nest a button inside a button (invalid ARIA), double every Tab stop, and
+  // race the dnd keyboard sensor — which binds Space at window in the capture
+  // phase. Keyboard activation lives on the drag handle in KanbanBoard instead.
   return (
     <div
       onClick={onClick}
@@ -144,22 +217,45 @@ export default function BoardLeadCard({
               marginTop: 3,
             }}
           >
-            <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--label)" }}>
+            {/* Asking price — the seller's listed number, never a Spotr
+                estimate. Labelled via title/aria so the price type stays
+                unambiguous if an estimated value is ever added here. */}
+            <span
+              title={lead.price ? "Asking price" : undefined}
+              aria-label={lead.price ? `Asking price ${formatCurrency(lead.price)}` : undefined}
+              style={{ fontSize: 12.5, fontWeight: 700, color: "var(--label)" }}
+            >
               {lead.price ? formatCurrency(lead.price) : "No asking price"}
             </span>
-            {recommendation && (
-              <span
-                title="Spotr heuristic recommendation"
-                style={{
-                  ...badgeBase,
-                  color: RECOMMENDATION_COLORS[recommendation],
-                  background: `color-mix(in srgb, ${RECOMMENDATION_COLORS[recommendation]} 10%, transparent)`,
-                  border: `1px solid color-mix(in srgb, ${RECOMMENDATION_COLORS[recommendation]} 27%, transparent)`,
-                }}
-              >
-                {recommendation}
-              </span>
-            )}
+            {recommendation &&
+              (isClosedOut ? (
+                <span
+                  title={`Spotr heuristic recommendation at the time this lead was closed out: ${recommendation}. Not a current instruction.`}
+                  style={{
+                    ...badgeBase,
+                    fontWeight: 500,
+                    // De-emphasis comes from the fill, never from an
+                    // unreadable foreground: this label carries real meaning.
+                    color: "var(--label-secondary)",
+                    background: "var(--fill)",
+                    border: "1px solid var(--separator)",
+                  }}
+                >
+                  was {recommendation}
+                </span>
+              ) : (
+                <span
+                  title="Spotr heuristic recommendation — an estimate, not market data"
+                  style={{
+                    ...badgeBase,
+                    color: RECOMMENDATION_COLORS[recommendation],
+                    background: `color-mix(in srgb, ${RECOMMENDATION_COLORS[recommendation]} 10%, transparent)`,
+                    border: `1px solid color-mix(in srgb, ${RECOMMENDATION_COLORS[recommendation]} 27%, transparent)`,
+                  }}
+                >
+                  {recommendation}
+                </span>
+              ))}
           </div>
         </div>
       </div>
@@ -180,14 +276,20 @@ export default function BoardLeadCard({
           <MapPin style={{ width: 10, height: 10, color: "var(--label-secondary)" }} aria-hidden="true" />
           {formatDistance(lead.distanceMiles)}
         </span>
+        <span style={{ color: "var(--label-secondary)" }}>·</span>
+        <span title="When Spotr first recorded this listing — not a verified seller posting time.">
+          {listedAge}
+        </span>
       </div>
 
       {/* Follow-up: overdue is loud, due-soon is quiet but visible. Both use
-          icon + words, never colour alone. */}
+          icon + words, never colour alone.
+
+          Deliberately not role="status": these are static badges, and marking
+          every overdue card a live region fires a burst of simultaneous
+          announcements whenever a filter or view reveals several at once. */}
       {isOverdue && lead.nextAction && (
         <div
-          role="status"
-          aria-label={`Follow-up overdue: ${lead.nextAction}`}
           style={{
             ...badgeBase,
             display: "flex",
@@ -230,10 +332,16 @@ export default function BoardLeadCard({
         </p>
       )}
 
-      {/* Last activity — one truncated line; the full trail is in the dossier. */}
+      {/* Last activity — one truncated line; the full trail is in the dossier.
+          The tooltip is only attached for template-only summaries, so buyer
+          free text is never revealed on hover either. */}
       {lead.lastActivity && (
         <p
-          title={lead.lastActivity.summary}
+          title={
+            TEMPLATE_ONLY_ACTIVITY_TYPES.has(lead.lastActivity.type)
+              ? lead.lastActivity.summary
+              : undefined
+          }
           style={{
             fontSize: 11,
             color: "var(--label-secondary)",
@@ -242,7 +350,7 @@ export default function BoardLeadCard({
             whiteSpace: "nowrap",
           }}
         >
-          {lead.lastActivity.summary} · {relativeTime(lead.lastActivity.createdAt, clock)}
+          {activityLabel(lead.lastActivity)} · {relativeTime(lead.lastActivity.createdAt, clock)}
         </p>
       )}
 

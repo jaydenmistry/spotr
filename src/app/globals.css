@@ -377,6 +377,9 @@ select:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 [role="tab"]:focus-visible,
+/* Kanban drag handles are focusable divs with role="button" (supplied by
+   @hello-pangea/dnd), so they need the same keyboard-only ring. */
+[role="button"]:focus-visible,
 [tabindex]:focus-visible {
   outline: 2px solid var(--tint);
   outline-offset: 2px;

@@ -118,7 +118,7 @@ export default function FollowUpPanel({
       ) : editing ? (
         <div className="pop-in" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, fontWeight: 600, color: "var(--label-secondary)" }}>
-            What&apos;s the next step?
+            What&apos;s the next step? (don&apos;t include seller contact info)
             <input
               value={text}
               onChange={(event) => setText(event.target.value.slice(0, NEXT_ACTION_MAX_LENGTH))}
