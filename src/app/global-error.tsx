@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { reportClientError } from "@/lib/monitoring";
+import { onest } from "@/lib/fonts";
 
 /**
  * Last-resort boundary for errors in the root layout itself. It replaces the
@@ -14,8 +15,8 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
   }, [error]);
 
   return (
-    <html lang="en">
-      <body style={{ margin: 0, minHeight: "100vh", display: "grid", placeItems: "center", background: "#09090c", color: "#f5f5f7", fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif", textAlign: "center", padding: 24 }}>
+    <html lang="en" className={onest.variable}>
+      <body style={{ margin: 0, minHeight: "100vh", display: "grid", placeItems: "center", background: "#09090c", color: "#f5f5f7", fontFamily: "-apple-system, BlinkMacSystemFont, var(--font-onest), system-ui, sans-serif", textAlign: "center", padding: 24 }}>
         <div>
           <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: "-0.02em", margin: 0 }}>Spotr hit a snag.</h1>
           <p style={{ color: "#a3a3ad", marginTop: 10 }}>Please try again in a moment.</p>

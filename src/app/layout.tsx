@@ -4,6 +4,7 @@ import { Providers } from "./providers";
 import { Analytics } from "./analytics";
 import { SITE_URL, SITE_NAME, SITE_TITLE, SITE_DESCRIPTION } from "@/lib/site";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
+import { onest } from "@/lib/fonts";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -50,7 +51,7 @@ export default function RootLayout({
 }>) {
   return (
     // The pre-paint theme script may set data-theme before React hydrates.
-    <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
+    <html lang="en" className={onest.variable} suppressHydrationWarning data-scroll-behavior="smooth">
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
