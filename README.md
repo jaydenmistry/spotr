@@ -2,7 +2,7 @@
 
 **Acquisition intelligence for used-car buying desks.** Spotr pulls vehicle listings from a licensed data feed, ranks them against what a dealership actually wants to buy, and tracks each deal from first look to the lot.
 
-[spotrcars.com](https://spotrcars.com) · [![CI](https://github.com/jaydenmistry/spotr-startup/actions/workflows/ci.yml/badge.svg)](https://github.com/jaydenmistry/spotr-startup/actions/workflows/ci.yml)
+[spotrcars.com](https://spotrcars.com) · [![CI](https://github.com/jaydenmistry/spotr/actions/workflows/ci.yml/badge.svg)](https://github.com/jaydenmistry/spotr/actions/workflows/ci.yml)
 
 ![Spotr landing page](docs/screenshots/landing.png)
 
