@@ -14,6 +14,11 @@ model User {
   id       String @id @default(cuid())
   email    String @unique
   password String
+  /// "admin" | "member" (src/lib/roles.ts). Only admins review access requests.
+  role     String @default("member")
+  /// Bumped whenever the password changes or the seed locks the account;
+  /// sessions issued under an older value are rejected (src/lib/auth.ts).
+  sessionVersion Int @default(0)
 }
 
 // Dealership acquisition criteria. Single-tenant v1: exactly one row with

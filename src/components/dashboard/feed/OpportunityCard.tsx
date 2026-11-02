@@ -27,7 +27,7 @@ import {
 } from "@/lib/vehicleAnalytics";
 import { isFixtureLead, SOURCE_LABELS, type OpportunityAssessment } from "@/lib/opportunity";
 import type { FeedAction } from "@/lib/feedActions";
-import { isSafeHttpUrl } from "@/lib/url";
+import { safePhotoUrl, isSafeHttpUrl } from "@/lib/url";
 import { RECOMMENDATION_COLORS, scoreColor, tone } from "@/lib/ui/colors";
 import { spring } from "@/lib/motion";
 
@@ -81,6 +81,7 @@ export default function OpportunityCard({
 
   const score = assessment.finalOpportunityScore;
   const title = getVehicleTitle(lead);
+  const photoUrl = safePhotoUrl(lead.photo_url);
 
   return (
     <article
@@ -115,8 +116,8 @@ export default function OpportunityCard({
           background: "var(--bg-surface)",
         }}
       >
-        {lead.photo_url ? (
-          <Image src={lead.photo_url} alt={title} fill unoptimized sizes="(max-width: 800px) 100vw, 260px" style={{ objectFit: "cover" }} />
+        {photoUrl ? (
+          <Image src={photoUrl} referrerPolicy="no-referrer" alt={title} fill unoptimized sizes="(max-width: 800px) 100vw, 260px" style={{ objectFit: "cover" }} />
         ) : (
           <div
             style={{

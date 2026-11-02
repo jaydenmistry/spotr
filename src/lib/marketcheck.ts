@@ -2,6 +2,7 @@
 // listing to a Lead row. Lead.trim must only ever be populated here (or by the
 // labeled fixture seed script) — enforced by a test in marketcheck.test.ts.
 import type { Prisma } from "@prisma/client";
+import { safePhotoUrl } from "@/lib/url";
 
 export interface MarketcheckListing {
   vin?: string;
@@ -56,7 +57,7 @@ export function mapMarketcheckListing(
     state: listing.dealer?.state || null,
     source: listing.source || listing.dealer?.website || "Marketcheck",
     vdp_url: listing.vdp_url || null,
-    photo_url: listing.media?.photo_links?.[0] || null,
+    photo_url: safePhotoUrl(listing.media?.photo_links?.[0]),
     sellerName: listing.dealer?.name || "Listing Seller",
     stage: "New Leads",
   };

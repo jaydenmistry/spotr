@@ -74,9 +74,10 @@ spotr-startup/
    NEXTAUTH_SECRET="your-development-secret-key"
    NEXTAUTH_URL="http://localhost:3000"
    ADMIN_EMAIL="admin@spotrcars.com"
-   ADMIN_PASSWORD="choose-a-long-unique-password"
+   ADMIN_PASSWORD="<12+ characters, not a common password>"
    MARKETCHECK_API_KEY="your-optional-marketcheck-key"
    ```
+   The seed refuses a weak `ADMIN_PASSWORD` and locks any account still using one. Changing the password signs out that account's existing sessions.
 
 ### Installation & Initialization
 

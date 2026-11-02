@@ -17,6 +17,7 @@ import {
 } from "@/lib/shortcuts";
 import { CommandPalette, type Command } from "./CommandPalette";
 import { ShortcutsHelp } from "./ShortcutsHelp";
+import { isAdminOnlyPath } from "@/lib/roles";
 
 interface CommandPaletteContextValue {
   openPalette: () => void;
@@ -56,7 +57,7 @@ const NAV_COMMANDS: Array<Omit<Command, "run" | "group"> & { href: string }> = [
   { id: "go-requests", label: "Access requests", icon: Inbox, href: "/dashboard/requests", shortcut: ["G", "R"], keywords: ["team", "inbox", "prospects"] },
 ];
 
-export function CommandPaletteProvider({ children }: { children: React.ReactNode }) {
+export function CommandPaletteProvider({ children, isAdmin = false }: { children: React.ReactNode; isAdmin?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
@@ -81,7 +82,7 @@ export function CommandPaletteProvider({ children }: { children: React.ReactNode
     const isLight = theme === "light";
     return [
       ...Array.from(pageCommands.values()).flat(),
-      ...NAV_COMMANDS.filter((command) => command.href !== pathname).map(({ href, ...command }) => ({
+      ...NAV_COMMANDS.filter((command) => command.href !== pathname && (isAdmin || !isAdminOnlyPath(command.href))).map(({ href, ...command }) => ({
         ...command,
         group: "Go to" as const,
         run: () => router.push(href),
@@ -125,7 +126,7 @@ export function CommandPaletteProvider({ children }: { children: React.ReactNode
         run: () => void signOut({ callbackUrl: "/" }),
       },
     ];
-  }, [pageCommands, pathname, router, setTheme, theme, shortcutsEnabled]);
+  }, [pageCommands, pathname, router, setTheme, theme, shortcutsEnabled, isAdmin]);
 
   // Capture phase so the chord's second key ("p" in g→p) is claimed before a
   // page-level listener reads it as its own shortcut.
@@ -145,7 +146,7 @@ export function CommandPaletteProvider({ children }: { children: React.ReactNode
       if (pendingG.current && Date.now() - pendingG.current < SEQUENCE_TIMEOUT_MS) {
         pendingG.current = 0;
         const href = GO_TO_KEYS[key];
-        if (href) {
+        if (href && (isAdmin || !isAdminOnlyPath(href))) {
           event.preventDefault();
           router.push(href);
           return;
@@ -162,7 +163,7 @@ export function CommandPaletteProvider({ children }: { children: React.ReactNode
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [router]);
+  }, [router, isAdmin]);
 
   const value = useMemo(
     () => ({ openPalette, openHelp, shortcutsEnabled, setPageCommands }),
@@ -173,7 +174,7 @@ export function CommandPaletteProvider({ children }: { children: React.ReactNode
     <CommandPaletteContext.Provider value={value}>
       {children}
       {paletteOpen && <CommandPalette commands={commands} onClose={() => setPaletteOpen(false)} />}
-      {helpOpen && <ShortcutsHelp onClose={() => setHelpOpen(false)} shortcutsEnabled={shortcutsEnabled} />}
+      {helpOpen && <ShortcutsHelp onClose={() => setHelpOpen(false)} shortcutsEnabled={shortcutsEnabled} isAdmin={isAdmin} />}
     </CommandPaletteContext.Provider>
   );
 }

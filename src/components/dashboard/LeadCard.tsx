@@ -13,7 +13,7 @@ import {
   isVerifiedListing,
   type LeadRecord,
 } from "@/lib/vehicleAnalytics";
-import { isSafeHttpUrl } from "@/lib/url";
+import { safePhotoUrl, isSafeHttpUrl } from "@/lib/url";
 import { isTerminalStage } from "@/lib/stages";
 import { getFollowUpStatus } from "@/lib/followUp";
 
@@ -32,6 +32,7 @@ export default function LeadCard({
   const analytics = getVehicleAnalytics(lead);
   const isAppreciating = analytics.movement === "Appreciating";
   const verified = isVerifiedListing(lead);
+  const photoUrl = safePhotoUrl(lead.photo_url);
   // Overdue is the only follow-up state loud enough for a card badge; the
   // shared helper already exempts passed/terminal leads.
   const isOverdue = getFollowUpStatus(lead, now) === "overdue";
@@ -64,9 +65,10 @@ export default function LeadCard({
     >
       {/* Photo */}
       <div className="card-photo" style={{ position: "relative", height: 150, overflow: "hidden", background: "var(--bg-surface)" }}>
-        {lead.photo_url ? (
+        {photoUrl ? (
           <Image
-            src={lead.photo_url}
+            src={photoUrl}
+            referrerPolicy="no-referrer"
             alt={getVehicleTitle(lead)}
             fill
             unoptimized

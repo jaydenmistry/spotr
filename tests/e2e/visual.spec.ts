@@ -1,4 +1,4 @@
-import { test, expect, settle, timeSensitive } from "./fixtures";
+import { test, expect, pinTimestamps, settle, timeSensitive } from "./fixtures";
 
 // Visual regression across themes and viewports (see playwright.config.ts).
 // Update baselines with: npm run test:e2e:docker -- --update-snapshots
@@ -41,6 +41,7 @@ for (const { name, path } of APP_PAGES) {
   test(`app: ${name}`, async ({ page }) => {
     await page.goto(path);
     await settle(page);
+    await pinTimestamps(page);
     await expect(page).toHaveScreenshot(`${name}.png`, { mask: timeSensitive(page) });
   });
 }

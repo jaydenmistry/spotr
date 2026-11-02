@@ -37,7 +37,7 @@ import {
 } from "@/lib/opportunity";
 import { DEFAULT_BUY_BOX, type BuyBoxConfig } from "@/lib/buyBox";
 import type { FeedAction } from "@/lib/feedActions";
-import { isSafeHttpUrl } from "@/lib/url";
+import { safePhotoUrl, isSafeHttpUrl } from "@/lib/url";
 import { outcomeReasonLabel, parseActivityDetail, type ActivityRecord } from "@/lib/followUp";
 import ActivityTimeline from "./ActivityTimeline";
 import FollowUpPanel from "./FollowUpPanel";
@@ -305,6 +305,7 @@ export default function LeadModal({
   const isAssigned = Boolean(lead.assignedTo);
 
   const title = getVehicleTitle(lead);
+  const photoUrl = safePhotoUrl(lead.photo_url);
   const maxOfferOk = assessment?.maxOffer.status === "ok";
 
   return (
@@ -385,14 +386,14 @@ export default function LeadModal({
                     border: "1px solid var(--separator)",
                   }}
                 >
-                  {lead.photo_url ? (
+                  {photoUrl ? (
                     <motion.div
                       initial={{ scale: 1.08, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                       transition={{ ...spring.smooth, duration: 0.8 }}
                       style={{ position: "absolute", inset: 0 }}
                     >
-                      <Image src={lead.photo_url} alt={title} fill unoptimized sizes="500px" style={{ objectFit: "cover" }} />
+                      <Image src={photoUrl} referrerPolicy="no-referrer" alt={title} fill unoptimized sizes="500px" style={{ objectFit: "cover" }} />
                     </motion.div>
                   ) : (
                     <div style={{ display: "grid", placeItems: "center", height: "100%", minHeight: 240, color: "var(--label-secondary)", fontSize: 13, fontWeight: 500 }}>

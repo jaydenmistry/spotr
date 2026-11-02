@@ -72,3 +72,28 @@ test("signed-out visitors are sent to login from the dashboard", async ({ browse
   await expect(page).toHaveURL(/\/login/);
   await context.close();
 });
+
+test("strict CSP: signed-in pages and login run with no policy violations", async ({ page, browser }) => {
+  const violations: string[] = [];
+  const watch = (p: typeof page) =>
+    p.on("console", (message) => {
+      if (/Content Security Policy/i.test(message.text())) violations.push(`${p.url()}: ${message.text()}`);
+    });
+  watch(page);
+  for (const path of ["/dashboard", "/dashboard/feed", "/dashboard/inventory", "/dashboard/buybox", "/dashboard/requests"]) {
+    const response = await page.goto(path);
+    expect(response?.headers()["content-security-policy"]).toMatch(/'nonce-[^']+'/);
+    await page.waitForLoadState("networkidle");
+  }
+  // Scripts ran: the palette only opens if the app hydrated under the nonce.
+  await page.keyboard.press("Control+k");
+  await expect(page.getByRole("combobox", { name: /search commands/i })).toBeVisible();
+
+  const context = await browser.newContext();
+  const login = await context.newPage();
+  watch(login);
+  await login.goto("/login");
+  await expect(login.getByLabel("Password")).toBeEditable();
+  await context.close();
+  expect(violations).toEqual([]);
+});

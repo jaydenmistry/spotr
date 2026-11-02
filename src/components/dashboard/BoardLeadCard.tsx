@@ -12,6 +12,7 @@ import type { Recommendation } from "@/lib/opportunity";
 import { isTerminalStage } from "@/lib/stages";
 import { getFollowUpStatus } from "@/lib/followUp";
 import { RECOMMENDATION_COLORS } from "@/lib/ui/colors";
+import { safePhotoUrl } from "@/lib/url";
 
 /**
  * Slim board card. Carries only what a buyer needs to triage a column at a
@@ -67,6 +68,7 @@ export default function BoardLeadCard({
 }) {
   const status = getFollowUpStatus(lead, now);
   const isOverdue = status === "overdue";
+  const photoUrl = safePhotoUrl(lead.photo_url);
   const isDueSoon = status === "due-soon";
   const clock = now ?? new Date();
   // Passed outranks Watching, and closed-out leads drop the badge entirely —
@@ -104,9 +106,10 @@ export default function BoardLeadCard({
             background: "var(--bg-surface)",
           }}
         >
-          {lead.photo_url ? (
+          {photoUrl ? (
             <Image
-              src={lead.photo_url}
+              src={photoUrl}
+              referrerPolicy="no-referrer"
               alt=""
               fill
               unoptimized

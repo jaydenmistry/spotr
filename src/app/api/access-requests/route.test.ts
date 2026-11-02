@@ -9,6 +9,7 @@ const findFirst = vi.fn();
 const deleteMany = vi.fn();
 const groupBy = vi.fn();
 const remove = vi.fn();
+const findUser = vi.fn();
 
 vi.mock("next-auth", () => ({
   getServerSession: (...args: unknown[]) => getServerSession(...args),
@@ -24,6 +25,9 @@ vi.mock("@/lib/db/prisma", () => ({
       deleteMany: (...args: unknown[]) => deleteMany(...args),
       groupBy: (...args: unknown[]) => groupBy(...args),
       delete: (...args: unknown[]) => remove(...args),
+    },
+    user: {
+      findUnique: (...args: unknown[]) => findUser(...args),
     },
   },
 }));
@@ -43,6 +47,7 @@ const valid = { name: "Dana Reyes", email: "dana@northside.com", dealership: "No
 beforeEach(() => {
   vi.clearAllMocks();
   getServerSession.mockResolvedValue({ user: { email: "admin@spotrcars.com" } });
+  findUser.mockResolvedValue({ role: "admin" });
   create.mockResolvedValue({ id: "r1" });
   findFirst.mockResolvedValue(null);
   deleteMany.mockResolvedValue({ count: 0 });
@@ -96,14 +101,31 @@ describe("POST (public)", () => {
   });
 });
 
-describe("GET / PATCH (team only)", () => {
+describe("GET / PATCH (admins only)", () => {
   it("requires a session to list requests", async () => {
     getServerSession.mockResolvedValue(null);
     expect((await GET()).status).toBe(401);
     expect(findMany).not.toHaveBeenCalled();
   });
 
-  it("lists newest first for signed-in users", async () => {
+  it("refuses signed-in members, checking the role in the database", async () => {
+    getServerSession.mockResolvedValue({ user: { email: "rep@spotrcars.com", role: "admin" } });
+    findUser.mockResolvedValue({ role: "member" });
+    const res = await GET();
+    expect(res.status).toBe(403);
+    expect(findUser).toHaveBeenCalledWith({ where: { email: "rep@spotrcars.com" }, select: { role: true } });
+    expect(findMany).not.toHaveBeenCalled();
+    expect(deleteMany).not.toHaveBeenCalled();
+    expect((await PATCH(req("PATCH", { id: "r1", status: "contacted" }))).status).toBe(403);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("refuses a session whose account no longer exists", async () => {
+    findUser.mockResolvedValue(null);
+    expect((await GET()).status).toBe(403);
+  });
+
+  it("lists newest first for admins", async () => {
     findMany.mockResolvedValue([{ id: "r1" }]);
     const res = await GET();
     expect(res.status).toBe(200);
@@ -123,7 +145,7 @@ describe("GET / PATCH (team only)", () => {
   it("requires a session and a known status to update", async () => {
     getServerSession.mockResolvedValue(null);
     expect((await PATCH(req("PATCH", { id: "r1", status: "contacted" }))).status).toBe(401);
-    getServerSession.mockResolvedValue({ user: {} });
+    getServerSession.mockResolvedValue({ user: { email: "admin@spotrcars.com" } });
     expect((await PATCH(req("PATCH", { id: "r1", status: "deleted" }))).status).toBe(400);
     expect(update).not.toHaveBeenCalled();
   });
@@ -136,14 +158,20 @@ describe("GET / PATCH (team only)", () => {
   });
 });
 
-describe("DELETE (team only)", () => {
+describe("DELETE (admins only)", () => {
   const del = (id?: string) => new Request(`http://localhost/api/access-requests${id ? `?id=${id}` : ""}`, { method: "DELETE" });
 
   it("requires a session and an id", async () => {
     getServerSession.mockResolvedValue(null);
     expect((await DELETE(del("r1"))).status).toBe(401);
-    getServerSession.mockResolvedValue({ user: {} });
+    getServerSession.mockResolvedValue({ user: { email: "admin@spotrcars.com" } });
     expect((await DELETE(del())).status).toBe(400);
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it("refuses members", async () => {
+    findUser.mockResolvedValue({ role: "member" });
+    expect((await DELETE(del("r1"))).status).toBe(403);
     expect(remove).not.toHaveBeenCalled();
   });
 

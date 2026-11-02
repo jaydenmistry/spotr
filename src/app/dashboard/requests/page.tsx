@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { Inbox, Mail, RefreshCw } from "lucide-react";
+import { Inbox, Lock, Mail, RefreshCw } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -30,7 +30,7 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", { month: "short", day: "n
 
 export default function AccessRequestsPage() {
   const [requests, setRequests] = useState<AccessRequestRow[] | null>(null);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<"failed" | "forbidden" | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [view, setView] = useState<AccessRequestStatus>("new");
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -45,11 +45,16 @@ export default function AccessRequestsPage() {
       .then((res) => {
         if (!active) return;
         setRequests(res.data.requests);
-        setError(false);
+        setError(null);
       })
       .catch((err) => {
+        if (!active) return;
+        if (axios.isAxiosError(err) && err.response?.status === 403) {
+          setError("forbidden");
+          return;
+        }
         console.error("Failed to load access requests", err);
-        if (active) setError(true);
+        setError("failed");
       });
     return () => {
       active = false;
@@ -124,7 +129,13 @@ export default function AccessRequestsPage() {
         </p>
       )}
 
-      {error ? (
+      {error === "forbidden" ? (
+        <EmptyState
+          icon={Lock}
+          title="Admins only"
+          body="Access requests include prospects' contact details, so only admins can see them. Ask an admin if you need access."
+        />
+      ) : error ? (
         <EmptyState
           icon={RefreshCw}
           tone="var(--red)"

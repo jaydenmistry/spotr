@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/db/prisma";
-import { authOptions } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { rateLimit, clientIp } from "@/lib/rateLimit";
 import { ARCHIVE_RETENTION_DAYS, isAccessRequestStatus, validateAccessRequest } from "@/lib/accessRequest";
 
@@ -12,8 +11,8 @@ const DUPLICATE_WINDOW_MS = 24 * 60 * 60 * 1000;
 const ID_MAX_LENGTH = 64;
 
 // POST is public (the marketing site's "Request access" form). GET, PATCH and
-// DELETE are for the signed-in team. Single-tenant today: once multi-tenancy
-// lands, gate these on a platform-admin role and record who changed what.
+// DELETE expose prospects' contact details, so they're admin-only. Once
+// multi-tenancy lands this becomes a platform-admin role, not a tenant one.
 export async function POST(request: Request) {
   const ip = clientIp(request.headers);
   // Per-IP limit plus a global ceiling, so rotating IPs can't flood the table.
@@ -65,10 +64,8 @@ export async function POST(request: Request) {
 }
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const admin = await requireAdmin();
+  if ("response" in admin) return admin.response;
 
   try {
     // Retention: archived requests older than the window are deleted.
@@ -88,10 +85,8 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const admin = await requireAdmin();
+  if ("response" in admin) return admin.response;
 
   let body: unknown;
   try {
@@ -115,10 +110,8 @@ export async function PATCH(request: Request) {
 
 /** Permanent deletion — honors "delete my data" requests from prospects. */
 export async function DELETE(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const admin = await requireAdmin();
+  if ("response" in admin) return admin.response;
 
   const id = new URL(request.url).searchParams.get("id");
   if (!isValidId(id)) {

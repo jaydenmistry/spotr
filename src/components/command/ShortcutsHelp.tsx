@@ -4,7 +4,7 @@ import { Sheet } from "@/components/ui/Sheet";
 import { Kbd, usePaletteShortcutLabel } from "@/components/ui/Kbd";
 import { setSingleKeyShortcutsEnabled } from "@/lib/shortcuts";
 
-const SECTIONS: Array<{ title: string; rows: Array<{ keys: string[][]; label: string; sep?: string }> }> = [
+const SECTIONS: Array<{ title: string; rows: Array<{ keys: string[][]; label: string; sep?: string; adminOnly?: boolean }> }> = [
   {
     title: "Anywhere",
     rows: [
@@ -13,7 +13,7 @@ const SECTIONS: Array<{ title: string; rows: Array<{ keys: string[][]; label: st
       { keys: [["G", "P"]], label: "Go to Pipeline" },
       { keys: [["G", "I"]], label: "Go to Inventory" },
       { keys: [["G", "B"]], label: "Go to Buy Box" },
-      { keys: [["G", "R"]], label: "Go to Access requests" },
+      { keys: [["G", "R"]], label: "Go to Access requests", adminOnly: true },
     ],
   },
   {
@@ -33,7 +33,7 @@ const SECTIONS: Array<{ title: string; rows: Array<{ keys: string[][]; label: st
 
 const KEY_NAMES: Record<string, string> = { "↵": "Enter", "?": "Question mark", "/": "Slash", "[": "Left bracket", "]": "Right bracket" };
 
-export function ShortcutsHelp({ onClose, shortcutsEnabled }: { onClose: () => void; shortcutsEnabled: boolean }) {
+export function ShortcutsHelp({ onClose, shortcutsEnabled, isAdmin }: { onClose: () => void; shortcutsEnabled: boolean; isAdmin: boolean }) {
   const paletteKeys = usePaletteShortcutLabel();
 
   return (
@@ -91,7 +91,7 @@ export function ShortcutsHelp({ onClose, shortcutsEnabled }: { onClose: () => vo
             <section key={section.title}>
               <h3 className="t-eyebrow" style={{ color: "var(--label-secondary)", marginBottom: 8 }}>{section.title}</h3>
               <dl style={{ margin: 0 }}>
-                {section.rows.map((row) => (
+                {section.rows.filter((row) => isAdmin || !row.adminOnly).map((row) => (
                   <div
                     key={row.label}
                     style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "8px 0", borderBottom: "1px solid var(--separator)" }}

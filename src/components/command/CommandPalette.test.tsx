@@ -31,10 +31,10 @@ afterEach(() => {
   localStorage.clear();
 });
 
-function setup() {
+function setup({ isAdmin = false }: { isAdmin?: boolean } = {}) {
   const user = userEvent.setup();
   render(
-    <CommandPaletteProvider>
+    <CommandPaletteProvider isAdmin={isAdmin}>
       <button type="button">Opener</button>
     </CommandPaletteProvider>
   );
@@ -152,5 +152,19 @@ describe("CommandPalette", () => {
     push.mockReset();
     await user.keyboard("gi");
     expect(push).not.toHaveBeenCalled();
+  });
+
+  it("offers Access requests only to admins", async () => {
+    const user = setup();
+    await user.keyboard("gr");
+    expect(push).not.toHaveBeenCalled();
+    await user.keyboard("{Control>}k{/Control}");
+    await user.type(await screen.findByRole("combobox"), "access");
+    expect(screen.queryByRole("option", { name: /Access requests/ })).toBeNull();
+    cleanup();
+
+    const admin = setup({ isAdmin: true });
+    await admin.keyboard("gr");
+    expect(push).toHaveBeenCalledWith("/dashboard/requests");
   });
 });

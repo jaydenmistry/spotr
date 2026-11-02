@@ -25,6 +25,18 @@ export function timeSensitive(page: Page) {
   ];
 }
 
+/**
+ * Server-set timestamps (e.g. a request the flows test just created) change
+ * width from run to run and re-wrap their line, which a mask can't hide.
+ */
+export async function pinTimestamps(page: Page) {
+  await page.evaluate(() => {
+    for (const el of document.querySelectorAll("span.tabular")) {
+      if (/\b(AM|PM)\b/.test(el.textContent ?? "")) el.textContent = "Jan 1, 9:00 AM";
+    }
+  });
+}
+
 /** Lets entrance transitions and data loads settle before a snapshot. */
 export async function settle(page: Page) {
   await page.waitForLoadState("networkidle");
