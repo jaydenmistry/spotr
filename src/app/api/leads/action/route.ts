@@ -14,6 +14,7 @@ import {
   type OutcomeReasonCode,
 } from "@/lib/followUp";
 import { isTerminalStage } from "@/lib/stages";
+import { isAdmin } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -192,6 +193,18 @@ export async function POST(request: Request) {
         { error: `Lead is already ${lead.stage} — move it to an active stage before passing` },
         { status: 409 }
       );
+    }
+
+    // A lead someone else is working can only be taken over or released by an
+    // admin (role re-read from the DB, like requireAdmin).
+    if ((action === "assign" || action === "unassign") && lead.assignedToId && lead.assignedToId !== actorId) {
+      const user = await prisma.user.findUnique({ where: { id: actorId }, select: { role: true } });
+      if (!isAdmin(user?.role)) {
+        return NextResponse.json(
+          { error: "This lead is assigned to someone else. Only an admin can reassign or unassign it." },
+          { status: 403 }
+        );
+      }
     }
 
     const effect = getActionEffect(action, lead, { id: actorId, email: actor }, outcome, new Date());

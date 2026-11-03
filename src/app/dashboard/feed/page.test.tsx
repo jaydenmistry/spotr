@@ -15,7 +15,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 vi.mock("axios", () => ({
-  default: { get: vi.fn(), post: vi.fn(), isAxiosError: () => false },
+  default: { get: vi.fn(), post: vi.fn(), isAxiosError: vi.fn(() => false) },
 }));
 vi.mock("next/image", () => ({
   default: ({ src, alt }: ImgHTMLAttributes<HTMLImageElement>) => (
@@ -146,6 +146,18 @@ describe("Feed keyboard shortcuts", () => {
     await waitFor(() =>
       expect(axios.post).toHaveBeenCalledWith("/api/leads/action", { leadId: "lead-02", action: "watch" })
     );
+  });
+
+  it("shows the server's reason when an action is refused", async () => {
+    mockFeed([lead("lead-01", "First Car", { assignedTo: "teammate@spotr.test" })]);
+    (axios.isAxiosError as unknown as Mock).mockReturnValue(true);
+    (axios.post as Mock).mockRejectedValue({
+      response: { status: 403, data: { error: "Only an admin can reassign or unassign it." } },
+    });
+    const user = await renderFeed();
+    await user.keyboard("ja");
+    expect(await screen.findByText("Only an admin can reassign or unassign it.")).toBeTruthy();
+    (axios.isAxiosError as unknown as Mock).mockReturnValue(false);
   });
 
   it("p opens the pass reason dialog instead of passing", async () => {

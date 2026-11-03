@@ -247,6 +247,8 @@ function FeedPageContent() {
         setActionError(
           axios.isAxiosError(error) && error.response?.status === 401
             ? "Your session has expired. Please sign in again."
+            : axios.isAxiosError(error) && typeof error.response?.data?.error === "string"
+            ? error.response.data.error
             : "That action didn't save. Please try again."
         );
       } finally {
