@@ -15,8 +15,8 @@ Spotr doesn't collect seller contact details. For each listing it keeps what the
    node scripts/delete-seller-data.mjs --vin <VIN>
    ```
 
-   If you only have a listing URL, find the lead in the dashboard's inventory search first and use its VIN.
-3. **Delete it.** Re-run with `--confirm`. That removes the lead and, through the database's cascades, its activity history and practice-chat messages:
+   If you only have a listing URL, find the lead in the dashboard's inventory search first and use its VIN. If nothing matches, the seller's listing just hasn't been pulled yet. Running the same command with `--confirm` still adds the VIN to the suppression list, so it never will be.
+3. **Delete it.** Re-run with `--confirm`. That removes the lead and, through the database's cascades, its activity history and practice-chat messages. It also adds the VIN to the suppression list, so later pulls from Marketcheck skip it:
 
    ```sh
    node scripts/delete-seller-data.mjs --vin <VIN> --confirm
@@ -30,6 +30,10 @@ Backups taken before the deletion still contain the row until they age out. Say 
 
 SQLite also doesn't scrub deleted rows from the database file straight away; the space is reused over time. If a request needs the data gone from disk too, run `VACUUM` during a quiet moment (it briefly locks the database): `node -e 'new (require("@prisma/client").PrismaClient)().$executeRawUnsafe("VACUUM").then(() => console.log("done"))'`.
 
-## Known gap: opt-out
+## Opt-out list
 
-Deleting a lead doesn't stop the same listing from being pulled again if it's still active on Marketcheck, since pulls dedupe by VIN against rows that exist. Until there's a suppression list (a table of opted-out VINs the fetch route skips), check the VIN again after the next pull and repeat the deletion if it came back.
+Suppressed VINs live in the `SuppressedVin` table, which holds only the VIN (uppercase) and when it was added. `POST /api/leads/fetch` skips any listing whose VIN is on it. If a seller later asks to be included again, remove the row in the Dokploy terminal:
+
+```sh
+node -e 'new (require("@prisma/client").PrismaClient)().suppressedVin.delete({ where: { vin: "<VIN>" } }).then(() => console.log("done"))'
+```

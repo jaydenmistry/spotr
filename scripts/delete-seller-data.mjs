@@ -1,6 +1,7 @@
 // Deletes a seller's data on request: the matching lead rows plus their
-// activity history and practice-chat messages (both cascade from Lead).
-// Dry run by default; nothing is deleted without --confirm.
+// activity history and practice-chat messages (both cascade from Lead). The
+// VIN goes on the suppression list (SuppressedVin) so later pulls skip it.
+// Dry run by default; nothing is changed without --confirm.
 // Runbook: docs/seller-data-requests.md
 //
 //   node scripts/delete-seller-data.mjs --vin 1HGCM82633A004352
@@ -41,11 +42,6 @@ try {
     },
   });
 
-  if (leads.length === 0) {
-    console.log(`No leads match ${vin ? `VIN ${vin}` : `id ${id}`}. Nothing to delete.`);
-    process.exit(0);
-  }
-
   for (const lead of leads) {
     const vehicle = [lead.year, lead.make, lead.model].filter(Boolean).join(" ") || "Unknown vehicle";
     console.log(
@@ -55,13 +51,38 @@ try {
     );
   }
 
+  const vins = [...new Set([vin, ...leads.map((lead) => lead.vin?.toUpperCase())].filter(Boolean))];
+  const alreadySuppressed = await prisma.suppressedVin.findMany({ where: { vin: { in: vins } } });
+  const toSuppress = vins.filter((value) => !alreadySuppressed.some((row) => row.vin === value));
+
+  if (leads.length === 0) {
+    console.log(`No leads match ${vin ? `VIN ${vin}` : `id ${id}`}.`);
+    if (toSuppress.length === 0) {
+      console.log(vin ? "That VIN is already suppressed. Nothing to do." : "Nothing to do.");
+      process.exit(0);
+    }
+  }
+
+  const plan = [
+    leads.length > 0 && `${leads.length} lead(s) would be deleted`,
+    toSuppress.length > 0 && `${toSuppress.join(", ")} would be added to the suppression list`,
+  ].filter(Boolean);
   if (!confirm) {
-    console.log(`\nDry run: ${leads.length} lead(s) would be deleted. Re-run with --confirm to delete them.`);
+    console.log(`\nDry run: ${plan.join(", and ")}. Re-run with --confirm to do it.`);
     process.exit(0);
   }
 
-  const { count } = await prisma.lead.deleteMany({ where: { id: { in: leads.map((lead) => lead.id) } } });
-  console.log(`\nDeleted ${count} lead(s) with their activity history and messages.`);
+  const [{ count }] = await prisma.$transaction([
+    prisma.lead.deleteMany({ where: { id: { in: leads.map((lead) => lead.id) } } }),
+    ...toSuppress.map((value) => prisma.suppressedVin.create({ data: { vin: value } })),
+  ]);
+  console.log("");
+  if (leads.length > 0) console.log(`Deleted ${count} lead(s) with their activity history and messages.`);
+  if (toSuppress.length > 0) {
+    console.log(`Suppressed ${toSuppress.join(", ")}; future pulls will skip ${toSuppress.length === 1 ? "it" : "them"}.`);
+  } else if (vins.length === 0) {
+    console.log("The lead had no VIN, so nothing was added to the suppression list.");
+  }
 } finally {
   await prisma.$disconnect();
 }
