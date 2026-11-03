@@ -26,7 +26,7 @@ Spotr is a B2B, multi-tenant dealer vehicle-acquisition intelligence platform. I
 - `npm run dev` (runs `npm run db:setup` first — `prisma db push` + admin seed — then `next dev`) / `npm run build` / `npm run start`
 - Lint: `npm run lint` · Typecheck: `npx tsc --noEmit` · Seed admin: `npm run seed`
 - Tests: `npm test` / `npm run test:inventory` / `./scripts/run-inventory-tests.sh` (Vitest, `src/**/*.test.ts` & `src/**/*.test.tsx` — pure `src/lib` logic, route handlers, and UI component tests).
-- E2E + visual regression: `npm run build && npm run test:e2e:docker` (Playwright in the official `v1.63.0-noble` image, same as CI; add `-- --update-snapshots` after intentional UI changes). `scripts/e2e-server.sh` starts a production build on :3200 against a throwaway `prisma/e2e.db` seeded by `scripts/seed-e2e.mjs` (`E2E-` VINs — guarded to refuse any non-e2e database). CI: `.github/workflows/ci.yml`.
+- E2E + visual regression: `npm run build && npm run test:e2e:docker` (Playwright in the official `v1.64.1-noble` image, same as CI; add `-- --update-snapshots` after intentional UI changes). `scripts/e2e-server.sh` starts a production build on :3200 against a throwaway `prisma/e2e.db` seeded by `scripts/seed-e2e.mjs` (`E2E-` VINs — guarded to refuse any non-e2e database). CI: `.github/workflows/ci.yml`.
 - `npm run seed:fixtures` — opt-in, dev-only synthetic feed fixtures (`SPOTR-FEED-` VINs); never run in production/entrypoint.
 
 ## Product & data rules (non-negotiable)
