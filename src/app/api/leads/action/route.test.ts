@@ -12,6 +12,7 @@ vi.mock("@/lib/db/prisma", () => ({
   },
 }));
 
+import { Prisma } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/db/prisma";
 import { POST } from "./route";
@@ -275,14 +276,41 @@ describe("POST /api/leads/action", () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
-  it("lets an admin reassign a lead held by someone else", async () => {
-    (prisma.lead.findUnique as Mock).mockResolvedValue({ ...activeLead, assignedToId: "u2" });
+  it("lets an admin reassign a lead held by someone else and records who had it", async () => {
+    (prisma.lead.findUnique as Mock).mockResolvedValue({
+      ...activeLead,
+      assignedToId: "u2",
+      assignee: { email: "teammate@spotr.test" },
+    });
     (prisma.user.findUnique as Mock).mockResolvedValue({ role: "admin" });
     (prisma.lead.update as Mock).mockResolvedValue({ id: "l1", assignee: { email: "buyer@spotr.test" } });
 
     const res = await post({ leadId: "l1", action: "assign" });
     expect(res.status).toBe(200);
-    expect((prisma.lead.update as Mock).mock.calls[0][0].data).toEqual({ assignee: { connect: { id: "u1" } } });
+    const updateArgs = (prisma.lead.update as Mock).mock.calls[0][0];
+    expect(updateArgs.where).toEqual({ id: "l1", assignedToId: "u2" });
+    expect(updateArgs.data).toEqual({ assignee: { connect: { id: "u1" } } });
+    expect((prisma.activity.create as Mock).mock.calls[0][0].data.summary).toBe(
+      "Reassigned from teammate@spotr.test to buyer@spotr.test"
+    );
+  });
+
+  it("only writes an assignment if the assignee hasn't changed since it was checked", async () => {
+    (prisma.lead.findUnique as Mock).mockResolvedValue(activeLead);
+    (prisma.$transaction as Mock).mockRejectedValueOnce(
+      new Prisma.PrismaClientKnownRequestError("No record found", { code: "P2025", clientVersion: "5" })
+    );
+
+    const res = await post({ leadId: "l1", action: "assign" });
+    expect(res.status).toBe(409);
+    expect((prisma.lead.update as Mock).mock.calls[0][0].where).toEqual({ id: "l1", assignedToId: null });
+  });
+
+  it("keeps a plain id filter for non-assignment actions", async () => {
+    (prisma.lead.findUnique as Mock).mockResolvedValue(activeLead);
+    (prisma.lead.update as Mock).mockResolvedValue({ id: "l1", assignee: null });
+    await post({ leadId: "l1", action: "watch" });
+    expect((prisma.lead.update as Mock).mock.calls[0][0].where).toEqual({ id: "l1" });
   });
 
   it("lets an admin unassign a lead held by someone else", async () => {

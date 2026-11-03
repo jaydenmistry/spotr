@@ -7,6 +7,7 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { spring } from "@/lib/motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
+import { useSession } from "next-auth/react";
 import TopStats from "@/components/dashboard/TopStats";
 import KanbanBoard from "@/components/dashboard/KanbanBoard";
 import NeedsAttentionList from "@/components/dashboard/NeedsAttentionList";
@@ -86,6 +87,7 @@ const bannerMotion = {
 } as const;
 
 export default function DashboardPage() {
+  const viewer = useSession().data?.user;
   const [leads, setLeads] = useState<LeadRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [buyBox, setBuyBox] = useState<BuyBoxConfig>(DEFAULT_BUY_BOX);
@@ -586,6 +588,7 @@ export default function DashboardPage() {
           onAction={(leadId, action) => handleAction(leadId, action)}
           actionBusy={busyLeadId === selectedLead.id}
           onLeadUpdated={applyLeadUpdate}
+          viewer={viewer}
         />
       )}
     </div>

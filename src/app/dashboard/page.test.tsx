@@ -10,6 +10,9 @@ import { act, cleanup, render, screen, waitFor, within } from "@testing-library/
 import userEvent from "@testing-library/user-event";
 import type { ImgHTMLAttributes } from "react";
 
+vi.mock("next-auth/react", () => ({
+  useSession: () => ({ data: { user: { email: "buyer@spotr.test", role: "member" } }, status: "authenticated" }),
+}));
 vi.mock("axios", () => ({
   default: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), isAxiosError: () => false },
 }));

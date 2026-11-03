@@ -27,6 +27,7 @@ import {
 } from "@/lib/vehicleAnalytics";
 import { isFixtureLead, SOURCE_LABELS, type OpportunityAssessment } from "@/lib/opportunity";
 import type { FeedAction } from "@/lib/feedActions";
+import { assignToggle, type Viewer } from "@/lib/leadAssignee";
 import { safePhotoUrl, isSafeHttpUrl } from "@/lib/url";
 import { RECOMMENDATION_COLORS, scoreColor, tone } from "@/lib/ui/colors";
 import { spring } from "@/lib/motion";
@@ -61,6 +62,7 @@ export default function OpportunityCard({
   onOpenDossier,
   busy,
   passedView = false,
+  viewer,
 }: {
   lead: LeadRecord;
   assessment: OpportunityAssessment;
@@ -68,6 +70,7 @@ export default function OpportunityCard({
   onOpenDossier: (lead: LeadRecord) => void;
   busy: boolean;
   passedView?: boolean;
+  viewer: Viewer;
 }) {
   const [showBreakdown, setShowBreakdown] = useState(false);
   const breakdownId = `score-breakdown-${lead.id}`;
@@ -75,6 +78,7 @@ export default function OpportunityCard({
   const isSample = isFixtureLead(lead);
   const isWatched = Boolean(lead.watchedAt);
   const isAssigned = Boolean(lead.assignedTo);
+  const assign = assignToggle(lead.assignedTo, viewer);
   const locationText = [lead.city, lead.state].filter(Boolean).join(", ");
   const recColor = RECOMMENDATION_COLORS[assessment.recommendation];
   const { maxOffer, buyBoxMatch } = assessment;
@@ -426,16 +430,18 @@ export default function OpportunityCard({
                 </motion.span>
                 {isWatched ? "Watching" : "Watch"}
               </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => onAction(lead.id, isAssigned ? "unassign" : "assign")}
-                className="btn btn-sm btn-secondary pressable"
-                style={isAssigned ? { color: "var(--blue)", background: "rgba(var(--blue-rgb), 0.12)", borderColor: "transparent" } : undefined}
-              >
-                <UserPlus style={{ width: 14, height: 14 }} />
-                {isAssigned ? "Unassign" : "Assign to me"}
-              </button>
+              {assign && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => onAction(lead.id, assign.action)}
+                  className="btn btn-sm btn-secondary pressable"
+                  style={assign.action === "unassign" ? { color: "var(--blue)", background: "rgba(var(--blue-rgb), 0.12)", borderColor: "transparent" } : undefined}
+                >
+                  <UserPlus style={{ width: 14, height: 14 }} />
+                  {assign.label}
+                </button>
+              )}
               <button type="button" disabled={busy} onClick={() => onAction(lead.id, "pass")} className="btn btn-sm btn-secondary pressable hover-danger">
                 <Ban style={{ width: 14, height: 14 }} />
                 Pass
