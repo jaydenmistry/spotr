@@ -12,7 +12,7 @@ Separately, `prisma/migrate.js` saves `prod.db.pre-migrate-<time>` next to the d
 
 Backup files are readable by the container's owner only, since they hold password hashes and lead data.
 
-The first run of each UTC day takes the copy, so a restore can lose up to a day of changes. These copies are on the same disk as the database, so they cover a bad migration or a mistaken deletion, not a lost server. `/api/health/backups` returns 200 while the newest copy is under 26 hours old, and 503 when it's older, missing, or can't be checked. Point an uptime monitor at it so a failing backup emails you. It's separate from `/api/health` on purpose: Docker's healthcheck uses that one, and a backup problem shouldn't get the app restarted.
+The first run of each UTC day takes the copy, so a restore can lose up to a day of changes. These copies are on the same disk as the database, so they cover a bad migration or a mistaken deletion, not a lost server. `/api/health/backups` returns 200 while the newest copy is under 26 hours old, and 503 when it's older, missing, or can't be checked. `.github/workflows/uptime.yml` checks it and `/api/health` every 30 minutes, and GitHub emails you when a run fails (Settings → Notifications → Actions on GitHub controls that email). Any other uptime monitor pointed at both URLs works too. It's separate from `/api/health` on purpose: Docker's healthcheck uses that one, and a backup problem shouldn't get the app restarted.
 
 ## Off the server (set up once in Dokploy)
 
