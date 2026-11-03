@@ -21,6 +21,8 @@ RUN npm run build
 
 # ---- Runtime ----
 FROM base AS runner
+# tini as PID 1 reaps the entrypoint's background backup loop and its children.
+RUN apk add --no-cache tini
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
@@ -46,4 +48,4 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD wget -qO- http://127.0.0.1:3000/api/health || exit 1
 
-ENTRYPOINT ["./docker-entrypoint.sh"]
+ENTRYPOINT ["/sbin/tini", "--", "./docker-entrypoint.sh"]

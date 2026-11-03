@@ -4,13 +4,13 @@ Spotr's data lives in one SQLite file, `/app/data/prod.db`, on the Dokploy volum
 
 ## On the server (automatic)
 
-`prisma/backup.js` writes one copy of the database per day to `/app/data/backups/prod-YYYY-MM-DD.db` and keeps the newest 7. The container's entrypoint runs it once an hour in the background, and a run does nothing once today's copy exists, so a deploy or restart never adds an extra one. Each copy is written with `VACUUM INTO`, which gives a consistent file even while the app is writing, and it's checked with `PRAGMA quick_check` before it replaces anything. The Dokploy log shows `Saved a backup to ...` once a day, or `Backup failed: ...` if something went wrong.
+`prisma/backup.js` writes one copy of the database per day to `/app/data/backups/prod-YYYY-MM-DD.db` and keeps the newest 7. The container's entrypoint runs it once an hour in the background, and a run does nothing once today's copy exists, so a deploy or restart never adds an extra one. Each copy is written with `VACUUM INTO`, which gives a consistent file while the app is running (writes wait a moment until the copy finishes), and it's checked with `PRAGMA quick_check` before it replaces anything. The Dokploy log shows `Saved a backup to ...` once a day, or `Backup failed: ...` if something went wrong.
 
 Separately, `prisma/migrate.js` saves `prod.db.pre-migrate-<time>` next to the database before applying a migration. It keeps the newest 3, and the daily backup deletes any that are over 14 days old.
 
 Backup files are readable by the container's owner only, since they hold password hashes and lead data.
 
-These copies are on the same disk as the database, so they cover a bad migration or a mistaken deletion, not a lost server.
+The first run of each UTC day takes the copy, so a restore can lose up to a day of changes. These copies are on the same disk as the database, so they cover a bad migration or a mistaken deletion, not a lost server. Nothing alerts on a failed backup yet, so glance at `/app/data/backups` now and then to check the newest file is from today.
 
 ## Off the server (set up once in Dokploy)
 
