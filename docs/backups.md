@@ -2,6 +2,8 @@
 
 Spotr's data lives in one SQLite file, `/app/data/prod.db`, on the Dokploy volume mounted at `/app/data`. Losing that volume means losing every lead, note, follow-up and account, so it's backed up in two layers.
 
+The Spotr app in Dokploy needs a named volume mount at `/app/data` (Advanced → Volumes, a Volume Mount named something like `spotr-data`). Without one, Docker gives each new container its own empty, unnamed volume (the Dockerfile declares `VOLUME ["/app/data"]`), so every deploy would start from an empty database and Dokploy's volume backup would have no volume to pick.
+
 ## On the server (automatic)
 
 `prisma/backup.js` writes one copy of the database per day to `/app/data/backups/prod-YYYY-MM-DD.db` and keeps the newest 7. The container's entrypoint runs it once an hour in the background, and a run does nothing once today's copy exists, so a deploy or restart never adds an extra one. Each copy is written with `VACUUM INTO`, which gives a consistent file while the app is running (writes wait a moment until the copy finishes), and it's checked with `PRAGMA quick_check` before it replaces anything. The Dokploy log shows `Saved a backup to ...` once a day, or `Backup failed: ...` if something went wrong.
@@ -10,7 +12,7 @@ Separately, `prisma/migrate.js` saves `prod.db.pre-migrate-<time>` next to the d
 
 Backup files are readable by the container's owner only, since they hold password hashes and lead data.
 
-The first run of each UTC day takes the copy, so a restore can lose up to a day of changes. These copies are on the same disk as the database, so they cover a bad migration or a mistaken deletion, not a lost server. Nothing alerts on a failed backup yet, so glance at `/app/data/backups` now and then to check the newest file is from today.
+The first run of each UTC day takes the copy, so a restore can lose up to a day of changes. These copies are on the same disk as the database, so they cover a bad migration or a mistaken deletion, not a lost server. `/api/health/backups` returns 200 while the newest copy is under 26 hours old, and 503 when it's older, missing, or can't be checked. `.github/workflows/uptime.yml` checks it and `/api/health` every 30 minutes, and GitHub emails you when a run fails (Settings → Notifications → Actions on GitHub controls that email). Any other uptime monitor pointed at both URLs works too. It's separate from `/api/health` on purpose: Docker's healthcheck uses that one, and a backup problem shouldn't get the app restarted.
 
 ## Off the server (set up once in Dokploy)
 
@@ -18,6 +20,7 @@ The first run of each UTC day takes the copy, so a restore can lose up to a day 
 2. **Add an S3 destination** in Dokploy (Settings → S3 Destinations) with the bucket name, the R2 endpoint `https://<account id>.r2.cloudflarestorage.com`, region `auto`, and the token's access key and secret.
 3. **Add a volume backup** on the Spotr app for the volume mounted at `/app/data`, sending to that destination daily and keeping 14.
 4. **Test a restore** once (below), so you know the steps work before you need them.
+5. **Turn on failure notifications** for backups in Dokploy (Settings → Notifications) if your version offers them for volume backups. `/api/health/backups` only watches the copies on the server, not the uploads to R2.
 
 Back up the whole volume. The files in `backups/` are the ones to restore from, since `prod.db` itself might be copied mid-write.
 

@@ -1,0 +1,24 @@
+name: Uptime
+
+# A free uptime monitor: GitHub emails whoever last changed this schedule when
+# a scheduled run fails. Runs can start a few minutes late. GitHub turns
+# schedules off after 60 days without commits; re-enable from the Actions tab.
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  check:
+    name: Site and backups
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Site is up
+        run: curl -fsS --retry 3 --retry-delay 20 --retry-all-errors --max-time 20 https://spotrcars.com/api/health
+      # 503 once the newest daily copy is 26 hours old (docs/backups.md).
+      - name: Daily backup is current
+        if: ${{ !cancelled() }}
+        run: curl -fsS --retry 2 --retry-delay 20 --retry-all-errors --max-time 20 https://spotrcars.com/api/health/backups

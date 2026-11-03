@@ -136,7 +136,7 @@ docker run -d -p 3000:3000 -v spotr_data:/app/data \
   spotr
 ```
 
-On startup the container applies the database schema, seeds the admin user and starts the server. `/api/health` is the health check.
+On startup the container applies the database schema, seeds the admin user and starts the server. `/api/health` is the health check, and `/api/health/backups` reports whether the daily backup is current (see [docs/backups.md](docs/backups.md)).
 
 ## Project structure
 
