@@ -1,4 +1,4 @@
-FROM node:20-alpine AS base
+FROM node:22-alpine AS base
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
@@ -36,6 +36,8 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/next.config.ts ./next.config.ts
 
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
+# Run from the container terminal for seller deletion requests (docs/seller-data-requests.md).
+COPY scripts/delete-seller-data.mjs ./scripts/delete-seller-data.mjs
 RUN chmod +x ./docker-entrypoint.sh && mkdir -p /app/data
 
 VOLUME ["/app/data"]
