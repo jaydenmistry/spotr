@@ -18,7 +18,7 @@ jobs:
     name: Lint, typecheck, unit tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: actions/setup-node@v7
@@ -45,7 +45,7 @@ jobs:
       NEXTAUTH_SECRET: ci-build-only
       NEXTAUTH_URL: http://127.0.0.1:3200
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - run: npm ci
