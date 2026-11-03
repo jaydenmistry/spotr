@@ -6,7 +6,9 @@ Spotr's data lives in one SQLite file, `/app/data/prod.db`, on the Dokploy volum
 
 `prisma/backup.js` writes one copy of the database per day to `/app/data/backups/prod-YYYY-MM-DD.db` and keeps the newest 7. The container's entrypoint runs it once an hour in the background, and a run does nothing once today's copy exists, so a deploy or restart never adds an extra one. Each copy is written with `VACUUM INTO`, which gives a consistent file even while the app is writing, and it's checked with `PRAGMA quick_check` before it replaces anything. The Dokploy log shows `Saved a backup to ...` once a day, or `Backup failed: ...` if something went wrong.
 
-Separately, `prisma/migrate.js` saves `prod.db.pre-migrate-<time>` next to the database before applying a migration, and keeps the newest 3.
+Separately, `prisma/migrate.js` saves `prod.db.pre-migrate-<time>` next to the database before applying a migration. It keeps the newest 3, and the daily backup deletes any that are over 14 days old.
+
+Backup files are readable by the container's owner only, since they hold password hashes and lead data.
 
 These copies are on the same disk as the database, so they cover a bad migration or a mistaken deletion, not a lost server.
 
@@ -19,6 +21,17 @@ These copies are on the same disk as the database, so they cover a bad migration
 
 Back up the whole volume. The files in `backups/` are the ones to restore from, since `prod.db` itself might be copied mid-write.
 
+## How long deleted data survives
+
+A seller deletion (docs/seller-data-requests.md) removes the rows from `prod.db` straight away, but copies made before it still have them:
+
+| Copy | Kept | Gone after the deletion |
+| --- | --- | --- |
+| Daily copies in `backups/` | newest 7 | about 7 days |
+| `prod.db.pre-migrate-*` | newest 3, max 14 days old | at most 14 days |
+| Dokploy volume backups in R2 | 14 | about 14 days after the last local copy with the row is gone, so up to about 4 weeks |
+| `prod.db.broken-*` from a restore | until you delete it | delete it once the restore is confirmed |
+
 ## Restoring
 
 1. Stop the Spotr app in Dokploy.
@@ -27,10 +40,16 @@ Back up the whole volume. The files in `backups/` are the ones to restore from, 
    ```sh
    cd /app/data
    mv prod.db prod.db.broken-$(date +%F)
-   rm -f prod.db-journal
+   rm -f prod.db-journal prod.db-wal prod.db-shm
    cp backups/prod-2026-11-03.db prod.db
    ```
 
    For an off-server copy, download it from R2 first and copy it in the same way.
-3. Start the app. `migrate.js` applies any migrations newer than the backup, and `/api/health` should return ok.
-4. Re-run any seller deletions handled after the backup was taken (docs/seller-data-requests.md), because the restored file still has those rows.
+3. Start the app. `migrate.js` applies any migrations newer than the backup, the seed re-applies `ADMIN_PASSWORD`, and `/api/health` should return ok.
+4. Sign everyone out, because sessions revoked after the backup was taken are valid again in the old file:
+
+   ```sh
+   node -e 'new (require("@prisma/client").PrismaClient)().user.updateMany({ data: { sessionVersion: { increment: 1 } } }).then(() => console.log("done"))'
+   ```
+5. Re-run every seller deletion recorded after the backup's date (the request log from docs/seller-data-requests.md, step 4). The restored file still has those rows, and their VINs are missing from the suppression list.
+6. Once everything checks out, delete the `prod.db.broken-*` file.
