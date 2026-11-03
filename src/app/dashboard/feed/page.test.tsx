@@ -9,6 +9,10 @@ import userEvent from "@testing-library/user-event";
 import type { ImgHTMLAttributes } from "react";
 
 let searchParams = new URLSearchParams();
+let viewer = { email: "buyer@spotr.test", role: "member" };
+vi.mock("next-auth/react", () => ({
+  useSession: () => ({ data: { user: viewer }, status: "authenticated" }),
+}));
 vi.mock("next/navigation", () => ({
   useSearchParams: () => searchParams,
   usePathname: () => "/dashboard/feed",
@@ -93,6 +97,7 @@ const focusedCardTitle = () => document.activeElement?.closest("[data-lead-id]")
 
 beforeEach(() => {
   searchParams = new URLSearchParams();
+  viewer = { email: "buyer@spotr.test", role: "member" };
   (axios.get as Mock).mockReset();
   (axios.post as Mock).mockReset();
   Object.defineProperty(window, "matchMedia", {
@@ -148,15 +153,37 @@ describe("Feed keyboard shortcuts", () => {
     );
   });
 
-  it("shows the server's reason when an action is refused", async () => {
+  it("a does nothing on a teammate's lead for a member, and the card offers no assign button", async () => {
+    mockFeed([lead("lead-01", "First Car", { assignedTo: "teammate@spotr.test" })]);
+    const user = await renderFeed();
+    expect(screen.queryByRole("button", { name: /Unassign|Assign to me|Take over/ })).toBeNull();
+    await user.keyboard("ja");
+    expect(axios.post).not.toHaveBeenCalled();
+  });
+
+  it("a unassigns your own lead", async () => {
+    mockFeed([lead("lead-01", "First Car", { assignedTo: "buyer@spotr.test" })]);
+    (axios.post as Mock).mockResolvedValue({ data: { ...LEADS[0], assignedTo: null } });
+    const user = await renderFeed();
+    expect(screen.getByRole("button", { name: "Unassign" })).toBeTruthy();
+    await user.keyboard("ja");
+    await waitFor(() =>
+      expect(axios.post).toHaveBeenCalledWith("/api/leads/action", { leadId: "lead-01", action: "unassign" })
+    );
+  });
+
+  it("lets an admin take over a teammate's lead, and shows the server's reason if it's refused", async () => {
+    viewer = { email: "buyer@spotr.test", role: "admin" };
     mockFeed([lead("lead-01", "First Car", { assignedTo: "teammate@spotr.test" })]);
     (axios.isAxiosError as unknown as Mock).mockReturnValue(true);
     (axios.post as Mock).mockRejectedValue({
-      response: { status: 403, data: { error: "Only an admin can reassign or unassign it." } },
+      response: { status: 409, data: { error: "Someone changed this lead's assignment. Refresh and try again." } },
     });
     const user = await renderFeed();
+    expect(screen.getByRole("button", { name: "Take over" })).toBeTruthy();
     await user.keyboard("ja");
-    expect(await screen.findByText("Only an admin can reassign or unassign it.")).toBeTruthy();
+    expect(axios.post).toHaveBeenCalledWith("/api/leads/action", { leadId: "lead-01", action: "assign" });
+    expect(await screen.findByText("Someone changed this lead's assignment. Refresh and try again.")).toBeTruthy();
     (axios.isAxiosError as unknown as Mock).mockReturnValue(false);
   });
 

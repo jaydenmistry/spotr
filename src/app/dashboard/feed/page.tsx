@@ -4,12 +4,14 @@ import { Suspense, useCallback, useEffect, useEffectEvent, useMemo, useRef, useS
 import axios from "axios";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowDownWideNarrow, ChevronLeft, ChevronRight, Eye, FilterX, Keyboard, Radar, RefreshCw, Search, ThumbsDown, Undo2 } from "lucide-react";
 import OpportunityCard from "@/components/dashboard/feed/OpportunityCard";
 import LeadModal from "@/components/dashboard/modal/LeadModal";
 import OutcomeReasonDialog from "@/components/dashboard/OutcomeReasonDialog";
 import type { FeedAction } from "@/lib/feedActions";
+import { assignToggle } from "@/lib/leadAssignee";
 import type { OutcomeReasonCode } from "@/lib/followUp";
 import type { OpportunityAssessment, Recommendation } from "@/lib/opportunity";
 import { type LeadRecord } from "@/lib/vehicleAnalytics";
@@ -90,6 +92,8 @@ function FeedPageContent() {
   const linkedQuery = (searchParams.get("q") ?? "").trim().slice(0, 60);
   const linkedOpen = searchParams.get("open");
   const { openHelp, shortcutsEnabled } = useCommandPalette();
+  // Decides which assign action the cards offer; the API enforces the same rule.
+  const viewer = useSession().data?.user;
   const [leads, setLeads] = useState<FeedLead[]>([]);
   const [total, setTotal] = useState(0);
   const [meta, setMeta] = useState<{ candidateSetCapped: boolean; assessedCount: number; matchingTotal: number; buyBoxPersisted: boolean } | null>(null);
@@ -319,7 +323,8 @@ function FeedPageContent() {
         handleAction(currentLead.id, currentLead.watchedAt ? "unwatch" : "watch");
       } else if (key === "a") {
         claim();
-        handleAction(currentLead.id, currentLead.assignedTo ? "unassign" : "assign");
+        const assign = assignToggle(currentLead.assignedTo, viewer);
+        if (assign) handleAction(currentLead.id, assign.action);
       } else if (key === "p") {
         claim();
         const nextId = (leads[currentIndex + 1] ?? leads[currentIndex - 1])?.id ?? null;
@@ -666,6 +671,7 @@ function FeedPageContent() {
                     onOpenDossier={() => setDossierLead(lead)}
                     busy={busyLeadId === lead.id}
                     passedView={view === "passed"}
+                    viewer={viewer}
                   />
                 </motion.div>
               ))}
@@ -708,6 +714,7 @@ function FeedPageContent() {
           buyBoxPersisted={meta?.buyBoxPersisted}
           onAction={(leadId, action) => handleAction(leadId, action)}
           actionBusy={busyLeadId === dossierLead.id}
+          viewer={viewer}
           onClose={() => setDossierLead(null)}
           onLeadUpdated={(updated) => {
             setLeads((prev) => prev.map((l) => (l.id === updated.id ? { ...l, ...updated } : l)));

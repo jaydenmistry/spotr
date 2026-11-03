@@ -37,6 +37,7 @@ import {
 } from "@/lib/opportunity";
 import { DEFAULT_BUY_BOX, type BuyBoxConfig } from "@/lib/buyBox";
 import type { FeedAction } from "@/lib/feedActions";
+import { assignToggle, type Viewer } from "@/lib/leadAssignee";
 import { safePhotoUrl, isSafeHttpUrl } from "@/lib/url";
 import { outcomeReasonLabel, parseActivityDetail, type ActivityRecord } from "@/lib/followUp";
 import ActivityTimeline from "./ActivityTimeline";
@@ -194,6 +195,7 @@ export default function LeadModal({
   onAction,
   actionBusy = false,
   onLeadUpdated,
+  viewer,
 }: {
   lead: LeadRecord;
   onClose: () => void;
@@ -206,6 +208,8 @@ export default function LeadModal({
   actionBusy?: boolean;
   /** Notifies the parent when follow-up edits change the lead. */
   onLeadUpdated?: (lead: LeadRecord) => void;
+  /** Signed-in user; decides which assign action the dossier offers. */
+  viewer?: Viewer;
 }) {
   const [activeTab, setActiveTab] = useState<DossierTab>("decision");
   // Local overlay so follow-up edits render immediately; re-synced whenever
@@ -302,7 +306,7 @@ export default function LeadModal({
   const fixture = isFixtureLead(lead);
   const recColor = assessment ? RECOMMENDATION_COLORS[assessment.recommendation] : "var(--label-secondary)";
   const isWatched = Boolean(lead.watchedAt);
-  const isAssigned = Boolean(lead.assignedTo);
+  const assign = assignToggle(lead.assignedTo, viewer);
 
   const title = getVehicleTitle(lead);
   const photoUrl = safePhotoUrl(lead.photo_url);
@@ -452,16 +456,18 @@ export default function LeadModal({
                             <Eye style={{ width: 14, height: 14 }} />
                             {isWatched ? "Watching" : "Watch"}
                           </button>
-                          <button
-                            type="button"
-                            disabled={actionBusy}
-                            onClick={() => onAction(lead.id, isAssigned ? "unassign" : "assign")}
-                            className="btn btn-sm btn-secondary pressable"
-                            style={isAssigned ? { color: "var(--blue)", background: "rgba(var(--blue-rgb), 0.12)", borderColor: "transparent" } : undefined}
-                          >
-                            <UserPlus style={{ width: 14, height: 14 }} />
-                            {isAssigned ? "Unassign" : "Assign to me"}
-                          </button>
+                          {assign && (
+                            <button
+                              type="button"
+                              disabled={actionBusy}
+                              onClick={() => onAction(lead.id, assign.action)}
+                              className="btn btn-sm btn-secondary pressable"
+                              style={assign.action === "unassign" ? { color: "var(--blue)", background: "rgba(var(--blue-rgb), 0.12)", borderColor: "transparent" } : undefined}
+                            >
+                              <UserPlus style={{ width: 14, height: 14 }} />
+                              {assign.label}
+                            </button>
+                          )}
                           <button
                             type="button"
                             disabled={actionBusy}

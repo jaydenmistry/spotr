@@ -32,6 +32,7 @@ function getActionEffect(
     watchedAt: Date | null;
     passedAt: Date | null;
     assignedToId: string | null;
+    assignee?: { email: string } | null;
     outcomeReason: string | null;
     outcomeNote: string | null;
   },
@@ -88,19 +89,26 @@ function getActionEffect(
             : { passedAt: null, outcomeReason: null, outcomeNote: null },
         activity: { type: "restored", summary: "Restored from Passed" },
       };
-    case "assign":
+    case "assign": {
+      const previous = lead.assignedToId && lead.assignedToId !== actor.id ? lead.assignee?.email : undefined;
       return {
         noop: lead.assignedToId === actor.id,
         // Assigns to the signed-in user; there's no picker for teammates yet.
         data: { assignee: { connect: { id: actor.id } } },
-        activity: { type: "assigned", summary: `Assigned to ${actor.email}` },
+        activity: {
+          type: "assigned",
+          summary: previous ? `Reassigned from ${previous} to ${actor.email}` : `Assigned to ${actor.email}`,
+        },
       };
-    case "unassign":
+    }
+    case "unassign": {
+      const previous = lead.assignedToId && lead.assignedToId !== actor.id ? lead.assignee?.email : undefined;
       return {
         noop: !lead.assignedToId,
         data: { assignee: { disconnect: true } },
-        activity: { type: "unassigned", summary: "Unassigned" },
+        activity: { type: "unassigned", summary: previous ? `Unassigned ${previous}` : "Unassigned" },
       };
+    }
   }
 }
 
@@ -177,6 +185,7 @@ export async function POST(request: Request) {
         watchedAt: true,
         passedAt: true,
         assignedToId: true,
+        assignee: { select: { email: true } },
         outcomeReason: true,
         outcomeNote: true,
       },
@@ -215,9 +224,14 @@ export async function POST(request: Request) {
       return NextResponse.json(current && withAssignedTo(current));
     }
 
+    // Assignment writes only land if the assignee is still the one checked
+    // above; otherwise the update matches nothing and the transaction fails.
+    const assigning = action === "assign" || action === "unassign";
+    const where = assigning ? { id: leadId, assignedToId: lead.assignedToId } : { id: leadId };
+
     // Lead mutation and its activity are atomic: both or neither.
     const [updatedLead] = await prisma.$transaction([
-      prisma.lead.update({ where: { id: leadId }, data: effect.data, include: ASSIGNEE }),
+      prisma.lead.update({ where, data: effect.data, include: ASSIGNEE }),
       prisma.activity.create({
         data: {
           leadId,
@@ -232,6 +246,12 @@ export async function POST(request: Request) {
     return NextResponse.json(withAssignedTo(updatedLead));
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+      if (action === "assign" || action === "unassign") {
+        return NextResponse.json(
+          { error: "Someone changed this lead's assignment. Refresh and try again." },
+          { status: 409 }
+        );
+      }
       return NextResponse.json({ error: "Lead not found" }, { status: 404 });
     }
 
