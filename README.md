@@ -16,6 +16,8 @@ A used-car manager spends a lot of their day scrolling listings and doing the sa
 - **Inventory.** A searchable, filterable grid of everything that's been pulled in.
 - **Command palette.** Press ⌘K (or Ctrl+K) to jump anywhere or run an action, plus `g` shortcuts for navigation.
 
+![Moving through the feed with j, opening a dossier with o, then jumping to the pipeline with ⌘K](docs/screenshots/demo.gif)
+
 | Dark (default) | Light |
 | --- | --- |
 | ![Opportunity Feed in dark mode](docs/screenshots/feed-dark.png) | ![Opportunity Feed in light mode](docs/screenshots/feed-light.png) |
@@ -99,11 +101,11 @@ npm run test:inventory    # inventory page suite
 npm run build && npm run test:e2e:docker   # Playwright end-to-end and visual regression
 ```
 
-There are over 240 unit and component tests covering scoring, buy box matching, follow-ups, auth, CSP and the main pages. The Playwright suite runs real user flows (requesting access, opening a dossier, the command palette, feed shortcuts, the theme toggle, sign-in redirects, and a check for CSP violations) and compares screenshots of every page in dark, light and mobile against committed baselines. It runs in the same Docker image locally and in CI, so the screenshots match pixel for pixel. The landing page scores 97 for performance and 100 for accessibility, best practices and SEO in Lighthouse.
+There are around 300 unit and component tests covering scoring, buy box matching, follow-ups, auth, CSP and the main pages. The Playwright suite runs real user flows (requesting access, opening a dossier, the command palette, feed shortcuts, the theme toggle, sign-in redirects, and a check for CSP violations) and compares screenshots of every page in dark, light and mobile against committed baselines. It runs in the same Docker image locally and in CI, so the screenshots match pixel for pixel. The landing page scores 97 for performance and 100 for accessibility, best practices and SEO in Lighthouse.
 
 ## Running locally
 
-You'll need Node 20 or later.
+You'll need Node 22 or later.
 
 ```bash
 cp .env.example .env      # then fill in the values below
@@ -157,3 +159,7 @@ Spotr is a working single-tenant app right now. The scoring is a transparent heu
 ## Contributors
 
 Built by [Jayden Mistry](https://github.com/jaydenmistry), with contributions from Shishir Lohar.
+
+## License
+
+Copyright © 2026 Jayden Mistry and contributors. All rights reserved. The code is public so it can be read and evaluated, but it isn't licensed for reuse. See [LICENSE](LICENSE).
