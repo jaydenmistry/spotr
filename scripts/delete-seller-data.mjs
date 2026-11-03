@@ -11,11 +11,16 @@ import { PrismaClient } from "@prisma/client";
 const args = process.argv.slice(2);
 const flag = (name) => {
   const index = args.indexOf(name);
-  return index === -1 ? undefined : args[index + 1];
+  const value = index === -1 ? undefined : args[index + 1];
+  // `--vin --confirm` is a missing value, not a VIN called "--confirm".
+  return value?.startsWith("--") ? "" : value;
 };
 const vinInput = flag("--vin")?.trim();
 const id = flag("--id")?.trim();
 const confirm = args.includes("--confirm");
+
+// A modern 17-character VIN: letters and digits, never I, O or Q.
+const VIN_PATTERN = /^[A-HJ-NPR-Z0-9]{17}$/i;
 
 if (!vinInput === !id) {
   console.error("Usage: node scripts/delete-seller-data.mjs (--vin <VIN> | --id <lead id>) [--confirm]");
@@ -57,6 +62,11 @@ try {
 
   if (leads.length === 0) {
     console.log(`No leads match ${vin ? `VIN ${vin}` : `id ${id}`}.`);
+    // With nothing in Spotr to check it against, a typo would suppress a VIN nobody owns.
+    if (vin && !VIN_PATTERN.test(vin)) {
+      console.error(`${vin} isn't a valid 17-character VIN, so it wasn't added to the suppression list. Check it with the seller.`);
+      process.exit(1);
+    }
     if (toSuppress.length === 0) {
       console.log(vin ? "That VIN is already suppressed. Nothing to do." : "Nothing to do.");
       process.exit(0);
@@ -74,7 +84,8 @@ try {
 
   const [{ count }] = await prisma.$transaction([
     prisma.lead.deleteMany({ where: { id: { in: leads.map((lead) => lead.id) } } }),
-    ...toSuppress.map((value) => prisma.suppressedVin.create({ data: { vin: value } })),
+    // upsert, so a second operator handling the same request can't fail the delete.
+    ...toSuppress.map((value) => prisma.suppressedVin.upsert({ where: { vin: value }, create: { vin: value }, update: {} })),
   ]);
   console.log("");
   if (leads.length > 0) console.log(`Deleted ${count} lead(s) with their activity history and messages.`);
