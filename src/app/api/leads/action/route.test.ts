@@ -240,6 +240,7 @@ describe("POST /api/leads/action", () => {
     const body = await res.json();
     expect(body.assignedTo).toBe("buyer@spotr.test");
     expect(body).not.toHaveProperty("assignee");
+    expect(body).not.toHaveProperty("assignedToId");
   });
 
   it("treats assigning a lead already assigned to you as a no-op", async () => {
