@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db/prisma";
 import { authOptions } from "@/lib/auth";
 import { FEED_ACTIONS, isFeedAction, type FeedAction } from "@/lib/feedActions";
 import { rateLimit, clientIp } from "@/lib/rateLimit";
+import { ASSIGNEE, withAssignedTo } from "@/lib/leadAssignee";
 import {
   buildOutcomeDetail,
   isOutcomeReason,
@@ -29,11 +30,11 @@ function getActionEffect(
     stage: string;
     watchedAt: Date | null;
     passedAt: Date | null;
-    assignedTo: string | null;
+    assignedToId: string | null;
     outcomeReason: string | null;
     outcomeNote: string | null;
   },
-  actor: string,
+  actor: { id: string; email: string },
   outcome: { reason: OutcomeReasonCode; note: string | null } | null,
   now: Date
 ): ActionEffect {
@@ -88,17 +89,15 @@ function getActionEffect(
       };
     case "assign":
       return {
-        noop: lead.assignedTo === actor,
-        // Single-user v1: assign to the signed-in user.
-        // TODO: replace assignedTo with a User relation (assignedToId) once
-        // RBAC/multi-tenancy lands — email is not a stable cross-tenant key.
-        data: { assignedTo: actor },
-        activity: { type: "assigned", summary: `Assigned to ${actor}` },
+        noop: lead.assignedToId === actor.id,
+        // Assigns to the signed-in user; there's no picker for teammates yet.
+        data: { assignee: { connect: { id: actor.id } } },
+        activity: { type: "assigned", summary: `Assigned to ${actor.email}` },
       };
     case "unassign":
       return {
-        noop: !lead.assignedTo,
-        data: { assignedTo: null },
+        noop: !lead.assignedToId,
+        data: { assignee: { disconnect: true } },
         activity: { type: "unassigned", summary: "Unassigned" },
       };
   }
@@ -162,6 +161,10 @@ export async function POST(request: Request) {
   }
 
   const actor = session.user?.email ?? "admin";
+  const actorId = session.user?.id;
+  if (!actorId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   try {
     // TODO(tenancy): scope this lookup by the caller's dealer/tenant id once
@@ -172,7 +175,7 @@ export async function POST(request: Request) {
         stage: true,
         watchedAt: true,
         passedAt: true,
-        assignedTo: true,
+        assignedToId: true,
         outcomeReason: true,
         outcomeNote: true,
       },
@@ -191,17 +194,17 @@ export async function POST(request: Request) {
       );
     }
 
-    const effect = getActionEffect(action, lead, actor, outcome, new Date());
+    const effect = getActionEffect(action, lead, { id: actorId, email: actor }, outcome, new Date());
 
     // No-op: state already matches — return the lead untouched, no activity.
     if (effect.noop) {
-      const current = await prisma.lead.findUnique({ where: { id: leadId } });
-      return NextResponse.json(current);
+      const current = await prisma.lead.findUnique({ where: { id: leadId }, include: ASSIGNEE });
+      return NextResponse.json(current && withAssignedTo(current));
     }
 
     // Lead mutation and its activity are atomic: both or neither.
     const [updatedLead] = await prisma.$transaction([
-      prisma.lead.update({ where: { id: leadId }, data: effect.data }),
+      prisma.lead.update({ where: { id: leadId }, data: effect.data, include: ASSIGNEE }),
       prisma.activity.create({
         data: {
           leadId,
@@ -213,7 +216,7 @@ export async function POST(request: Request) {
       }),
     ]);
 
-    return NextResponse.json(updatedLead);
+    return NextResponse.json(withAssignedTo(updatedLead));
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
       return NextResponse.json({ error: "Lead not found" }, { status: 404 });

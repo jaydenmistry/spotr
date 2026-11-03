@@ -10,6 +10,8 @@ declare module "next-auth" {
   }
   interface Session {
     user?: {
+      /** The User row's id (the JWT's `sub`). */
+      id?: string;
       name?: string | null;
       email?: string | null;
       image?: string | null;
