@@ -24,9 +24,11 @@ Spotr doesn't collect seller contact details. For each listing it keeps what the
 4. **Record the request** somewhere outside Spotr, like a private spreadsheet: the date, the VIN, who asked, and when it was deleted. Don't copy any seller details into it beyond what's needed to show the request was handled.
 5. **Reply** to confirm the deletion. Aim for within 30 days, and sooner is better.
 
-## Backups
+## Backups and the database file
 
 Backups taken before the deletion still contain the row until they age out. Say so in the reply if asked, and don't restore an old backup without re-running the deletion afterwards.
+
+SQLite also doesn't scrub deleted rows from the database file straight away; the space is reused over time. If a request needs the data gone from disk too, run `VACUUM` during a quiet moment (it briefly locks the database): `node -e 'new (require("@prisma/client").PrismaClient)().$executeRawUnsafe("VACUUM").then(() => console.log("done"))'`.
 
 ## Known gap: opt-out
 
