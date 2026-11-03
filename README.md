@@ -154,7 +154,7 @@ tests/e2e/         Playwright flows and visual baselines
 
 ## What's next
 
-Spotr is a working single-tenant app right now. The scoring is a transparent heuristic rather than a trained model, and the seller messaging and vehicle history tabs are placeholders until they have real backends. The next big steps are multi-tenancy with per-team roles, real database migrations, and replacing the heuristic estimates with real sold-price data once there's an approved source for it.
+Spotr is a working single-tenant app right now. The scoring is a transparent heuristic rather than a trained model, and the seller messaging and vehicle history tabs are placeholders until they have real backends. The next big steps are multi-tenancy with per-team roles and replacing the heuristic estimates with real sold-price data once there's an approved source for it.
 
 ## Contributors
 

@@ -4,8 +4,8 @@ set -e
 DB_PATH="${DATABASE_URL#file:}"
 mkdir -p "$(dirname "$DB_PATH")"
 
-echo "Syncing database schema..."
-npx prisma db push --skip-generate
+echo "Applying database migrations..."
+node prisma/migrate.js
 
 echo "Seeding admin user..."
 node prisma/seed.js

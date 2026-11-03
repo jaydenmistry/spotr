@@ -12,7 +12,7 @@ export ADMIN_EMAIL="e2e@spotr.test"
 export ADMIN_PASSWORD="e2e-orchid-lantern-29"
 
 rm -f prisma/e2e.db prisma/e2e.db-journal
-npx prisma db push --skip-generate >/dev/null
+node prisma/migrate.js >/dev/null
 node prisma/seed.js
 node scripts/seed-e2e.mjs
 # Loopback only: this server has a known admin password.
