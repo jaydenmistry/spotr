@@ -123,6 +123,15 @@ model Activity {
   @@index([leadId, createdAt])
 }
 
+// VINs whose sellers asked to be removed. Lead pulls skip these so a deleted
+// listing isn't imported again (scripts/delete-seller-data.mjs adds them;
+// docs/seller-data-requests.md). Stored uppercase; nothing else about the
+// seller is kept here.
+model SuppressedVin {
+  vin       String   @id
+  createdAt DateTime @default(now())
+}
+
 // Inbound "Request access" submissions from the public site. Prospect
 // (dealer staff) contact details only — never seller PII. Reviewed by the
 // signed-in team at /dashboard/requests; status is new → contacted → archived.
