@@ -220,13 +220,30 @@ async function getExistingVins(vins: string[]) {
   return existing;
 }
 
+// Sellers who asked to be removed (SuppressedVin, stored uppercase).
+async function getSuppressedVins(vins: string[]) {
+  const suppressed = new Set<string>();
+  const upper = [...new Set(vins.map((vin) => vin.toUpperCase()))];
+
+  for (let index = 0; index < upper.length; index += 500) {
+    const found = await prisma.suppressedVin.findMany({
+      where: { vin: { in: upper.slice(index, index + 500) } },
+      select: { vin: true },
+    });
+    found.forEach(({ vin }) => suppressed.add(vin));
+  }
+
+  return suppressed;
+}
+
 async function saveLeads(leadsData: Prisma.LeadCreateManyInput[]) {
   const vins = leadsData.map((lead) => lead.vin).filter((vin): vin is string => Boolean(vin));
   const existingVins = await getExistingVins(vins);
+  const suppressedVins = await getSuppressedVins(vins);
   const uniqueByVin = new Map<string, Prisma.LeadCreateManyInput>();
 
   leadsData.forEach((lead) => {
-    if (lead.vin && !existingVins.has(lead.vin)) {
+    if (lead.vin && !existingVins.has(lead.vin) && !suppressedVins.has(lead.vin.toUpperCase())) {
       uniqueByVin.set(lead.vin, lead);
     }
   });
