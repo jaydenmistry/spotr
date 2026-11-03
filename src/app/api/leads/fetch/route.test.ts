@@ -65,7 +65,7 @@ describe("POST /api/leads/fetch", () => {
     expect((await res.json()).count).toBe(1);
 
     expect(prisma.suppressedVin.findMany).toHaveBeenCalledWith({
-      where: { vin: { in: ["NEW1", "DUPE1", "OPTOUT1"] } },
+      where: { vin: { in: ["NEW1", "OPTOUT1"] } },
       select: { vin: true },
     });
     const created = (prisma.lead.create as Mock).mock.calls.map(([args]) => args.data.vin);

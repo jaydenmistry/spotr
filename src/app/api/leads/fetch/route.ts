@@ -239,23 +239,28 @@ async function getSuppressedVins(vins: string[]) {
 async function saveLeads(leadsData: Prisma.LeadCreateManyInput[]) {
   const vins = leadsData.map((lead) => lead.vin).filter((vin): vin is string => Boolean(vin));
   const existingVins = await getExistingVins(vins);
-  const suppressedVins = await getSuppressedVins(vins);
   const uniqueByVin = new Map<string, Prisma.LeadCreateManyInput>();
 
   leadsData.forEach((lead) => {
-    if (lead.vin && !existingVins.has(lead.vin) && !suppressedVins.has(lead.vin.toUpperCase())) {
+    if (lead.vin && !existingVins.has(lead.vin)) {
       uniqueByVin.set(lead.vin, lead);
     }
   });
 
   const newLeads = Array.from(uniqueByVin.values());
+  let saved = 0;
 
   for (let index = 0; index < newLeads.length; index += 100) {
-    const chunk = newLeads.slice(index, index + 100);
+    // Checked per chunk, right before writing, so a deletion request handled
+    // while a long pull is saving still takes effect for the rest of it.
+    const candidates = newLeads.slice(index, index + 100);
+    const suppressed = await getSuppressedVins(candidates.map((lead) => lead.vin as string));
+    const chunk = candidates.filter((lead) => !suppressed.has((lead.vin as string).toUpperCase()));
     await prisma.$transaction(chunk.map((data) => prisma.lead.create({ data })));
+    saved += chunk.length;
   }
 
-  return newLeads.length;
+  return saved;
 }
 
 export async function POST(request: Request) {

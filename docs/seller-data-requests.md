@@ -32,8 +32,10 @@ SQLite also doesn't scrub deleted rows from the database file straight away; the
 
 ## Opt-out list
 
-Suppressed VINs live in the `SuppressedVin` table, which holds only the VIN (uppercase) and when it was added. `POST /api/leads/fetch` skips any listing whose VIN is on it. If a seller later asks to be included again, remove the row in the Dokploy terminal:
+Suppressed VINs live in the `SuppressedVin` table, which holds only the VIN (uppercase) and when it was added. Its only purpose is to stop Spotr importing that vehicle again, so entries stay until the seller asks to be included again. `POST /api/leads/fetch` skips any listing whose VIN is on it. The script only adds a VIN that doesn't match a lead yet if it's a valid 17-character VIN, so a typo doesn't end up on the list.
+
+To take a VIN off the list, run this in the Dokploy terminal with the VIN in capitals:
 
 ```sh
-node -e 'new (require("@prisma/client").PrismaClient)().suppressedVin.delete({ where: { vin: "<VIN>" } }).then(() => console.log("done"))'
+node -e 'new (require("@prisma/client").PrismaClient)().suppressedVin.deleteMany({ where: { vin: "<VIN>" } }).then(({ count }) => console.log(`removed ${count}`))'
 ```
