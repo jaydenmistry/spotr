@@ -74,6 +74,19 @@ describe("GET /api/leads", () => {
     // A lead with no activity gets null, not a crash.
     expect(body[1].lastActivity).toBeNull();
   });
+
+  it("flattens the assignee relation to an assignedTo email", async () => {
+    (prisma.lead.findMany as Mock).mockResolvedValue([
+      { id: "l1", assignedToId: "u1", assignee: { email: "buyer@spotr.test" }, activities: [] },
+      { id: "l2", assignedToId: null, assignee: null, activities: [] },
+    ]);
+
+    const body = await (await GET()).json();
+    expect(body[0].assignedTo).toBe("buyer@spotr.test");
+    expect(body[1].assignedTo).toBeNull();
+    expect(body[0]).not.toHaveProperty("assignee");
+    expect((prisma.lead.findMany as Mock).mock.calls[0][0].include.assignee).toEqual({ select: { email: true } });
+  });
 });
 
 describe("PATCH /api/leads (stage changes)", () => {

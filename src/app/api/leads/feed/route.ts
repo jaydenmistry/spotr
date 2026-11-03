@@ -7,6 +7,7 @@ import { feedListingFilter } from "@/lib/leadFilters";
 import { TERMINAL_STAGES } from "@/lib/stages";
 import { loadBuyBoxConfig } from "@/lib/buyBoxStore";
 import { getOpportunityAssessment, type OpportunityAssessment, type Recommendation } from "@/lib/opportunity";
+import { ASSIGNEE, withAssignedTo } from "@/lib/leadAssignee";
 
 export const dynamic = "force-dynamic";
 
@@ -104,13 +105,14 @@ export async function GET(request: Request) {
         where,
         orderBy: candidateOrder,
         take: CANDIDATE_CAP,
+        include: ASSIGNEE,
       }),
       loadBuyBoxConfig(),
     ]);
 
     const assessed: AssessedLead[] = candidates.map((lead) => {
       const serialized = {
-        ...lead,
+        ...withAssignedTo(lead),
         createdAt: lead.createdAt.toISOString(),
         updatedAt: lead.updatedAt.toISOString(),
         watchedAt: lead.watchedAt ? lead.watchedAt.toISOString() : null,

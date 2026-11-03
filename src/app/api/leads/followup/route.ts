@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { authOptions } from "@/lib/auth";
 import { rateLimit, clientIp } from "@/lib/rateLimit";
+import { ASSIGNEE, withAssignedTo } from "@/lib/leadAssignee";
 import {
   buildNextActionDetail,
   buildNoteDetail,
@@ -82,7 +83,7 @@ export async function POST(request: Request) {
   try {
     // TODO(tenancy): scope this lookup by the caller's dealer/tenant id once
     // multi-tenancy lands — session-only auth is a cross-tenant IDOR seam.
-    const lead = await prisma.lead.findUnique({ where: { id: leadId } });
+    const lead = await prisma.lead.findUnique({ where: { id: leadId }, include: ASSIGNEE });
     if (!lead) {
       return NextResponse.json({ error: "Lead not found" }, { status: 404 });
     }
@@ -107,12 +108,13 @@ export async function POST(request: Request) {
         lead.nextActionAt?.getTime() === due.getTime() &&
         !lead.nextActionCompletedAt
       ) {
-        return NextResponse.json({ lead, activity: null });
+        return NextResponse.json({ lead: withAssignedTo(lead), activity: null });
       }
 
       const [updatedLead, activity] = await prisma.$transaction([
         prisma.lead.update({
           where: { id: leadId },
+          include: ASSIGNEE,
           data: { nextAction: text, nextActionAt: due, nextActionCompletedAt: null },
         }),
         prisma.activity.create({
@@ -126,7 +128,7 @@ export async function POST(request: Request) {
         }),
       ]);
 
-      return NextResponse.json({ lead: updatedLead, activity });
+      return NextResponse.json({ lead: withAssignedTo(updatedLead), activity });
     }
 
     if (op === "complete-next-action") {
@@ -136,12 +138,13 @@ export async function POST(request: Request) {
 
       // No-op: already completed.
       if (lead.nextActionCompletedAt) {
-        return NextResponse.json({ lead, activity: null });
+        return NextResponse.json({ lead: withAssignedTo(lead), activity: null });
       }
 
       const [updatedLead, activity] = await prisma.$transaction([
         prisma.lead.update({
           where: { id: leadId },
+          include: ASSIGNEE,
           data: { nextActionCompletedAt: new Date() },
         }),
         prisma.activity.create({
@@ -155,18 +158,19 @@ export async function POST(request: Request) {
         }),
       ]);
 
-      return NextResponse.json({ lead: updatedLead, activity });
+      return NextResponse.json({ lead: withAssignedTo(updatedLead), activity });
     }
 
     if (op === "clear-next-action") {
       // No-op: nothing to clear.
       if (!lead.nextAction && !lead.nextActionAt && !lead.nextActionCompletedAt) {
-        return NextResponse.json({ lead, activity: null });
+        return NextResponse.json({ lead: withAssignedTo(lead), activity: null });
       }
 
       const [updatedLead, activity] = await prisma.$transaction([
         prisma.lead.update({
           where: { id: leadId },
+          include: ASSIGNEE,
           data: { nextAction: null, nextActionAt: null, nextActionCompletedAt: null },
         }),
         prisma.activity.create({
@@ -179,7 +183,7 @@ export async function POST(request: Request) {
         }),
       ]);
 
-      return NextResponse.json({ lead: updatedLead, activity });
+      return NextResponse.json({ lead: withAssignedTo(updatedLead), activity });
     }
 
     if (op === "record-offer") {
@@ -208,7 +212,7 @@ export async function POST(request: Request) {
         },
       });
 
-      return NextResponse.json({ lead, activity });
+      return NextResponse.json({ lead: withAssignedTo(lead), activity });
     }
 
     // add-note
@@ -227,7 +231,7 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json({ lead, activity });
+    return NextResponse.json({ lead: withAssignedTo(lead), activity });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
       return NextResponse.json({ error: "Lead not found" }, { status: 404 });

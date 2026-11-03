@@ -15,7 +15,7 @@ import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/db/prisma";
 import { POST } from "./route";
 
-const session = { user: { email: "buyer@spotr.test" } };
+const session = { user: { id: "u1", email: "buyer@spotr.test" } };
 
 function post(body: unknown) {
   return POST(
@@ -31,7 +31,7 @@ const activeLead = {
   stage: "New Leads",
   watchedAt: null,
   passedAt: null,
-  assignedTo: null,
+  assignedToId: null,
   outcomeReason: null,
   outcomeNote: null,
 };
@@ -46,6 +46,13 @@ describe("POST /api/leads/action", () => {
     (getServerSession as Mock).mockResolvedValue(null);
     const res = await post({ leadId: "l1", action: "watch" });
     expect(res.status).toBe(401);
+  });
+
+  it("rejects a session without a user id", async () => {
+    (getServerSession as Mock).mockResolvedValue({ user: { email: "buyer@spotr.test" } });
+    const res = await post({ leadId: "l1", action: "assign" });
+    expect(res.status).toBe(401);
+    expect(prisma.lead.findUnique).not.toHaveBeenCalled();
   });
 
   it("rejects a missing leadId", async () => {
@@ -212,5 +219,56 @@ describe("POST /api/leads/action", () => {
     const activityArgs = (prisma.activity.create as Mock).mock.calls[0][0];
     expect(activityArgs.data.type).toBe("restored");
     expect(activityArgs.data.summary).toBe("Restored from Passed");
+  });
+
+  it("assigns the lead to the signed-in user and returns their email as assignedTo", async () => {
+    (prisma.lead.findUnique as Mock).mockResolvedValue(activeLead);
+    (prisma.lead.update as Mock).mockResolvedValue({
+      id: "l1",
+      assignedToId: "u1",
+      assignee: { email: "buyer@spotr.test" },
+    });
+
+    const res = await post({ leadId: "l1", action: "assign" });
+    expect(res.status).toBe(200);
+    const updateArgs = (prisma.lead.update as Mock).mock.calls[0][0];
+    expect(updateArgs.data).toEqual({ assignee: { connect: { id: "u1" } } });
+    expect(updateArgs.include).toEqual({ assignee: { select: { email: true } } });
+    const activityArgs = (prisma.activity.create as Mock).mock.calls[0][0];
+    expect(activityArgs.data.summary).toBe("Assigned to buyer@spotr.test");
+
+    const body = await res.json();
+    expect(body.assignedTo).toBe("buyer@spotr.test");
+    expect(body).not.toHaveProperty("assignee");
+  });
+
+  it("treats assigning a lead already assigned to you as a no-op", async () => {
+    (prisma.lead.findUnique as Mock)
+      .mockResolvedValueOnce({ ...activeLead, assignedToId: "u1" })
+      .mockResolvedValueOnce({ id: "l1", assignedToId: "u1", assignee: { email: "buyer@spotr.test" } });
+
+    const res = await post({ leadId: "l1", action: "assign" });
+    expect(res.status).toBe(200);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect((await res.json()).assignedTo).toBe("buyer@spotr.test");
+  });
+
+  it("reassigns a lead held by someone else to the signed-in user", async () => {
+    (prisma.lead.findUnique as Mock).mockResolvedValue({ ...activeLead, assignedToId: "u2" });
+    (prisma.lead.update as Mock).mockResolvedValue({ id: "l1", assignee: { email: "buyer@spotr.test" } });
+
+    const res = await post({ leadId: "l1", action: "assign" });
+    expect(res.status).toBe(200);
+    expect((prisma.lead.update as Mock).mock.calls[0][0].data).toEqual({ assignee: { connect: { id: "u1" } } });
+  });
+
+  it("unassign disconnects the assignee", async () => {
+    (prisma.lead.findUnique as Mock).mockResolvedValue({ ...activeLead, assignedToId: "u1" });
+    (prisma.lead.update as Mock).mockResolvedValue({ id: "l1", assignedToId: null, assignee: null });
+
+    const res = await post({ leadId: "l1", action: "unassign" });
+    expect(res.status).toBe(200);
+    expect((prisma.lead.update as Mock).mock.calls[0][0].data).toEqual({ assignee: { disconnect: true } });
+    expect((await res.json()).assignedTo).toBeNull();
   });
 });

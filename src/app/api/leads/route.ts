@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { authOptions } from "@/lib/auth";
 import { VERIFIED_LISTING_FILTER } from "@/lib/leadFilters";
+import { ASSIGNEE, withAssignedTo } from "@/lib/leadAssignee";
 import { isStage, STAGES } from "@/lib/stages";
 import {
   buildOutcomeDetail,
@@ -30,6 +31,7 @@ export async function GET() {
       where: VERIFIED_LISTING_FILTER,
       orderBy: { createdAt: "desc" },
       include: {
+        ...ASSIGNEE,
         // Newest activity per lead, resolved by Prisma in ONE bounded relation
         // query for the whole page — never a request per card. Only the
         // server-built, PII-free scalars are selected.
@@ -44,7 +46,7 @@ export async function GET() {
     // Flatten to `lastActivity` so clients never see the relation array or PII fields.
     return NextResponse.json(
       leads.map(({ activities, ...lead }) => ({
-        ...lead,
+        ...withAssignedTo(lead),
         lastActivity: activities[0]
           ? {
               type: activities[0].type,
@@ -138,8 +140,8 @@ export async function PATCH(request: Request) {
       (lead.outcomeReason !== outcome.reason || lead.outcomeNote !== outcome.note);
 
     if (lead.stage === stage && !lostCorrection) {
-      const current = await prisma.lead.findUnique({ where: { id: leadId } });
-      return NextResponse.json(current);
+      const current = await prisma.lead.findUnique({ where: { id: leadId }, include: ASSIGNEE });
+      return NextResponse.json(current && withAssignedTo(current));
     }
 
     const data: Prisma.LeadUpdateInput = { stage };
@@ -172,13 +174,13 @@ export async function PATCH(request: Request) {
 
     // Lead mutation and its activity are atomic: both or neither.
     const [updatedLead] = await prisma.$transaction([
-      prisma.lead.update({ where: { id: leadId }, data }),
+      prisma.lead.update({ where: { id: leadId }, data, include: ASSIGNEE }),
       prisma.activity.create({
         data: { leadId, actor, ...activity },
       }),
     ]);
 
-    return NextResponse.json(updatedLead);
+    return NextResponse.json(withAssignedTo(updatedLead));
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
       return NextResponse.json({ error: "Lead not found" }, { status: 404 });

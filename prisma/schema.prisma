@@ -19,6 +19,7 @@ model User {
   /// Bumped whenever the password changes or the seed locks the account;
   /// sessions issued under an older value are rejected (src/lib/auth.ts).
   sessionVersion Int @default(0)
+  assignedLeads  Lead[]
 }
 
 // Dealership acquisition criteria. Single-tenant v1: exactly one row with
@@ -69,7 +70,10 @@ model Lead {
   // Opportunity Feed actions — nullable so existing rows are unaffected.
   watchedAt   DateTime?
   passedAt    DateTime?
-  assignedTo  String?
+  // Who is working the lead; cleared if that user is deleted. Responses
+  // flatten it to `assignedTo` (the email) via src/lib/leadAssignee.ts.
+  assignedToId String?
+  assignee     User?    @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
   // Follow-up workflow — all nullable, additive.
   nextAction            String?
   nextActionAt          DateTime?
@@ -87,6 +91,7 @@ model Lead {
   @@index([vin])
   // Feed hot path: filters on stage/passedAt, orders by createdAt.
   @@index([stage, passedAt, createdAt])
+  @@index([assignedToId])
 }
 
 model Message {
