@@ -1,7 +1,6 @@
 -- Lead.assignedTo (free-text email) becomes Lead.assignedToId, a relation to
--- User. Existing assignments are carried over: matched to the user with that
--- email, or else to the admin (single-tenant v1 assigned everything to the
--- signed-in admin, whose email may have been rotated since).
+-- User. Existing assignments are carried over to the user with that email;
+-- one whose user no longer exists becomes unassigned rather than guessed.
 -- RedefineTables
 PRAGMA defer_foreign_keys=ON;
 PRAGMA foreign_keys=OFF;
@@ -39,10 +38,7 @@ CREATE TABLE "new_Lead" (
     CONSTRAINT "Lead_assignedToId_fkey" FOREIGN KEY ("assignedToId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 INSERT INTO "new_Lead" ("assignedToId", "city", "createdAt", "distanceMiles", "id", "listingTitle", "make", "miles", "model", "nextAction", "nextActionAt", "nextActionCompletedAt", "outcomeNote", "outcomeReason", "passedAt", "photo_url", "price", "searchRadius", "searchZip", "sellerName", "sellerPhone", "source", "stage", "state", "trim", "updatedAt", "vdp_url", "vin", "watchedAt", "year") SELECT
-    CASE WHEN "assignedTo" IS NULL THEN NULL ELSE COALESCE(
-        (SELECT "id" FROM "User" WHERE "User"."email" = "Lead"."assignedTo"),
-        (SELECT "id" FROM "User" WHERE "role" = 'admin' ORDER BY "email" LIMIT 1)
-    ) END,
+    (SELECT "id" FROM "User" WHERE "User"."email" = "Lead"."assignedTo"),
     "city", "createdAt", "distanceMiles", "id", "listingTitle", "make", "miles", "model", "nextAction", "nextActionAt", "nextActionCompletedAt", "outcomeNote", "outcomeReason", "passedAt", "photo_url", "price", "searchRadius", "searchZip", "sellerName", "sellerPhone", "source", "stage", "state", "trim", "updatedAt", "vdp_url", "vin", "watchedAt", "year" FROM "Lead";
 DROP TABLE "Lead";
 ALTER TABLE "new_Lead" RENAME TO "Lead";

@@ -85,6 +85,7 @@ describe("GET /api/leads", () => {
     expect(body[0].assignedTo).toBe("buyer@spotr.test");
     expect(body[1].assignedTo).toBeNull();
     expect(body[0]).not.toHaveProperty("assignee");
+    expect(body[0]).not.toHaveProperty("assignedToId");
     expect((prisma.lead.findMany as Mock).mock.calls[0][0].include.assignee).toEqual({ select: { email: true } });
   });
 });
