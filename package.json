@@ -10,7 +10,7 @@
     "test": "vitest run",
     "test:inventory": "vitest run src/app/dashboard/inventory/page.test.tsx",
     "seed": "node prisma/seed.js",
-    "db:setup": "prisma db push --skip-generate && npm run seed",
+    "db:setup": "node prisma/migrate.js && npm run seed",
     "seed:fixtures": "node scripts/seed-feed-fixtures.mjs",
     "test:e2e": "playwright test",
     "test:e2e:docker": "docker run --rm --ipc=host --user \"$(id -u):$(id -g)\" -e HOME=/tmp -v \"$PWD\":/work -w /work mcr.microsoft.com/playwright:v1.64.1-noble npx playwright test"
