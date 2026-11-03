@@ -21,12 +21,12 @@ Spotr doesn't collect seller contact details. For each listing it keeps what the
    ```sh
    node scripts/delete-seller-data.mjs --vin <VIN> --confirm
    ```
-4. **Record the request** somewhere outside Spotr, like a private spreadsheet: the date, the VIN, who asked, and when it was deleted. Don't copy any seller details into it beyond what's needed to show the request was handled.
+4. **Record the request** somewhere outside Spotr, like a private spreadsheet: the date, the VIN, who asked, and when it was deleted. Don't copy any seller details into it beyond what's needed to show the request was handled. It's also the list to re-run after restoring a backup.
 5. **Reply** to confirm the deletion. Aim for within 30 days, and sooner is better.
 
 ## Backups and the database file
 
-Backups taken before the deletion still contain the row until they age out: the daily copies in `/app/data/backups` after 7 days, and the off-server copies once Dokploy's retention drops them (see [backups.md](backups.md)). Say so in the reply if asked, and don't restore an old backup without re-running the deletion afterwards.
+Backups taken before the deletion still contain the row until they age out, which takes up to about 4 weeks across every copy ([backups.md](backups.md) lists each one). Say so in the reply if asked, and don't restore an old backup without re-running the deletion afterwards.
 
 SQLite also doesn't scrub deleted rows from the database file straight away; the space is reused over time. If a request needs the data gone from disk too, run `VACUUM` during a quiet moment (it briefly locks the database): `node -e 'new (require("@prisma/client").PrismaClient)().$executeRawUnsafe("VACUUM").then(() => console.log("done"))'`.
 
