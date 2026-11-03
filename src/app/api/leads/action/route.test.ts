@@ -7,6 +7,7 @@ vi.mock("@/lib/db/prisma", () => ({
   prisma: {
     lead: { findUnique: vi.fn(), update: vi.fn() },
     activity: { create: vi.fn() },
+    user: { findUnique: vi.fn() },
     $transaction: vi.fn(async (ops: Promise<unknown>[]) => Promise.all(ops)),
   },
 }));
@@ -254,13 +255,51 @@ describe("POST /api/leads/action", () => {
     expect((await res.json()).assignedTo).toBe("buyer@spotr.test");
   });
 
-  it("reassigns a lead held by someone else to the signed-in user", async () => {
+  it("refuses a member taking over a lead assigned to someone else", async () => {
     (prisma.lead.findUnique as Mock).mockResolvedValue({ ...activeLead, assignedToId: "u2" });
+    (prisma.user.findUnique as Mock).mockResolvedValue({ role: "member" });
+
+    const res = await post({ leadId: "l1", action: "assign" });
+    expect(res.status).toBe(403);
+    expect(prisma.user.findUnique).toHaveBeenCalledWith({ where: { id: "u1" }, select: { role: true } });
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("refuses a member unassigning a lead assigned to someone else", async () => {
+    (prisma.lead.findUnique as Mock).mockResolvedValue({ ...activeLead, assignedToId: "u2" });
+    (prisma.user.findUnique as Mock).mockResolvedValue({ role: "member" });
+
+    const res = await post({ leadId: "l1", action: "unassign" });
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toMatch(/only an admin/i);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("lets an admin reassign a lead held by someone else", async () => {
+    (prisma.lead.findUnique as Mock).mockResolvedValue({ ...activeLead, assignedToId: "u2" });
+    (prisma.user.findUnique as Mock).mockResolvedValue({ role: "admin" });
     (prisma.lead.update as Mock).mockResolvedValue({ id: "l1", assignee: { email: "buyer@spotr.test" } });
 
     const res = await post({ leadId: "l1", action: "assign" });
     expect(res.status).toBe(200);
     expect((prisma.lead.update as Mock).mock.calls[0][0].data).toEqual({ assignee: { connect: { id: "u1" } } });
+  });
+
+  it("lets an admin unassign a lead held by someone else", async () => {
+    (prisma.lead.findUnique as Mock).mockResolvedValue({ ...activeLead, assignedToId: "u2" });
+    (prisma.user.findUnique as Mock).mockResolvedValue({ role: "admin" });
+    (prisma.lead.update as Mock).mockResolvedValue({ id: "l1", assignedToId: null, assignee: null });
+
+    const res = await post({ leadId: "l1", action: "unassign" });
+    expect(res.status).toBe(200);
+    expect((prisma.lead.update as Mock).mock.calls[0][0].data).toEqual({ assignee: { disconnect: true } });
+  });
+
+  it("doesn't look up the role for your own or unassigned leads", async () => {
+    (prisma.lead.findUnique as Mock).mockResolvedValue(activeLead);
+    (prisma.lead.update as Mock).mockResolvedValue({ id: "l1", assignee: { email: "buyer@spotr.test" } });
+    await post({ leadId: "l1", action: "assign" });
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
   });
 
   it("unassign disconnects the assignee", async () => {
