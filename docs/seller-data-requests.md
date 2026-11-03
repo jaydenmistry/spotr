@@ -26,7 +26,7 @@ Spotr doesn't collect seller contact details. For each listing it keeps what the
 
 ## Backups and the database file
 
-Backups taken before the deletion still contain the row until they age out. Say so in the reply if asked, and don't restore an old backup without re-running the deletion afterwards.
+Backups taken before the deletion still contain the row until they age out: the daily copies in `/app/data/backups` after 7 days, and the off-server copies once Dokploy's retention drops them (see [backups.md](backups.md)). Say so in the reply if asked, and don't restore an old backup without re-running the deletion afterwards.
 
 SQLite also doesn't scrub deleted rows from the database file straight away; the space is reused over time. If a request needs the data gone from disk too, run `VACUUM` during a quiet moment (it briefly locks the database): `node -e 'new (require("@prisma/client").PrismaClient)().$executeRawUnsafe("VACUUM").then(() => console.log("done"))'`.
 
