@@ -12,11 +12,11 @@ const flag = (name) => {
   const index = args.indexOf(name);
   return index === -1 ? undefined : args[index + 1];
 };
-const vin = flag("--vin")?.trim().toUpperCase();
+const vinInput = flag("--vin")?.trim();
 const id = flag("--id")?.trim();
 const confirm = args.includes("--confirm");
 
-if (!vin === !id) {
+if (!vinInput === !id) {
   console.error("Usage: node scripts/delete-seller-data.mjs (--vin <VIN> | --id <lead id>) [--confirm]");
   process.exit(1);
 }
@@ -24,7 +24,9 @@ if (!vin === !id) {
 const prisma = new PrismaClient();
 
 try {
-  const where = vin ? { vin } : { id };
+  // VINs are stored as the provider sent them, so match any casing of the input.
+  const vin = vinInput?.toUpperCase();
+  const where = vinInput ? { vin: { in: [...new Set([vinInput, vin, vinInput.toLowerCase()])] } } : { id };
   const leads = await prisma.lead.findMany({
     where,
     select: {
